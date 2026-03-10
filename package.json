@@ -1,10 +1,14 @@
 {
   "name": "skillpack",
   "version": "0.1.0",
-  "description": "Personal collection for agent skills",
+  "description": "Personal collection of reusable agent skills for Codex, Claude Code, Pi, OpenClaw, and similar harnesses",
+  "private": true,
   "type": "module",
   "scripts": {
-    "test": "echo 'No tests'"
+    "check": "node scripts/validate-skills.mjs",
+    "list": "node scripts/list-skills.mjs",
+    "test": "node scripts/validate-skills.mjs",
+    "validate": "node scripts/validate-skills.mjs"
   },
   "dependencies": {},
   "devDependencies": {},
