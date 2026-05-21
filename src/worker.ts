@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { createDb } from "./db/client";
 import { skillVersions, skills } from "./db/schema";
@@ -17,6 +17,9 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+const skillLocation = (name: string, path = "SKILL.md") => `api://skills/${name}/${path}`;
+const apiError = (error: string) => ({ error });
+
 app.get("/api/health", (c) => c.json({ ok: true }));
 
 app.get("/api/v1/skills/catalog", async (c) => {
@@ -28,7 +31,7 @@ app.get("/api/v1/skills/catalog", async (c) => {
       name: skill.name,
       description: skill.description,
       version: skill.latestVersion,
-      location: `api://skills/${skill.name}/SKILL.md`
+      location: skillLocation(skill.name)
     }))
   });
 
@@ -41,22 +44,22 @@ app.get("/api/v1/skills/:name", async (c) => {
   const [skill] = await db.select().from(skills).where(eq(skills.name, name)).limit(1);
 
   if (!skill) {
-    return c.json({ error: "Skill not found" }, 404);
+    return c.json(apiError("Skill not found"), 404);
   }
 
   const [version] = await db
     .select()
     .from(skillVersions)
-    .where(eq(skillVersions.skillId, skill.id))
+    .where(and(eq(skillVersions.skillId, skill.id), eq(skillVersions.version, skill.latestVersion)))
     .limit(1);
 
   if (!version) {
-    return c.json({ error: "Skill version not found" }, 404);
+    return c.json(apiError("Skill version not found"), 404);
   }
 
   const object = await c.env.BUCKET.get(version.objectKey);
   if (!object) {
-    return c.json({ error: "Skill object not found" }, 404);
+    return c.json(apiError("Skill object not found"), 404);
   }
 
   const content = await object.text();
@@ -64,7 +67,7 @@ app.get("/api/v1/skills/:name", async (c) => {
     name: skill.name,
     description: skill.description,
     version: version.version,
-    location: `api://skills/${skill.name}/${version.entryPath}`,
+    location: skillLocation(skill.name, version.entryPath),
     content,
     resources: []
   });
@@ -96,6 +99,10 @@ app.post("/api/v1/skills", zValidator("json", createSkillSchema), async (c) => {
     .returning();
 
   const skill = inserted[0];
+  if (!skill) {
+    return c.json(apiError("Skill was not created"), 500);
+  }
+
   await db.insert(skillVersions).values({
     skillId: skill.id,
     version: input.version,
@@ -110,7 +117,7 @@ app.post("/api/v1/skills", zValidator("json", createSkillSchema), async (c) => {
       name: input.name,
       description: input.description,
       version: input.version,
-      location: `api://skills/${input.name}/SKILL.md`
+      location: skillLocation(input.name)
     },
     201
   );
