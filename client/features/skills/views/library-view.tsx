@@ -1,7 +1,9 @@
-import { FileTextIcon, RefreshCwIcon } from "lucide-react";
+import { RefreshCwIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { Button } from "@/components/ui/button";
 import type { SkillCatalogItem } from "@shared/schemas/skills";
+import { EmptyLibrary } from "../components/empty-library";
+import { SkillRow } from "../components/skill-row";
 
 type LibraryViewProps = {
   skills: SkillCatalogItem[];
@@ -44,41 +46,5 @@ export function LibraryView({ skills, status, onRefresh }: LibraryViewProps) {
         </section>
       </OverlayScrollbarsComponent>
     </main>
-  );
-}
-
-function SkillRow({ skill }: { skill: SkillCatalogItem }) {
-  return (
-    <article className="flex gap-5 border-b border-border px-4 py-5 last:border-b-0 hover:bg-muted/40">
-      <div className="flex size-20 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground shadow-xs">
-        <FileTextIcon />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold tracking-tight text-foreground">{skill.name}</h2>
-            <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted-foreground">{skill.description}</p>
-          </div>
-          <div className="shrink-0 text-sm text-muted-foreground">v{skill.version}</div>
-        </div>
-        <code className="mt-2 block truncate text-sm text-muted-foreground">{skill.location}</code>
-      </div>
-    </article>
-  );
-}
-
-function EmptyLibrary({ status, onRefresh }: Pick<LibraryViewProps, "status" | "onRefresh">) {
-  return (
-    <div className="flex min-h-80 flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border bg-card px-6 text-center">
-      <FileTextIcon className="text-muted-foreground" />
-      <div className="flex flex-col gap-1">
-        <h2 className="text-base font-semibold tracking-tight">No skills yet</h2>
-        <p className="max-w-md text-sm text-muted-foreground">{status}</p>
-      </div>
-      <Button variant="secondary" onClick={onRefresh}>
-        <RefreshCwIcon data-icon="inline-start" />
-        Refresh catalog
-      </Button>
-    </div>
   );
 }

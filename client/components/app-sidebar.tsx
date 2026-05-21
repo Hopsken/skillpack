@@ -1,4 +1,5 @@
 import { LibraryIcon, SettingsIcon, UserCircleIcon } from "lucide-react";
+import { NavLink } from "react-router";
 import {
   Sidebar,
   SidebarContent,
@@ -18,7 +19,7 @@ const footerItems = [
 
 export function AppSidebar() {
   return (
-    <Sidebar collapsible="none" className="border-r border-sidebar-border bg-sidebar">
+    <Sidebar collapsible="none" className="h-svh border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-4 text-lg font-semibold tracking-tight text-sidebar-foreground">
         skillpack
       </SidebarHeader>
@@ -28,9 +29,11 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton isActive tooltip="Library" className="font-medium">
-                  <LibraryIcon />
-                  <span>Library</span>
+                <SidebarMenuButton asChild tooltip="Library" className="font-medium">
+                  <NavLink to="/library">
+                    <LibraryIcon />
+                    <span>Library</span>
+                  </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
