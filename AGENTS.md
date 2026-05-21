@@ -69,6 +69,8 @@ After creating D1, update `wrangler.jsonc` with the production `database_id`.
 
 ## Frontend Architecture
 
+Must read doc: `docs/frontend-structure.md` before adding or moving frontend files.
+
 Frontend source lives in `client/`. It is built with Vite (`vite.config.ts`), uses React Router.
 
 **Import convention**: prefer the `@/*` path alias (e.g., `@/domain/charts`) over relative paths for cross-layer imports. The alias is defined in `tsconfig.client.json`.
@@ -85,17 +87,6 @@ Core frontend boundaries:
 - `shared/` — generic app infrastructure, components, hooks, and utilities.
 
 State management rule: TanStack Query owns server state from APIs; Zustand owns client interaction state in `features/<feature>/store/`; React Context is only for cross-cutting platform plumbing. Do not duplicate API data into Zustand stores.
-
-Allowed dependency direction:
-
-```text
-pages      -> features, widgets, shared
-features   -> widgets, domain, shared
-widgets    -> domain, shared
-domain     -> shared
-shared     -> no app-specific imports
-```
-
 
 ## Data Model Notes
 
