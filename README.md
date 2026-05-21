@@ -7,6 +7,14 @@ A single Cloudflare Worker serving both:
 
 The stack uses Cloudflare Workers, D1, R2, Drizzle ORM, Hono, React, Vite, Tailwind CSS, shadcn-style UI components, TypeScript, pnpm, and Zod schemas.
 
+## Project layout
+
+```text
+client/   # Vite React SPA
+server/   # Cloudflare Worker, Hono app, routes, D1 schema
+shared/   # Zod schemas and shared TypeScript types
+```
+
 ## Development
 
 ```bash

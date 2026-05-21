@@ -7,7 +7,7 @@ CREATE TABLE `skills` (
   `updated_at` integer NOT NULL
 );
 
-CREATE UNIQUE INDEX `skills_name_unique` ON `skills` (`name`);
+CREATE INDEX `skills_name_idx` ON `skills` (`name`);
 
 CREATE TABLE `skill_versions` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,

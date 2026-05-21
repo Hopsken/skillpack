@@ -7,9 +7,8 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), cloudflare()],
   resolve: {
     alias: {
-      "@": "/src/client",
-      "@schemas": "/src/schemas",
-      "@db": "/src/db"
+      "@": "/client",
+      "@shared": "/shared"
     }
   }
 });
