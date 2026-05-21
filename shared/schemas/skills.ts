@@ -11,7 +11,7 @@ export const skillVersionSchema = z.string().min(1).max(32);
 export const skillCatalogItemSchema = z.object({
   name: skillNameSchema,
   description: z.string().min(1),
-  location: z.string().url().or(z.string().startsWith("api://")),
+  location: z.string().url().or(z.string().startsWith("skill://")),
   version: skillVersionSchema
 });
 

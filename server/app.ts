@@ -5,5 +5,4 @@ import type { AppBindings } from "./types";
 
 export const app = new Hono<AppBindings>()
   .route("/api", healthRoute)
-  .route("/api/v1/skills", skillsRoute)
-  .get("*", (c) => c.env.ASSETS.fetch(c.req.raw));
+  .route("/api/v1/skills", skillsRoute);
