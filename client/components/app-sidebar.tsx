@@ -1,5 +1,5 @@
 import { LibraryIcon, SettingsIcon, UserCircleIcon } from "lucide-react";
-import { NavLink } from "react-router";
+import { NavLink, useMatch } from "react-router";
 import {
   Sidebar,
   SidebarContent,
@@ -9,27 +9,38 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
-  SidebarMenuItem
+  SidebarMenuItem,
 } from "@/components/ui/sidebar";
 
 const footerItems = [
   { label: "Preferences", icon: SettingsIcon },
-  { label: "Sean", icon: UserCircleIcon }
+  { label: "Sean", icon: UserCircleIcon },
 ];
 
 export function AppSidebar() {
+  const isLibraryActive = Boolean(useMatch("/library/*"));
+
   return (
-    <Sidebar collapsible="none" className="h-svh border-r border-sidebar-border bg-sidebar">
+    <Sidebar
+      collapsible="none"
+      className="h-svh border-r border-sidebar-border bg-sidebar"
+    >
       <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-4 text-lg font-semibold tracking-tight text-sidebar-foreground">
         skillpack
       </SidebarHeader>
 
-      <SidebarContent className="px-3 py-4">
+      <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Library" className="font-medium">
+                <SidebarMenuButton
+                  asChild
+                  isActive={isLibraryActive}
+                  size="lg"
+                  tooltip="Library"
+                  className="font-medium"
+                >
                   <NavLink to="/library">
                     <LibraryIcon />
                     <span>Library</span>
@@ -45,7 +56,7 @@ export function AppSidebar() {
         <SidebarMenu>
           {footerItems.map(({ label, icon: Icon }) => (
             <SidebarMenuItem key={label}>
-              <SidebarMenuButton>
+              <SidebarMenuButton size="lg">
                 <Icon />
                 <span>{label}</span>
               </SidebarMenuButton>
