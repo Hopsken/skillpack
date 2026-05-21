@@ -66,6 +66,37 @@ After creating D1, update `wrangler.jsonc` with the production `database_id`.
 - Use Cloudflare bindings directly through `c.env`; avoid Cloudflare REST calls from inside the Worker.
 - Store skill content in R2 and store metadata/manifests in D1.
 
+
+## Frontend Architecture
+
+Frontend source lives in `client/`. It is built with Vite (`vite.config.ts`), uses React Router.
+
+**Import convention**: prefer the `@/*` path alias (e.g., `@/domain/charts`) over relative paths for cross-layer imports. The alias is defined in `tsconfig.client.json`.
+
+Before adding or moving frontend files, follow its `pages / features / domain / components / shared` structure.
+
+Core frontend boundaries:
+
+- `pages/` — thin route entries only.
+- `features/` — user workflows, Zustand state, and feature-specific API hooks.
+- `domain/` — pure business models, transformations, validation, and rules.
+- `components/` — reusable business UI blocks.
+- `components/ui` — reusable UI components, from shadcn UI.
+- `shared/` — generic app infrastructure, components, hooks, and utilities.
+
+State management rule: TanStack Query owns server state from APIs; Zustand owns client interaction state in `features/<feature>/store/`; React Context is only for cross-cutting platform plumbing. Do not duplicate API data into Zustand stores.
+
+Allowed dependency direction:
+
+```text
+pages      -> features, widgets, shared
+features   -> widgets, domain, shared
+widgets    -> domain, shared
+domain     -> shared
+shared     -> no app-specific imports
+```
+
+
 ## Data Model Notes
 
 - `skills.name` is indexed but storage-level duplicates are allowed.

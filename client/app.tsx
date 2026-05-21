@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AppSidebar } from "@/components/app-sidebar";
+import { LibraryView } from "@/components/library-view";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { skillCatalogResponseSchema, type SkillCatalogItem } from "@shared/schemas/skills";
 
 export function App() {
@@ -22,33 +23,9 @@ export function App() {
   }, []);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-8 px-6 py-10">
-      <section className="flex flex-col gap-4">
-        <div className="text-sm font-medium text-muted-foreground">Cloudflare Skills Registry</div>
-        <h1 className="max-w-3xl text-4xl font-semibold tracking-tight">Skillpack</h1>
-        <p className="max-w-2xl text-muted-foreground">
-          A single Cloudflare Worker serving a Hono API and a Vite SPA with D1, Drizzle, R2, Tailwind, shadcn-style UI, and Zod schemas.
-        </p>
-        <div>
-          <Button onClick={() => void loadSkills()}>Refresh catalog</Button>
-        </div>
-      </section>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Catalog</CardTitle>
-          <CardDescription>{status}</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          {skills.map((skill) => (
-            <div key={skill.name} className="rounded-lg border border-border p-4">
-              <div className="font-medium">{skill.name}</div>
-              <div className="mt-1 text-sm text-muted-foreground">{skill.description}</div>
-              <code className="mt-3 block text-xs text-muted-foreground">{skill.location}</code>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </main>
+    <SidebarProvider>
+      <AppSidebar />
+      <LibraryView skills={skills} status={status} onRefresh={() => void loadSkills()} />
+    </SidebarProvider>
   );
 }

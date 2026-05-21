@@ -13,6 +13,12 @@
       "skillPath": "skills/cloudflare/SKILL.md",
       "computedHash": "ecc9c0211c605451f7e8b437724f84810fe013d5ca6c653c51d046139d4ecbf7"
     },
+    "deslop": {
+      "source": "brianlovin/claude-config",
+      "sourceType": "github",
+      "skillPath": "skills/deslop/SKILL.md",
+      "computedHash": "f949bc0e44dd84a07686a33bc471f4b0295a8444c40cb66e2e7c77ba52154fea"
+    },
     "durable-objects": {
       "source": "cloudflare/skills",
       "sourceType": "github",
@@ -30,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "skills/shadcn/SKILL.md",
       "computedHash": "80a6226e78f6d1fe464214ae0ef449d49d8ffaa3e7704f011e9b418c678ad4d1"
+    },
+    "simplify": {
+      "source": "brianlovin/claude-config",
+      "sourceType": "github",
+      "skillPath": "skills/simplify/SKILL.md",
+      "computedHash": "322a20071306ede626dc73ac05182b08c97b60781e23ec3fbf23f85a4d27d111"
     },
     "workers-best-practices": {
       "source": "cloudflare/skills",

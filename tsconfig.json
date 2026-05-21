@@ -1,4 +1,11 @@
 {
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./client/*"],
+      "@shared/*": ["./shared/*"]
+    }
+  },
   "files": [],
   "references": [
     { "path": "./tsconfig.client.json" },
