@@ -40,6 +40,12 @@ pnpm db:migrate:local
 pnpm db:migrate:remote
 ```
 
+Seed local development data while `pnpm dev` is running:
+
+```bash
+pnpm db:seed:local
+```
+
 Deploy:
 
 ```bash

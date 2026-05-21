@@ -46,6 +46,7 @@ Database commands:
 pnpm db:generate
 pnpm db:migrate:local
 pnpm db:migrate:remote
+pnpm db:seed:local
 ```
 
 Cloudflare resource setup:
@@ -120,6 +121,7 @@ curl -X POST http://localhost:5173/api/v1/skills \
 ## Gotchas
 
 - `wrangler.jsonc` uses a production D1 `database_id`; local dev still uses Wrangler local state with the same `DB` binding.
+- `pnpm db:seed:local` seeds local D1 and R2 through the running dev API at `http://localhost:5173`.
 - `components.json` points shadcn/ui to `client/styles.css` and `@/components` aliases.
 - Build output is generated under `dist/` and should stay untracked.
 - `.DS_Store` should stay ignored and untracked.
