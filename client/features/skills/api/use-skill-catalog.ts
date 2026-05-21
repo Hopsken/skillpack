@@ -1,33 +1,38 @@
-import { useEffect, useState } from "react";
-import { skillCatalogResponseSchema, type SkillCatalogItem } from "@shared/schemas/skills";
+import { skillCatalogResponseSchema } from "@shared/schemas/skills";
+import type { SkillCatalogItem } from "@shared/schemas/skills";
+import { useCallback, useEffect, useState } from "react";
 
-export type SkillCatalogState = {
+export interface SkillCatalogState {
   skills: SkillCatalogItem[];
   status: string;
-  refresh: () => void;
-};
+  refresh: () => Promise<void>;
+}
 
-export function useSkillCatalog(): SkillCatalogState {
+export const useSkillCatalog = (): SkillCatalogState => {
   const [skills, setSkills] = useState<SkillCatalogItem[]>([]);
   const [status, setStatus] = useState("Loading skills...");
 
-  async function loadSkills(): Promise<void> {
+  const loadSkills = async (): Promise<void> => {
     setStatus("Loading skills...");
     const response = await fetch("/api/v1/skills/catalog");
     const data = skillCatalogResponseSchema.parse(await response.json());
     setSkills(data.skills);
     setStatus(`${data.skills.length} skills loaded`);
-  }
+  };
 
-  function refresh(): void {
-    void loadSkills().catch((error: unknown) => {
-      setStatus(error instanceof Error ? error.message : "Failed to load skills");
-    });
-  }
-
-  useEffect(() => {
-    refresh();
+  const refresh = useCallback(async (): Promise<void> => {
+    try {
+      await loadSkills();
+    } catch (error: unknown) {
+      setStatus(
+        error instanceof Error ? error.message : "Failed to load skills"
+      );
+    }
   }, []);
 
-  return { skills, status, refresh };
-}
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  return { refresh, skills, status };
+};

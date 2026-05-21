@@ -143,15 +143,15 @@ Do not use `shared/` as a dumping ground for cross-feature business logic. Prefe
 
 ## Placement Decision Table
 
-| File kind                                   | Location                         |
-| ------------------------------------------- | -------------------------------- |
-| Route component                             | `pages/`                         |
-| Top-level workflow view                     | `features/<feature>/views/`      |
-| Zustand store for one workflow              | `features/<feature>/store/`      |
-| React Query hook used only by one workflow  | `features/<feature>/api/`        |
-| Component used only by one workflow         | `features/<feature>/components/` |
-| Current user/session API                    | `shared/api/`                    |
-| Generic formatting helpers                  | `shared/utils/`                  |
+| File kind                                  | Location                         |
+| ------------------------------------------ | -------------------------------- |
+| Route component                            | `pages/`                         |
+| Top-level workflow view                    | `features/<feature>/views/`      |
+| Zustand store for one workflow             | `features/<feature>/store/`      |
+| React Query hook used only by one workflow | `features/<feature>/api/`        |
+| Component used only by one workflow        | `features/<feature>/components/` |
+| Current user/session API                   | `shared/api/`                    |
+| Generic formatting helpers                 | `shared/utils/`                  |
 
 ## Naming and Export Rules
 

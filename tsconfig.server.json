@@ -9,5 +9,11 @@
       "@shared/*": ["./shared/*"]
     }
   },
-  "include": ["server", "shared", "worker-configuration.d.ts", "drizzle.config.ts", "vite.config.ts"]
+  "include": [
+    "server",
+    "shared",
+    "worker-configuration.d.ts",
+    "drizzle.config.ts",
+    "vite.config.ts"
+  ]
 }

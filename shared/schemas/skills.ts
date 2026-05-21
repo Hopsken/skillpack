@@ -4,38 +4,38 @@ export const skillNameSchema = z
   .string()
   .min(1)
   .max(80)
-  .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
+  .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/u);
 
 export const skillVersionSchema = z.string().min(1).max(32);
 
 export const skillCatalogItemSchema = z.object({
-  name: skillNameSchema,
   description: z.string().min(1),
   location: z.string().url().or(z.string().startsWith("skill://")),
-  version: skillVersionSchema
+  name: skillNameSchema,
+  version: skillVersionSchema,
 });
 
 export const skillCatalogResponseSchema = z.object({
-  skills: z.array(skillCatalogItemSchema)
+  skills: z.array(skillCatalogItemSchema),
 });
 
 export const skillResourceSchema = z.object({
-  path: z.string().min(1),
   mediaType: z.string().min(1),
+  path: z.string().min(1),
   sha256: z.string().min(1),
-  size: z.number().int().nonnegative()
+  size: z.number().int().nonnegative(),
 });
 
 export const skillReadResponseSchema = skillCatalogItemSchema.extend({
   content: z.string(),
-  resources: z.array(skillResourceSchema)
+  resources: z.array(skillResourceSchema),
 });
 
 export const createSkillSchema = z.object({
-  name: skillNameSchema,
+  content: z.string().min(1),
   description: z.string().min(1).max(500),
+  name: skillNameSchema,
   version: skillVersionSchema.default("0.1.0"),
-  content: z.string().min(1)
 });
 
 export type SkillCatalogItem = z.infer<typeof skillCatalogItemSchema>;

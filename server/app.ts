@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+
 import { healthRoute } from "./routes/health";
 import { skillsRoute } from "./routes/skills";
 import type { AppBindings } from "./types";

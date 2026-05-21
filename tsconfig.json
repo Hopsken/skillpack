@@ -4,7 +4,8 @@
     "paths": {
       "@/*": ["./client/*"],
       "@shared/*": ["./shared/*"]
-    }
+    },
+    "strictNullChecks": true
   },
   "files": [],
   "references": [

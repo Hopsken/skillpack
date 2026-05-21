@@ -1,5 +1,6 @@
 import { LibraryIcon, SettingsIcon, UserCircleIcon } from "lucide-react";
 import { NavLink, useMatch } from "react-router";
+
 import {
   Sidebar,
   SidebarContent,
@@ -13,11 +14,11 @@ import {
 } from "@/components/ui/sidebar";
 
 const footerItems = [
-  { label: "Preferences", icon: SettingsIcon },
-  { label: "Sean", icon: UserCircleIcon },
+  { icon: SettingsIcon, label: "Preferences" },
+  { icon: UserCircleIcon, label: "Sean" },
 ];
 
-export function AppSidebar() {
+export const AppSidebar = () => {
   const isLibraryActive = Boolean(useMatch("/library/*"));
 
   return (
@@ -66,4 +67,4 @@ export function AppSidebar() {
       </SidebarFooter>
     </Sidebar>
   );
-}
+};

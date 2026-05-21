@@ -1,4 +1,5 @@
 > ## Documentation Index
+>
 > Fetch the complete documentation index at: https://agentskills.io/llms.txt
 > Use this file to discover all available pages before exploring further.
 
@@ -10,8 +11,8 @@ This guide walks through how to add Agent Skills support to an AI agent or devel
 
 The core integration is the same regardless of your agent's architecture. The implementation details vary based on two factors:
 
-* **Where do skills live?** A locally-running agent can scan the user's filesystem for skill directories. A cloud-hosted or sandboxed agent will need an alternative discovery mechanism — an API, a remote registry, or bundled assets.
-* **How does the model access skill content?** If the model has file-reading capabilities, it can read `SKILL.md` files directly. Otherwise, you'll provide a dedicated tool or inject skill content into the prompt programmatically.
+- **Where do skills live?** A locally-running agent can scan the user's filesystem for skill directories. A cloud-hosted or sandboxed agent will need an alternative discovery mechanism — an API, a remote registry, or bundled assets.
+- **How does the model access skill content?** If the model has file-reading capabilities, it can read `SKILL.md` files directly. Otherwise, you'll provide a dedicated tool or inject skill content into the prompt programmatically.
 
 The guide notes where these differences matter. You don't need to support every scenario — follow the path that fits your agent.
 
@@ -39,8 +40,8 @@ At session startup, find all available skills and load their metadata.
 
 Which directories you scan depends on your agent's environment. Most locally-running agents scan at least two scopes:
 
-* **Project-level** (relative to the working directory): Skills specific to a project or repository.
-* **User-level** (relative to the home directory): Skills available across all projects for a given user.
+- **Project-level** (relative to the working directory): Skills specific to a project or repository.
+- **User-level** (relative to the home directory): Skills available across all projects for a given user.
 
 Other scopes are possible too — for example, organization-wide skills deployed by an admin, or skills bundled with the agent itself. The right set of scopes depends on your agent's deployment model.
 
@@ -76,9 +77,9 @@ Within each skills directory, look for **subdirectories containing a file named 
 
 Practical scanning rules:
 
-* Skip directories that won't contain skills, such as `.git/` and `node_modules/`
-* Optionally respect `.gitignore` to avoid scanning build artifacts
-* Set reasonable bounds (e.g., max depth of 4-6 levels, max 2000 directories) to prevent runaway scanning in large directory trees
+- Skip directories that won't contain skills, such as `.git/` and `node_modules/`
+- Optionally respect `.gitignore` to avoid scanning build artifacts
+- Set reasonable bounds (e.g., max depth of 4-6 levels, max 2000 directories) to prevent runaway scanning in large directory trees
 
 ### Handling name collisions
 
@@ -96,9 +97,9 @@ Project-level skills come from the repository being worked on, which may be untr
 
 If your agent runs in a container or on a remote server, it won't have access to the user's local filesystem. Discovery needs to work differently depending on the skill scope:
 
-* **Project-level skills** are often the easiest case. If the agent operates on a cloned repository (even inside a sandbox), project-level skills travel with the code and can be scanned from the repo's directory tree.
-* **User-level and organization-level skills** don't exist in the sandbox. You'll need to provision them from an external source — for example, cloning a configuration repository, accepting skill URLs or packages through your agent's settings, or letting users upload skill directories through a web UI.
-* **Built-in skills** can be packaged as static assets within the agent's deployment artifact, making them available in every session without external fetching.
+- **Project-level skills** are often the easiest case. If the agent operates on a cloned repository (even inside a sandbox), project-level skills travel with the code and can be scanned from the repo's directory tree.
+- **User-level and organization-level skills** don't exist in the sandbox. You'll need to provision them from an external source — for example, cloning a configuration repository, accepting skill URLs or packages through your agent's settings, or letting users upload skill directories through a web UI.
+- **Built-in skills** can be packaged as static assets within the agent's deployment artifact, making them available in every session without external fetching.
 
 Once skills are available to the agent, the rest of the lifecycle — parsing, disclosure, activation — works the same.
 
@@ -131,10 +132,10 @@ Consider a fallback that wraps such values in quotes or converts them to YAML bl
 
 Warn on issues but still load the skill when possible:
 
-* Name doesn't match the parent directory name → warn, load anyway
-* Name exceeds 64 characters → warn, load anyway
-* Description is missing or empty → skip the skill (a description is essential for disclosure), log the error
-* YAML is completely unparseable → skip the skill, log the error
+- Name doesn't match the parent directory name → warn, load anyway
+- Name exceeds 64 characters → warn, load anyway
+- Description is missing or empty → skip the skill (a description is essential for disclosure), log the error
+- YAML is completely unparseable → skip the skill, log the error
 
 Record diagnostics so they can be surfaced to the user (in a debug command, log file, or UI), but don't block skill loading on cosmetic issues.
 
@@ -223,9 +224,9 @@ Keep these instructions concise. The goal is to tell the model that skills exist
 
 Some skills should be excluded from the catalog. Common reasons:
 
-* The user has disabled the skill in settings
-* A permission system denies access to the skill
-* The skill has opted out of model-driven activation (e.g., via a `disable-model-invocation` flag)
+- The user has disabled the skill in settings
+- A permission system denies access to the skill
+- The skill has opted out of model-driven activation (e.g., via a `disable-model-invocation` flag)
 
 **Hide filtered skills entirely** from the catalog rather than listing them and blocking at activation time. This prevents the model from wasting turns attempting to load skills it can't use.
 
@@ -247,11 +248,11 @@ Two implementation patterns:
 
 **Dedicated tool activation**: Register a tool (e.g., `activate_skill`) that takes a skill name and returns the content. This is required when the model can't read files directly, and optional (but useful) even when it can. Advantages over raw file reads:
 
-* Control what content is returned — e.g., strip YAML frontmatter or preserve it (see [What the model receives](#what-the-model-receives) below)
-* Wrap content in structured tags for identification during context management
-* List bundled resources (e.g., `references/*`) alongside the instructions
-* Enforce permissions or prompt for user consent
-* Track activation for analytics
+- Control what content is returned — e.g., strip YAML frontmatter or preserve it (see [What the model receives](#what-the-model-receives) below)
+- Wrap content in structured tags for identification during context management
+- List bundled resources (e.g., `references/*`) alongside the instructions
+- Enforce permissions or prompt for user consent
+- Track activation for analytics
 
 <Tip>
   If you use a dedicated activation tool, constrain the `name` parameter to the set of valid skill names (e.g., as an enum in the tool schema). This prevents the model from hallucinating nonexistent skill names. If no skills are available, don't register the tool at all.
@@ -299,9 +300,9 @@ Relative paths in this skill are relative to the skill directory.
 
 This has practical benefits:
 
-* The model can clearly distinguish skill instructions from other conversation content
-* The harness can identify skill content during context compaction ([Step 5](#step-5-manage-skill-context-over-time))
-* Bundled resources are surfaced to the model without being eagerly loaded
+- The model can clearly distinguish skill instructions from other conversation content
+- The harness can identify skill content during context compaction ([Step 5](#step-5-manage-skill-context-over-time))
+- Bundled resources are surfaced to the model without being eagerly loaded
 
 ### Listing bundled resources
 
@@ -323,8 +324,8 @@ If your agent truncates or summarizes older messages when the context window fil
 
 Common approaches:
 
-* Flag skill tool outputs as protected so the pruning algorithm skips them
-* Use the [structured tags](#structured-wrapping) from Step 4 to identify skill content and preserve it during compaction
+- Flag skill tool outputs as protected so the pruning algorithm skips them
+- Use the [structured tags](#structured-wrapping) from Step 4 to identify skill content and preserve it during compaction
 
 ### Deduplicate activations
 

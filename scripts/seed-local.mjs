@@ -2,9 +2,6 @@ const apiUrl = process.env.SKILLPACK_DEV_URL ?? "http://localhost:5173";
 
 const skills = [
   {
-    name: "api-skill-demo",
-    description: "Demo API-backed skill for validating the local registry flow.",
-    version: "0.1.0",
     content: `# Demo Skill
 
 Use this skill when validating API-backed skills in local development.
@@ -14,12 +11,13 @@ Use this skill when validating API-backed skills in local development.
 1. Load the catalog from the API.
 2. Read this skill through the API.
 3. Confirm the content is served from R2-backed storage.
-`
+`,
+    description:
+      "Demo API-backed skill for validating the local registry flow.",
+    name: "api-skill-demo",
+    version: "0.1.0",
   },
   {
-    name: "cloudflare-worker-review",
-    description: "Review Cloudflare Worker code for bindings, routing, and deployment readiness.",
-    version: "0.1.0",
     content: `# Cloudflare Worker Review
 
 Use this skill when reviewing a Cloudflare Worker before local testing or deploy.
@@ -30,12 +28,13 @@ Use this skill when reviewing a Cloudflare Worker before local testing or deploy
 - Confirm API routes use the expected prefix.
 - Confirm static asset routing keeps API requests on the Worker.
 - Run typecheck and build before deploy.
-`
+`,
+    description:
+      "Review Cloudflare Worker code for bindings, routing, and deployment readiness.",
+    name: "cloudflare-worker-review",
+    version: "0.1.0",
   },
   {
-    name: "frontend-structure-check",
-    description: "Check frontend files against the pages, features, domain, components, and shared structure.",
-    version: "0.1.0",
     content: `# Frontend Structure Check
 
 Use this skill when adding or moving frontend files.
@@ -47,12 +46,13 @@ Use this skill when adding or moving frontend files.
 - Put pure business logic in domain.
 - Put reusable business UI in components.
 - Put generic infrastructure in shared.
-`
+`,
+    description:
+      "Check frontend files against the pages, features, domain, components, and shared structure.",
+    name: "frontend-structure-check",
+    version: "0.1.0",
   },
   {
-    name: "skill-authoring-guide",
-    description: "Draft concise Agent Skills with clear triggers, workflows, and references.",
-    version: "0.1.0",
     content: `# Skill Authoring Guide
 
 Use this skill when writing a new Agent Skill.
@@ -63,12 +63,13 @@ Use this skill when writing a new Agent Skill.
 - Keep the operational workflow explicit.
 - Link references for detailed guidance.
 - Keep examples close to the decisions they support.
-`
+`,
+    description:
+      "Draft concise Agent Skills with clear triggers, workflows, and references.",
+    name: "skill-authoring-guide",
+    version: "0.1.0",
   },
   {
-    name: "api-debugging-helper",
-    description: "Debug local Hono API behavior from request shape to response validation.",
-    version: "0.1.0",
     content: `# API Debugging Helper
 
 Use this skill when a local API endpoint behaves unexpectedly.
@@ -79,15 +80,19 @@ Use this skill when a local API endpoint behaves unexpectedly.
 2. Check request method, path, and content type.
 3. Validate response shape against shared schemas.
 4. Inspect storage reads and writes.
-`
-  }
+`,
+    description:
+      "Debug local Hono API behavior from request shape to response validation.",
+    name: "api-debugging-helper",
+    version: "0.1.0",
+  },
 ];
 
-async function createSkill(skill) {
+const createSkill = async (skill) => {
   const response = await fetch(`${apiUrl}/api/v1/skills`, {
-    method: "POST",
+    body: JSON.stringify(skill),
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(skill)
+    method: "POST",
   });
 
   if (response.status === 201) {
@@ -102,9 +107,9 @@ async function createSkill(skill) {
 
   const body = await response.text();
   throw new Error(`Failed to seed ${skill.name}: ${response.status} ${body}`);
-}
+};
 
-async function main() {
+const main = async () => {
   console.log(`seeding local Skillpack API at ${apiUrl}`);
 
   for (const skill of skills) {
@@ -112,10 +117,14 @@ async function main() {
   }
 
   console.log("done");
-}
+};
 
-main().catch((error) => {
+try {
+  await main();
+} catch (error) {
   console.error(error instanceof Error ? error.message : error);
-  console.error("Start the local dev server with `pnpm dev`, then run `pnpm db:seed:local`.");
+  console.error(
+    "Start the local dev server with `pnpm dev`, then run `pnpm db:seed:local`."
+  );
   process.exitCode = 1;
-});
+}
