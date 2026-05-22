@@ -62,7 +62,9 @@ After creating D1, update `wrangler.jsonc` with the production `database_id`.
 
 - Keep client and server code separated: `client/`, `server/`, and `shared/`.
 - Use `tsconfig.client.json` and `tsconfig.server.json`; root `tsconfig.json` only contains project references.
-- Add new Hono route groups under `server/routes/*` and mount them in `server/app.ts`.
+- Must read `docs/backend-architecture.md` before adding or reorganizing backend files.
+- Backend code follows module-first architecture under `server/modules/<module>/` with lightweight `route/service/repository/storage/presenter` layers.
+- Keep Hono route files focused on HTTP concerns; move business logic to module services, D1 access to repositories, and R2 access to storage helpers.
 - Use shared Zod schemas from `shared/schemas/*` for request/response validation and client parsing.
 - Use Cloudflare bindings directly through `c.env`; avoid Cloudflare REST calls from inside the Worker.
 - Store skill content in R2 and store metadata/manifests in D1.
