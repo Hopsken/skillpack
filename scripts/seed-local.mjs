@@ -1,4 +1,5 @@
 const apiUrl = process.env.SKILLPACK_DEV_URL ?? "http://localhost:5173";
+const authCookie = process.env.SKILLPACK_AUTH_COOKIE;
 
 const skills = [
   {
@@ -15,6 +16,31 @@ Use this skill when validating API-backed skills in local development.
     description:
       "Demo API-backed skill for validating the local registry flow.",
     name: "api-skill-demo",
+    resources: [
+      {
+        content: `# Demo Resource
+
+This reference is loaded from an R2-backed skill resource.
+`,
+        mediaType: "text/markdown; charset=utf-8",
+        path: "references/demo.md",
+      },
+      {
+        content: `def greet(name: str) -> str:
+    return f"Hello, {name}!"
+`,
+        mediaType: "text/x-python; charset=utf-8",
+        path: "scripts/greet.py",
+      },
+      {
+        content: `export function greet(name: string): string {
+  return \`Hello, \${name}!\`;
+}
+`,
+        mediaType: "text/typescript; charset=utf-8",
+        path: "scripts/greet.ts",
+      },
+    ],
     version: "0.1.0",
   },
   {
@@ -88,20 +114,41 @@ Use this skill when a local API endpoint behaves unexpectedly.
   },
 ];
 
+const getHeaders = () => {
+  const headers = { "content-type": "application/json" };
+
+  if (authCookie) {
+    headers.cookie = authCookie;
+  }
+
+  return headers;
+};
+
+const deleteSkill = async (skill) => {
+  const response = await fetch(`${apiUrl}/api/v1/skills/${skill.name}`, {
+    headers: getHeaders(),
+    method: "DELETE",
+  });
+
+  if (response.status === 204 || response.status === 404) {
+    return;
+  }
+
+  const body = await response.text();
+  throw new Error(`Failed to delete ${skill.name}: ${response.status} ${body}`);
+};
+
 const createSkill = async (skill) => {
+  await deleteSkill(skill);
+
   const response = await fetch(`${apiUrl}/api/v1/skills`, {
     body: JSON.stringify(skill),
-    headers: { "content-type": "application/json" },
+    headers: getHeaders(),
     method: "POST",
   });
 
   if (response.status === 201) {
-    console.log(`created ${skill.name}`);
-    return;
-  }
-
-  if (response.status === 409) {
-    console.log(`skipped ${skill.name} (already exists)`);
+    console.log(`seeded ${skill.name}`);
     return;
   }
 
@@ -124,7 +171,7 @@ try {
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   console.error(
-    "Start the local dev server with `pnpm dev`, then run `pnpm db:seed:local`."
+    "Start the local dev server with `pnpm dev`, then run `pnpm db:seed:local`. Set SKILLPACK_AUTH_COOKIE for protected local APIs."
   );
   process.exitCode = 1;
 }

@@ -40,3 +40,27 @@ export const skillVersions = sqliteTable(
     ).on(table.skillId, table.version),
   })
 );
+
+export const skillResources = sqliteTable(
+  "skill_resources",
+  {
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    mediaType: text("media_type").notNull(),
+    objectKey: text("object_key").notNull(),
+    path: text("path").notNull(),
+    sha256: text("sha256").notNull(),
+    size: integer("size").notNull(),
+    skillVersionId: integer("skill_version_id")
+      .notNull()
+      .references(() => skillVersions.id),
+  },
+  (table) => ({
+    skillResourceVersionIndex: index("skill_resources_version_idx").on(
+      table.skillVersionId
+    ),
+    skillResourceVersionPathUnique: uniqueIndex(
+      "skill_resources_version_path_unique"
+    ).on(table.skillVersionId, table.path),
+  })
+);

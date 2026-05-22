@@ -8,6 +8,17 @@ export const skillNameSchema = z
 
 export const skillVersionSchema = z.string().min(1).max(32);
 
+const isSafeRelativePath = (path: string) =>
+  !path.startsWith("/") &&
+  !path.includes("\\") &&
+  path.split("/").every((part) => part && part !== "." && part !== "..");
+
+export const skillResourcePathSchema = z
+  .string()
+  .min(1)
+  .max(240)
+  .refine(isSafeRelativePath, "Path must be a safe relative path");
+
 export const skillCatalogItemSchema = z.object({
   description: z.string().min(1),
   location: z.string().url().or(z.string().startsWith("skill://")),
@@ -21,7 +32,7 @@ export const skillCatalogResponseSchema = z.object({
 
 export const skillResourceSchema = z.object({
   mediaType: z.string().min(1),
-  path: z.string().min(1),
+  path: skillResourcePathSchema,
   sha256: z.string().min(1),
   size: z.number().int().nonnegative(),
 });
@@ -45,18 +56,29 @@ export const skillVersionsResponseSchema = z.object({
 export const skillFileResponseSchema = z.object({
   content: z.string(),
   mediaType: z.string().min(1),
-  path: z.string().min(1),
+  path: skillResourcePathSchema,
   sha256: z.string().min(1),
+  size: z.number().int().nonnegative(),
   version: skillVersionSchema,
+});
+
+export const createSkillResourceSchema = z.object({
+  content: z.string(),
+  mediaType: z.string().min(1).optional(),
+  path: skillResourcePathSchema,
 });
 
 export const createSkillSchema = z.object({
   content: z.string().min(1),
   description: z.string().min(1).max(500),
   name: skillNameSchema,
+  resources: z.array(createSkillResourceSchema).default([]),
   version: skillVersionSchema.default("0.1.0"),
 });
 
+export type CreateSkillResourceInput = z.infer<
+  typeof createSkillResourceSchema
+>;
 export type SkillCatalogItem = z.infer<typeof skillCatalogItemSchema>;
 export type SkillCatalogResponse = z.infer<typeof skillCatalogResponseSchema>;
 export type SkillReadResponse = z.infer<typeof skillReadResponseSchema>;

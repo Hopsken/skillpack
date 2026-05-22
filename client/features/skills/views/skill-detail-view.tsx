@@ -4,18 +4,24 @@ import type {
 } from "@shared/schemas/skills";
 import { ArrowLeftIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { useEffect, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link } from "react-router";
-import rehypeRaw from "rehype-raw";
-import remarkGfm from "remark-gfm";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import { useSkillFile } from "../api/use-skill-detail";
+import { MarkdownContent } from "../components/markdown-content";
+import { getSkillResourceKind } from "../lib/resource-kind";
 
 type SkillDetailTab = "skill" | "resources" | "versions";
+
+const loadResourceViewer = async () => {
+  const module = await import("../components/resource-viewer");
+  return { default: module.ResourceViewer };
+};
+
+const ResourceViewer = lazy(loadResourceViewer);
 
 interface SkillDetailViewProps {
   skill: SkillReadResponse | undefined;
@@ -28,8 +34,7 @@ interface SkillDetailViewProps {
 interface ResourcesPanelProps {
   skill: SkillReadResponse | undefined;
   selectedPath: string | undefined;
-  fileContent: string | undefined;
-  fileStatus: string;
+  fileContentStatus: string;
   onSelectPath: (path: string) => void;
 }
 
@@ -55,7 +60,7 @@ const getTabClassName = (isActive: boolean) =>
 
 const getResourceClassName = (isSelected: boolean) =>
   cn(
-    "block w-full border-b border-border px-6 py-3 text-left text-sm",
+    "block w-full border-b border-border px-4 py-3 text-left text-sm",
     isSelected
       ? "bg-muted text-foreground"
       : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
@@ -67,59 +72,97 @@ const getVersionClassName = (isCurrent: boolean) =>
     isCurrent && "bg-muted/60"
   );
 
+const getRawResourceUrl = (
+  name: string | undefined,
+  version: string | undefined,
+  path: string | undefined
+) => {
+  if (!(name && version && path)) {
+    return;
+  }
+
+  const searchParams = new URLSearchParams({ path, version });
+  return `/api/v1/skills/${encodeURIComponent(name)}/files/raw?${searchParams}`;
+};
+
 const SkillMarkdownPanel = ({
   skill,
 }: {
   skill: SkillReadResponse | undefined;
 }) => (
-  <section className="prose prose-neutral max-w-4xl px-6 py-8 dark:prose-invert">
-    {skill?.content ? (
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
-        {skill.content}
-      </ReactMarkdown>
-    ) : (
-      <p className="text-muted-foreground">No skill content loaded.</p>
-    )}
-  </section>
+  <MarkdownContent
+    content={skill?.content}
+    fallback="No skill content loaded."
+  />
 );
 
 const ResourcesPanel = ({
   skill,
   selectedPath,
-  fileContent,
-  fileStatus,
+  fileContentStatus,
   onSelectPath,
-}: ResourcesPanelProps) => (
-  <section className="grid min-h-full grid-cols-[minmax(16rem,24rem)_1fr]">
-    <div className="border-r border-border">
-      {skill?.resources.length ? (
-        skill.resources.map((resource) => (
-          <button
-            type="button"
-            key={resource.path}
-            onClick={() => onSelectPath(resource.path)}
-            className={getResourceClassName(selectedPath === resource.path)}
-          >
-            <span className="block truncate font-medium">{resource.path}</span>
-            <span className="text-xs">{resource.mediaType}</span>
-          </button>
-        ))
-      ) : (
-        <p className="px-6 py-4 text-sm text-muted-foreground">
-          No resources for this skill version.
-        </p>
-      )}
-    </div>
-    <div className="min-w-0 px-6 py-4">
-      <p className="mb-3 text-sm text-muted-foreground">{fileStatus}</p>
-      {fileContent ? (
-        <pre className="whitespace-pre-wrap text-sm leading-6 text-foreground">
-          {fileContent}
-        </pre>
-      ) : null}
-    </div>
-  </section>
-);
+}: ResourcesPanelProps) => {
+  const selectedResource = skill?.resources.find(
+    (resource) => resource.path === selectedPath
+  );
+  const shouldFetchFile =
+    selectedResource && getSkillResourceKind(selectedResource) !== "image";
+  const { file, status: fileStatus } = useSkillFile(
+    skill?.name,
+    skill?.version,
+    shouldFetchFile ? selectedResource.path : undefined
+  );
+  const rawUrl = getRawResourceUrl(
+    skill?.name,
+    skill?.version,
+    selectedResource?.path
+  );
+  const viewerStatus = selectedResource ? fileStatus : fileContentStatus;
+
+  return (
+    <section className="grid min-h-full grid-cols-[minmax(10rem,16rem)_1fr]">
+      <div className="border-r border-border">
+        {skill?.resources.length ? (
+          skill.resources.map((resource) => (
+            <button
+              type="button"
+              key={resource.path}
+              onClick={() => onSelectPath(resource.path)}
+              className={getResourceClassName(selectedPath === resource.path)}
+            >
+              <span
+                className="block truncate font-medium"
+                title={resource.path}
+              >
+                {resource.path}
+              </span>
+            </button>
+          ))
+        ) : (
+          <p className="px-6 py-4 text-sm text-muted-foreground">
+            No resources for this skill version.
+          </p>
+        )}
+      </div>
+      <div className="min-w-0">
+        <Suspense
+          fallback={
+            <p className="px-6 py-4 text-sm text-muted-foreground">
+              Loading resource viewer...
+            </p>
+          }
+        >
+          <ResourceViewer
+            file={file}
+            rawUrl={rawUrl}
+            resource={selectedResource}
+            status={viewerStatus}
+          />
+        </Suspense>
+      </div>
+    </section>
+  );
+};
 
 const VersionsPanel = ({
   skill,
@@ -156,15 +199,21 @@ export const SkillDetailView = ({
   onTabChange,
 }: SkillDetailViewProps) => {
   const [selectedResourcePath, setSelectedResourcePath] = useState<string>();
-  const { file, status: fileStatus } = useSkillFile(
-    skill?.name,
-    skill?.version,
-    selectedResourcePath
-  );
+  const firstResourcePath = skill?.resources.at(0)?.path;
 
   useEffect(() => {
     setSelectedResourcePath(undefined);
   }, [skill?.name, skill?.version]);
+
+  useEffect(() => {
+    if (
+      activeTab === "resources" &&
+      !selectedResourcePath &&
+      firstResourcePath
+    ) {
+      setSelectedResourcePath(firstResourcePath);
+    }
+  }, [activeTab, firstResourcePath, selectedResourcePath]);
 
   return (
     <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
@@ -207,8 +256,7 @@ export const SkillDetailView = ({
           <ResourcesPanel
             skill={skill}
             selectedPath={selectedResourcePath}
-            fileContent={file?.content}
-            fileStatus={fileStatus}
+            fileContentStatus="Select a resource"
             onSelectPath={setSelectedResourcePath}
           />
         )}

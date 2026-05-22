@@ -69,10 +69,10 @@ pnpm db:migrate:local
 pnpm db:migrate:remote
 ```
 
-Seed local development data while `pnpm dev` is running:
+Seed local development data while `pnpm dev` is running. The skills API is protected, so pass a session cookie from a local browser login:
 
 ```bash
-pnpm db:seed:local
+SKILLPACK_AUTH_COOKIE='better-auth.session_token=...' pnpm db:seed:local
 ```
 
 Deploy:
@@ -86,8 +86,11 @@ pnpm deploy
 ```text
 GET  /api/health
 GET  /api/v1/skills/catalog
-GET  /api/v1/skills/:name
-POST /api/v1/skills
+GET    /api/v1/skills/:name
+GET    /api/v1/skills/:name/files?version=&path=
+GET    /api/v1/skills/:name/files/raw?version=&path=
+POST   /api/v1/skills
+DELETE /api/v1/skills/:name
 ```
 
 Create a skill:
@@ -99,6 +102,18 @@ curl -X POST http://localhost:5173/api/v1/skills \
     "name": "api-skill-demo",
     "description": "Demo API-backed skill",
     "version": "0.1.0",
-    "content": "# Demo Skill\n\nUse this skill when validating API-backed skills."
+    "content": "# Demo Skill\n\nUse this skill when validating API-backed skills.",
+    "resources": [
+      {
+        "path": "references/demo.md",
+        "mediaType": "text/markdown; charset=utf-8",
+        "content": "# Demo Resource\n\nExtra context loaded on demand."
+      },
+      {
+        "path": "scripts/demo.py",
+        "mediaType": "text/x-python; charset=utf-8",
+        "content": "print('hello from a skill resource')\n"
+      }
+    ]
   }'
 ```
