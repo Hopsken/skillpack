@@ -1,4 +1,4 @@
-import { LibraryIcon, SettingsIcon, UserCircleIcon } from "lucide-react";
+import { LibraryIcon, LogOutIcon, UserCircleIcon } from "lucide-react";
 import { matchPath, NavLink, useLocation } from "react-router";
 
 import {
@@ -12,20 +12,24 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-
-const footerItems = [
-  { icon: SettingsIcon, label: "Preferences" },
-  { icon: UserCircleIcon, label: "Sean" },
-];
+import { signOut, useSession } from "@/shared/auth/client";
 
 const libraryActivePatterns = ["/library/*", "/skills/*"] as const;
 
 const matchesAnyPath = (pathname: string, patterns: readonly string[]) =>
   patterns.some((pattern) => matchPath(pattern, pathname));
 
+const signOutAndRedirect = async () => {
+  await signOut(() => {
+    window.location.assign("/login");
+  });
+};
+
 export const AppSidebar = () => {
   const { pathname } = useLocation();
+  const session = useSession();
   const isLibraryActive = matchesAnyPath(pathname, libraryActivePatterns);
+  const userName = session.data?.user.name ?? "Account";
 
   return (
     <Sidebar
@@ -61,14 +65,23 @@ export const AppSidebar = () => {
 
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <SidebarMenu>
-          {footerItems.map(({ label, icon: Icon }) => (
-            <SidebarMenuItem key={label}>
-              <SidebarMenuButton size="lg">
-                <Icon />
-                <span>{label}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg">
+              <UserCircleIcon />
+              <span>{userName}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              onClick={() => {
+                void signOutAndRedirect();
+              }}
+            >
+              <LogOutIcon />
+              <span>Sign out</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

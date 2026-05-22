@@ -1,8 +1,9 @@
 import { lazy, Suspense } from "react";
-import { Navigate, Outlet, Route, Routes } from "react-router";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { useSession } from "@/shared/auth/client";
 
 const RouteFallback = () => (
   <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
@@ -22,6 +23,11 @@ const loadLibraryPage = async () => {
   return { default: module.LibraryPage };
 };
 
+const loadLoginPage = async () => {
+  const module = await import("@/pages/login-page");
+  return { default: module.LoginPage };
+};
+
 const loadSkillDetailPage = async () => {
   const module = await import("@/pages/skill-detail-page");
   return { default: module.SkillDetailPage };
@@ -29,24 +35,47 @@ const loadSkillDetailPage = async () => {
 
 const LatestSkillPage = lazy(loadLatestSkillPage);
 const LibraryPage = lazy(loadLibraryPage);
+const LoginPage = lazy(loadLoginPage);
 const SkillDetailPage = lazy(loadSkillDetailPage);
 
-const AppLayout = () => (
-  <SidebarProvider>
-    <AppSidebar />
-    <Suspense fallback={<RouteFallback />}>
-      <Outlet />
-    </Suspense>
-  </SidebarProvider>
-);
+const getLoginPath = (pathname: string, search: string) => {
+  const redirect = `${pathname}${search}`;
+  return `/login?redirect=${encodeURIComponent(redirect)}`;
+};
+
+const ProtectedLayout = () => {
+  const session = useSession();
+  const location = useLocation();
+
+  if (session.isPending) {
+    return <RouteFallback />;
+  }
+
+  if (!session.data) {
+    const loginPath = getLoginPath(location.pathname, location.search);
+    return <Navigate to={loginPath} replace />;
+  }
+
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <Suspense fallback={<RouteFallback />}>
+        <Outlet />
+      </Suspense>
+    </SidebarProvider>
+  );
+};
 
 export const App = () => (
-  <Routes>
-    <Route element={<AppLayout />}>
-      <Route index element={<Navigate to="/library" replace />} />
-      <Route path="library" element={<LibraryPage />} />
-      <Route path="skills/:name" element={<LatestSkillPage />} />
-      <Route path="skills/:name/v/:version" element={<SkillDetailPage />} />
-    </Route>
-  </Routes>
+  <Suspense fallback={<RouteFallback />}>
+    <Routes>
+      <Route path="login" element={<LoginPage />} />
+      <Route element={<ProtectedLayout />}>
+        <Route index element={<Navigate to="/library" replace />} />
+        <Route path="library" element={<LibraryPage />} />
+        <Route path="skills/:name" element={<LatestSkillPage />} />
+        <Route path="skills/:name/v/:version" element={<SkillDetailPage />} />
+      </Route>
+    </Routes>
+  </Suspense>
 );

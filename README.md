@@ -22,6 +22,35 @@ pnpm install
 pnpm dev
 ```
 
+## Auth setup
+
+Skillpack uses Better Auth with a generic OIDC provider. Provider endpoints are loaded through discovery, and the OAuth flow uses PKCE.
+
+For local development:
+
+```bash
+cp .dev.vars.example .dev.vars
+```
+
+Set `OIDC_CLIENT_ID` and `BETTER_AUTH_SECRET` in `.dev.vars`. Register this redirect URI with your OIDC provider:
+
+```text
+http://localhost:5173/api/auth/oauth2/callback/oidc
+```
+
+For deployed environments, set secrets with Wrangler:
+
+```bash
+wrangler secret put BETTER_AUTH_SECRET
+wrangler secret put OIDC_CLIENT_ID
+```
+
+Register the deployed redirect URI with the same callback path:
+
+```text
+https://<your-domain>/api/auth/oauth2/callback/oidc
+```
+
 ## Cloudflare setup
 
 Create resources:

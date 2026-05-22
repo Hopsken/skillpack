@@ -1,0 +1,7 @@
+# Local auth settings for `pnpm dev`.
+# Register this redirect URI with your OIDC provider:
+# http://localhost:5173/api/auth/oauth2/callback/oidc
+AUTH_BASE_URL="http://localhost:5173"
+BETTER_AUTH_SECRET="replace-with-a-random-32-byte-secret"
+OIDC_DISCOVERY_URL="https://id.hopsken.com/.well-known/openid-configuration"
+OIDC_CLIENT_ID="replace-with-oidc-client-id"

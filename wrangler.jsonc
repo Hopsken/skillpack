@@ -23,4 +23,7 @@
       "bucket_name": "skillpack-objects",
     },
   ],
+  "vars": {
+    "OIDC_DISCOVERY_URL": "https://id.hopsken.com/.well-known/openid-configuration",
+  },
 }
