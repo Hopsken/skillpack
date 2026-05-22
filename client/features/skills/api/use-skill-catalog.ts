@@ -1,6 +1,9 @@
-import { skillCatalogResponseSchema } from "@shared/schemas/skills";
 import type { SkillCatalogItem } from "@shared/schemas/skills";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+
+import { getApiErrorMessage } from "@/shared/api/client";
+
+import { fetchSkillCatalog, skillCatalogQueryKey } from "./queries";
 
 export interface SkillCatalogState {
   skills: SkillCatalogItem[];
@@ -9,30 +12,19 @@ export interface SkillCatalogState {
 }
 
 export const useSkillCatalog = (): SkillCatalogState => {
-  const [skills, setSkills] = useState<SkillCatalogItem[]>([]);
-  const [status, setStatus] = useState("Loading skills...");
+  const query = useQuery({
+    queryFn: fetchSkillCatalog,
+    queryKey: skillCatalogQueryKey,
+  });
 
-  const loadSkills = async (): Promise<void> => {
-    setStatus("Loading skills...");
-    const response = await fetch("/api/v1/skills/catalog");
-    const data = skillCatalogResponseSchema.parse(await response.json());
-    setSkills(data.skills);
-    setStatus(`${data.skills.length} skills loaded`);
+  const skills = query.data?.skills ?? [];
+  const status = query.isLoading
+    ? "Loading skills..."
+    : getApiErrorMessage(query.error, `${skills.length} skills loaded`);
+
+  const refresh = async (): Promise<void> => {
+    await query.refetch();
   };
-
-  const refresh = useCallback(async (): Promise<void> => {
-    try {
-      await loadSkills();
-    } catch (error: unknown) {
-      setStatus(
-        error instanceof Error ? error.message : "Failed to load skills"
-      );
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   return { refresh, skills, status };
 };

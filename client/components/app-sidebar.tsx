@@ -1,5 +1,5 @@
 import { LibraryIcon, SettingsIcon, UserCircleIcon } from "lucide-react";
-import { NavLink, useMatch } from "react-router";
+import { matchPath, NavLink, useLocation } from "react-router";
 
 import {
   Sidebar,
@@ -18,8 +18,14 @@ const footerItems = [
   { icon: UserCircleIcon, label: "Sean" },
 ];
 
+const libraryActivePatterns = ["/library/*", "/skills/*"] as const;
+
+const matchesAnyPath = (pathname: string, patterns: readonly string[]) =>
+  patterns.some((pattern) => matchPath(pattern, pathname));
+
 export const AppSidebar = () => {
-  const isLibraryActive = Boolean(useMatch("/library/*"));
+  const { pathname } = useLocation();
+  const isLibraryActive = matchesAnyPath(pathname, libraryActivePatterns);
 
   return (
     <Sidebar

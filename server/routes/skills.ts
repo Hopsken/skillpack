@@ -1,17 +1,76 @@
 import { zValidator } from "@hono/zod-validator";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
+import type { Context } from "hono";
 
 import {
   createSkillSchema,
   skillCatalogResponseSchema,
+  skillFileResponseSchema,
   skillReadResponseSchema,
+  skillVersionsResponseSchema,
 } from "../../shared/schemas/skills";
 import { createDb } from "../db/client";
 import { skillVersions, skills } from "../db/schema";
 import { digestHex } from "../lib/crypto";
 import { apiError, skillLocation } from "../lib/http";
 import type { AppBindings } from "../types";
+
+const markdownMediaType = "text/markdown; charset=utf-8";
+
+const readSkillVersion = async (
+  c: Context<AppBindings>,
+  requestedVersion?: string
+) => {
+  const name = c.req.param("name");
+
+  if (!name) {
+    return c.json(apiError("Skill name is required"), 400);
+  }
+
+  const db = createDb(c.env.DB);
+  const [skill] = await db
+    .select()
+    .from(skills)
+    .where(eq(skills.name, name))
+    .limit(1);
+
+  if (!skill) {
+    return c.json(apiError("Skill not found"), 404);
+  }
+
+  const versionName = requestedVersion ?? skill.latestVersion;
+  const [version] = await db
+    .select()
+    .from(skillVersions)
+    .where(
+      and(
+        eq(skillVersions.skillId, skill.id),
+        eq(skillVersions.version, versionName)
+      )
+    )
+    .limit(1);
+
+  if (!version) {
+    return c.json(apiError("Skill version not found"), 404);
+  }
+
+  const object = await c.env.BUCKET.get(version.objectKey);
+  if (!object) {
+    return c.json(apiError("Skill object not found"), 404);
+  }
+
+  const response = skillReadResponseSchema.parse({
+    content: await object.text(),
+    description: skill.description,
+    location: skillLocation(skill.name, version.entryPath),
+    name: skill.name,
+    resources: [],
+    version: version.version,
+  });
+
+  return c.json(response);
+};
 
 export const skillsRoute = new Hono<AppBindings>()
   .get("/catalog", async (c) => {
@@ -29,7 +88,7 @@ export const skillsRoute = new Hono<AppBindings>()
 
     return c.json(response);
   })
-  .get("/:name", async (c) => {
+  .get("/:name/versions", async (c) => {
     const db = createDb(c.env.DB);
     const [skill] = await db
       .select()
@@ -41,13 +100,50 @@ export const skillsRoute = new Hono<AppBindings>()
       return c.json(apiError("Skill not found"), 404);
     }
 
+    const versions = await db
+      .select()
+      .from(skillVersions)
+      .where(eq(skillVersions.skillId, skill.id))
+      .all();
+
+    const response = skillVersionsResponseSchema.parse({
+      name: skill.name,
+      versions: versions.map((version) => ({
+        createdAt: version.createdAt.toISOString(),
+        location: skillLocation(skill.name, version.entryPath),
+        version: version.version,
+      })),
+    });
+
+    return c.json(response);
+  })
+  .get("/:name/files", async (c) => {
+    const path = c.req.query("path");
+    const requestedVersion = c.req.query("version");
+
+    if (!path) {
+      return c.json(apiError("File path is required"), 400);
+    }
+
+    const db = createDb(c.env.DB);
+    const [skill] = await db
+      .select()
+      .from(skills)
+      .where(eq(skills.name, c.req.param("name")))
+      .limit(1);
+
+    if (!skill) {
+      return c.json(apiError("Skill not found"), 404);
+    }
+
+    const versionName = requestedVersion ?? skill.latestVersion;
     const [version] = await db
       .select()
       .from(skillVersions)
       .where(
         and(
           eq(skillVersions.skillId, skill.id),
-          eq(skillVersions.version, skill.latestVersion)
+          eq(skillVersions.version, versionName)
         )
       )
       .limit(1);
@@ -56,22 +152,29 @@ export const skillsRoute = new Hono<AppBindings>()
       return c.json(apiError("Skill version not found"), 404);
     }
 
+    if (path !== version.entryPath) {
+      return c.json(apiError("Skill file not found"), 404);
+    }
+
     const object = await c.env.BUCKET.get(version.objectKey);
     if (!object) {
       return c.json(apiError("Skill object not found"), 404);
     }
 
-    const response = skillReadResponseSchema.parse({
+    const response = skillFileResponseSchema.parse({
       content: await object.text(),
-      description: skill.description,
-      location: skillLocation(skill.name, version.entryPath),
-      name: skill.name,
-      resources: [],
+      mediaType: markdownMediaType,
+      path: version.entryPath,
+      sha256: version.sha256,
       version: version.version,
     });
 
     return c.json(response);
   })
+  .get("/:name/versions/:version", (c) =>
+    readSkillVersion(c, c.req.param("version"))
+  )
+  .get("/:name", (c) => readSkillVersion(c))
   .post("/", zValidator("json", createSkillSchema), async (c) => {
     const input = c.req.valid("json");
     const db = createDb(c.env.DB);
@@ -91,7 +194,7 @@ export const skillsRoute = new Hono<AppBindings>()
 
     await c.env.BUCKET.put(objectKey, input.content, {
       customMetadata: { sha256 },
-      httpMetadata: { contentType: "text/markdown; charset=utf-8" },
+      httpMetadata: { contentType: markdownMediaType },
     });
 
     const [skill] = await db

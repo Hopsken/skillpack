@@ -1,8 +1,5 @@
 import type { SkillCatalogItem } from "@shared/schemas/skills";
-import { RefreshCwIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-
-import { Button } from "@/components/ui/button";
 
 import { EmptyLibrary } from "../components/empty-library";
 import { SkillRow } from "../components/skill-row";
@@ -19,25 +16,10 @@ export const LibraryView = ({
   onRefresh,
 }: LibraryViewProps) => (
   <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
+    <header className="flex h-16 shrink-0 items-center border-b border-border bg-background px-6">
       <div className="flex items-center gap-2 text-lg font-semibold tracking-tight">
         <span className="text-muted-foreground">▥</span>
         <span>Library</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="hidden text-sm text-muted-foreground md:block">
-          {status}
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            void onRefresh();
-          }}
-        >
-          <RefreshCwIcon data-icon="inline-start" />
-          Refresh
-        </Button>
       </div>
     </header>
 
