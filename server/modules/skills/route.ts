@@ -71,7 +71,7 @@ const readRequestedSkillFile = (
   locator: string
 ) =>
   readSkillResource(
-    c.env.DB,
+    c.var.db,
     c.env.BUCKET,
     getRequestedSkillFileInput(c, sourceType, locator)
   );
@@ -82,7 +82,7 @@ const readRequestedSkillTextFile = (
   locator: string
 ) =>
   readSkillTextFile(
-    c.env.DB,
+    c.var.db,
     c.env.BUCKET,
     getRequestedSkillFileInput(c, sourceType, locator)
   );
@@ -123,7 +123,7 @@ const handleSourceQualifiedRequest = async (c: SkillContext) => {
 
     if (parts.length === 1 && c.req.method === "GET") {
       const result = await resolveSkill(
-        c.env.DB,
+        c.var.db,
         c.env.BUCKET,
         location,
         c.req.query("version")
@@ -132,7 +132,7 @@ const handleSourceQualifiedRequest = async (c: SkillContext) => {
     }
 
     if (parts.length === 1 && c.req.method === "DELETE") {
-      await deleteSkill(c.env.DB, c.env.BUCKET, location);
+      await deleteSkill(c.var.db, c.env.BUCKET, location);
       return c.body(null, 204);
     }
 
@@ -141,7 +141,7 @@ const handleSourceQualifiedRequest = async (c: SkillContext) => {
       parts[1] === "versions" &&
       c.req.method === "GET"
     ) {
-      const result = await listSkillVersionsForSkill(c.env.DB, location);
+      const result = await listSkillVersionsForSkill(c.var.db, location);
       return c.json(presentSkillVersions(result.skill, result.versions));
     }
 
@@ -174,13 +174,13 @@ const handleSourceQualifiedRequest = async (c: SkillContext) => {
 
 export const skillsRoute = new Hono<AppBindings>()
   .get("/", async (c) => {
-    const skills = await listSkills(c.env.DB);
+    const skills = await listSkills(c.var.db);
     return c.json(presentSkillList(skills));
   })
   .post("/", zValidator("json", createSkillSchema), async (c) => {
     try {
       const result = await createSkillpackSkill(
-        c.env.DB,
+        c.var.db,
         c.env.BUCKET,
         c.req.valid("json")
       );

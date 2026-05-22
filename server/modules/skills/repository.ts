@@ -1,9 +1,9 @@
-import { createDb } from "@server/db/client";
 import {
   skillsTable,
   skillResourcesTable,
   skillVersionsTable,
 } from "@server/db/schema";
+import type { Database } from "@server/types";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 
@@ -21,17 +21,13 @@ interface InsertVersionInput {
 
 type SkillBatch = [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]];
 
-export const listSkills = (database: D1Database) => {
-  const db = createDb(database);
-  return db.select().from(skillsTable).all();
-};
+export const listSkills = (db: Database) => db.select().from(skillsTable).all();
 
 export const findSkillByLocation = async (
-  database: D1Database,
+  db: Database,
   sourceType: string,
   handle: string
 ) => {
-  const db = createDb(database);
   const [skill] = await db
     .select()
     .from(skillsTable)
@@ -47,11 +43,10 @@ export const findSkillByLocation = async (
 };
 
 export const findSkillVersion = async (
-  database: D1Database,
+  db: Database,
   skillId: number,
   versionName: string
 ) => {
-  const db = createDb(database);
   const [version] = await db
     .select()
     .from(skillVersionsTable)
@@ -66,33 +61,28 @@ export const findSkillVersion = async (
   return version;
 };
 
-export const listSkillVersions = (database: D1Database, skillId: number) => {
-  const db = createDb(database);
-  return db
+export const listSkillVersions = (db: Database, skillId: number) =>
+  db
     .select()
     .from(skillVersionsTable)
     .where(eq(skillVersionsTable.skillId, skillId))
     .all();
-};
 
 export const listResourcesByVersionId = (
-  database: D1Database,
+  db: Database,
   skillVersionId: number
-) => {
-  const db = createDb(database);
-  return db
+) =>
+  db
     .select()
     .from(skillResourcesTable)
     .where(eq(skillResourcesTable.skillVersionId, skillVersionId))
     .all();
-};
 
 export const findResourceByPath = async (
-  database: D1Database,
+  db: Database,
   skillVersionId: number,
   path: string
 ) => {
-  const db = createDb(database);
   const [resource] = await db
     .select()
     .from(skillResourcesTable)
@@ -108,7 +98,7 @@ export const findResourceByPath = async (
 };
 
 const insertVersionStatement = (
-  db: ReturnType<typeof createDb>,
+  db: Database,
   input: InsertVersionInput,
   now: Date
 ) =>
@@ -125,7 +115,7 @@ const insertVersionStatement = (
   });
 
 const insertVersionForLocationStatement = (
-  db: ReturnType<typeof createDb>,
+  db: Database,
   input: Omit<InsertVersionInput, "skillId"> & {
     handle: string;
     sourceType: string;
@@ -148,7 +138,7 @@ const insertVersionForLocationStatement = (
   });
 
 const insertResourceForVersionStatement = (
-  db: ReturnType<typeof createDb>,
+  db: Database,
   resource: StoredResourceObject,
   input: { skillId: number; version: string },
   now: Date
@@ -167,7 +157,7 @@ const insertResourceForVersionStatement = (
   });
 
 const insertResourceForLocationStatement = (
-  db: ReturnType<typeof createDb>,
+  db: Database,
   resource: StoredResourceObject,
   input: { handle: string; sourceType: string; version: string },
   now: Date
@@ -190,7 +180,7 @@ const insertResourceForLocationStatement = (
   });
 
 const approveVersionStatement = (
-  db: ReturnType<typeof createDb>,
+  db: Database,
   input: { description: string; skillId: number; versionName: string },
   now: Date
 ) =>
@@ -208,7 +198,7 @@ const approveVersionStatement = (
     .where(eq(skillsTable.id, input.skillId));
 
 const writeSkillBatchByLocation = async (
-  db: ReturnType<typeof createDb>,
+  db: Database,
   statements: SkillBatch,
   sourceType: string,
   handle: string,
@@ -248,7 +238,7 @@ const writeSkillBatchByLocation = async (
 };
 
 const writeSkillBatchById = async (
-  db: ReturnType<typeof createDb>,
+  db: Database,
   statements: SkillBatch,
   skillId: number,
   versionName: string
@@ -282,7 +272,7 @@ const writeSkillBatchById = async (
 };
 
 export const insertSkillWithVersion = (
-  database: D1Database,
+  db: Database,
   input: {
     contentObjectKey: string;
     description: string;
@@ -296,7 +286,6 @@ export const insertSkillWithVersion = (
     version: string;
   }
 ) => {
-  const db = createDb(database);
   const now = new Date();
   const statements: SkillBatch = [
     db.insert(skillsTable).values({
@@ -367,7 +356,7 @@ export const insertSkillWithVersion = (
 };
 
 export const insertVersionForSkill = (
-  database: D1Database,
+  db: Database,
   input: {
     contentObjectKey: string;
     description: string;
@@ -379,7 +368,6 @@ export const insertVersionForSkill = (
     version: string;
   }
 ) => {
-  const db = createDb(database);
   const now = new Date();
   const statements: SkillBatch = [
     insertVersionStatement(
@@ -420,11 +408,7 @@ export const insertVersionForSkill = (
   return writeSkillBatchById(db, statements, input.skillId, input.version);
 };
 
-export const deleteSkillById = async (
-  database: D1Database,
-  skillId: number
-) => {
-  const db = createDb(database);
+export const deleteSkillById = async (db: Database, skillId: number) => {
   const versions = await db
     .select({ id: skillVersionsTable.id })
     .from(skillVersionsTable)

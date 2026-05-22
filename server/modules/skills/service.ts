@@ -1,3 +1,5 @@
+import type { Database } from "@server/types";
+
 import { skillErrors } from "./errors";
 import {
   buildSkillpackLocation,
@@ -35,12 +37,12 @@ import type {
 } from "./types";
 
 const readSkillAndVersion = async (
-  database: D1Database,
+  db: Database,
   location: SkillLocationInput,
   requestedVersion?: string
 ) => {
   const skill = await findSkillByLocation(
-    database,
+    db,
     location.sourceType,
     location.handle
   );
@@ -50,7 +52,7 @@ const readSkillAndVersion = async (
   }
 
   const versionName = requestedVersion ?? skill.currentApprovedVersion;
-  const version = await findSkillVersion(database, skill.id, versionName);
+  const version = await findSkillVersion(db, skill.id, versionName);
 
   if (!version) {
     throw skillErrors.skillVersionNotFound();
@@ -73,14 +75,14 @@ const validateResourcePaths = (input: CreateSkillServiceInput) => {
   }
 };
 
-export const listSkills = (database: D1Database) => listStoredSkills(database);
+export const listSkills = (db: Database) => listStoredSkills(db);
 
 export const listSkillVersionsForSkill = async (
-  database: D1Database,
+  db: Database,
   location: SkillLocationInput
 ) => {
   const skill = await findSkillByLocation(
-    database,
+    db,
     location.sourceType,
     location.handle
   );
@@ -89,18 +91,18 @@ export const listSkillVersionsForSkill = async (
     throw skillErrors.skillNotFound();
   }
 
-  const versions = await listSkillVersions(database, skill.id);
+  const versions = await listSkillVersions(db, skill.id);
   return { skill, versions };
 };
 
 export const resolveSkill = async (
-  database: D1Database,
+  db: Database,
   bucket: R2Bucket,
   location: SkillLocationInput,
   requestedVersion?: string
 ): Promise<ReadSkillResult> => {
   const { skill, version } = await readSkillAndVersion(
-    database,
+    db,
     location,
     requestedVersion
   );
@@ -110,7 +112,7 @@ export const resolveSkill = async (
     throw skillErrors.skillObjectNotFound();
   }
 
-  const resources = await listResourcesByVersionId(database, version.id);
+  const resources = await listResourcesByVersionId(db, version.id);
 
   return {
     content: await object.text(),
@@ -121,12 +123,12 @@ export const resolveSkill = async (
 };
 
 export const readSkillResource = async (
-  database: D1Database,
+  db: Database,
   bucket: R2Bucket,
   input: ReadSkillFileInput
 ): Promise<ReadSkillFileResult> => {
   const { version } = await readSkillAndVersion(
-    database,
+    db,
     input.location,
     input.version
   );
@@ -150,7 +152,7 @@ export const readSkillResource = async (
     };
   }
 
-  const resource = await findResourceByPath(database, version.id, input.path);
+  const resource = await findResourceByPath(db, version.id, input.path);
 
   if (!resource) {
     throw skillErrors.skillFileNotFound();
@@ -166,11 +168,11 @@ export const readSkillResource = async (
 };
 
 export const readSkillTextFile = async (
-  database: D1Database,
+  db: Database,
   bucket: R2Bucket,
   input: ReadSkillFileInput
 ): Promise<ReadSkillTextFileResult> => {
-  const result = await readSkillResource(database, bucket, input);
+  const result = await readSkillResource(db, bucket, input);
 
   return {
     content: await result.object.text(),
@@ -180,7 +182,7 @@ export const readSkillTextFile = async (
 };
 
 export const createSkillpackSkill = async (
-  database: D1Database,
+  db: Database,
   bucket: R2Bucket,
   input: CreateSkillServiceInput
 ): Promise<CreateSkillResult> => {
@@ -190,13 +192,13 @@ export const createSkillpackSkill = async (
     input.version
   );
   const existing = await findSkillByLocation(
-    database,
+    db,
     skillpackSourceType,
     input.name
   );
 
   const existingVersion = existing
-    ? await findSkillVersion(database, existing.id, input.version)
+    ? await findSkillVersion(db, existing.id, input.version)
     : undefined;
 
   if (existingVersion) {
@@ -220,7 +222,7 @@ export const createSkillpackSkill = async (
   }
 
   const created = existing
-    ? await insertVersionForSkill(database, {
+    ? await insertVersionForSkill(db, {
         contentObjectKey: contentObject.objectKey,
         description: input.description,
         location,
@@ -230,7 +232,7 @@ export const createSkillpackSkill = async (
         skillId: existing.id,
         version: input.version,
       })
-    : await insertSkillWithVersion(database, {
+    : await insertSkillWithVersion(db, {
         contentObjectKey: contentObject.objectKey,
         description: input.description,
         handle: input.name,
@@ -265,12 +267,12 @@ export const createSkillpackSkill = async (
 };
 
 export const deleteSkill = async (
-  database: D1Database,
+  db: Database,
   bucket: R2Bucket,
   location: SkillLocationInput
 ) => {
   const skill = await findSkillByLocation(
-    database,
+    db,
     location.sourceType,
     location.handle
   );
@@ -279,6 +281,6 @@ export const deleteSkill = async (
     throw skillErrors.skillNotFound();
   }
 
-  await deleteSkillById(database, skill.id);
+  await deleteSkillById(db, skill.id);
   await deleteSkillObjects(bucket, skill.handle);
 };
