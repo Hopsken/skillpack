@@ -1,20 +1,20 @@
-import type { SkillCatalogItem } from "@shared/schemas/skills";
+import type { SkillListItem } from "@shared/schemas/skills";
 import { useQuery } from "@tanstack/react-query";
 
 import { getApiErrorMessage } from "@/shared/api/client";
 
-import { fetchSkillCatalog, skillCatalogQueryKey } from "./queries";
+import { fetchSkillList, skillListQueryKey } from "./queries";
 
-export interface SkillCatalogState {
-  skills: SkillCatalogItem[];
+export interface SkillListState {
+  skills: SkillListItem[];
   status: string;
   refresh: () => Promise<void>;
 }
 
-export const useSkillCatalog = (): SkillCatalogState => {
+export const useSkillList = (): SkillListState => {
   const query = useQuery({
-    queryFn: fetchSkillCatalog,
-    queryKey: skillCatalogQueryKey,
+    queryFn: fetchSkillList,
+    queryKey: skillListQueryKey,
   });
 
   const skills = query.data?.skills ?? [];

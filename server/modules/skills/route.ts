@@ -9,34 +9,38 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 
 import { SkillModuleError, skillErrors } from "./errors";
+import { parseSkillLocationInput } from "./location";
 import {
   presentCreatedSkill,
   presentSkill,
-  presentSkillCatalog,
   presentSkillFile,
+  presentSkillList,
   presentSkillVersions,
 } from "./presenter";
 import {
-  createSkill,
+  createSkillpackSkill,
   deleteSkill,
-  listSkillCatalog,
-  listSkillVersionHistory,
-  readSkill,
-  readSkillFile,
+  listSkillVersionsForSkill,
+  listSkills,
+  readSkillResource,
   readSkillTextFile,
+  resolveSkill,
 } from "./service";
 import type { ReadSkillFileInput } from "./types";
 
 const skillErrorStatus = {
   "duplicate-resource-path": 400,
   "duplicate-skill-name": 409,
+  "duplicate-skill-version": 409,
   "invalid-file-path": 400,
+  "invalid-skill-locator": 400,
   "reserved-resource-path": 400,
   "skill-creation-failed": 500,
   "skill-file-not-found": 404,
   "skill-not-found": 404,
   "skill-object-not-found": 404,
   "skill-version-not-found": 404,
+  "unsupported-source-type": 400,
 } as const;
 
 type SkillContext = Context<AppBindings>;
@@ -53,24 +57,39 @@ const parseFilePath = (path: string | undefined) => {
 
 const getRequestedSkillFileInput = (
   c: SkillContext,
-  name: string
+  sourceType: string,
+  locator: string
 ): ReadSkillFileInput => ({
-  name,
+  location: parseSkillLocationInput(sourceType, locator),
   path: parseFilePath(c.req.query("path")),
   version: c.req.query("version"),
 });
 
-const readRequestedSkillFile = (c: SkillContext, name: string) =>
-  readSkillFile(c.env.DB, c.env.BUCKET, getRequestedSkillFileInput(c, name));
+const readRequestedSkillFile = (
+  c: SkillContext,
+  sourceType: string,
+  locator: string
+) =>
+  readSkillResource(
+    c.env.DB,
+    c.env.BUCKET,
+    getRequestedSkillFileInput(c, sourceType, locator)
+  );
 
-const readRequestedSkillTextFile = (c: SkillContext, name: string) =>
+const readRequestedSkillTextFile = (
+  c: SkillContext,
+  sourceType: string,
+  locator: string
+) =>
   readSkillTextFile(
     c.env.DB,
     c.env.BUCKET,
-    getRequestedSkillFileInput(c, name)
+    getRequestedSkillFileInput(c, sourceType, locator)
   );
 
-const getRawFileHeaders = (result: Awaited<ReturnType<typeof readSkillFile>>) =>
+const getRawFileHeaders = (
+  result: Awaited<ReturnType<typeof readSkillResource>>
+) =>
   new Headers({
     "content-length": String(result.object.size),
     "content-type": result.resource.mediaType,
@@ -85,76 +104,82 @@ const handleSkillError = (c: SkillContext, error: unknown) => {
   throw error;
 };
 
-export const skillsRoute = new Hono<AppBindings>()
-  .get("/catalog", async (c) => {
-    const skills = await listSkillCatalog(c.env.DB);
-    return c.json(presentSkillCatalog(skills));
-  })
-  .get("/:name/versions", async (c) => {
-    try {
-      const result = await listSkillVersionHistory(
+const parseTail = (tail: string) => {
+  const parts = tail.split("/").filter(Boolean);
+
+  if (parts.length === 0) {
+    throw skillErrors.invalidSkillLocator();
+  }
+
+  return parts;
+};
+
+const handleSourceQualifiedRequest = async (c: SkillContext) => {
+  try {
+    const sourceType = c.req.param("sourceType") ?? "";
+    const parts = parseTail(c.req.param("locator") ?? "");
+    const locator = parts[0] ?? "";
+    const location = parseSkillLocationInput(sourceType, locator);
+
+    if (parts.length === 1 && c.req.method === "GET") {
+      const result = await resolveSkill(
         c.env.DB,
-        c.req.param("name")
+        c.env.BUCKET,
+        location,
+        c.req.query("version")
       );
-      return c.json(presentSkillVersions(result.skill, result.versions));
-    } catch (error) {
-      return handleSkillError(c, error);
+      return c.json(presentSkill(result));
     }
-  })
-  .get("/:name/files/raw", async (c) => {
-    try {
-      const result = await readRequestedSkillFile(c, c.req.param("name"));
+
+    if (parts.length === 1 && c.req.method === "DELETE") {
+      await deleteSkill(c.env.DB, c.env.BUCKET, location);
+      return c.body(null, 204);
+    }
+
+    if (
+      parts.length === 2 &&
+      parts[1] === "versions" &&
+      c.req.method === "GET"
+    ) {
+      const result = await listSkillVersionsForSkill(c.env.DB, location);
+      return c.json(presentSkillVersions(result.skill, result.versions));
+    }
+
+    if (
+      parts.length === 2 &&
+      parts[1] === "resources" &&
+      c.req.method === "GET"
+    ) {
+      const result = await readRequestedSkillTextFile(c, sourceType, locator);
+      return c.json(presentSkillFile(result));
+    }
+
+    if (
+      parts.length === 3 &&
+      parts[1] === "resources" &&
+      parts[2] === "raw" &&
+      c.req.method === "GET"
+    ) {
+      const result = await readRequestedSkillFile(c, sourceType, locator);
       return new Response(result.object.body, {
         headers: getRawFileHeaders(result),
       });
-    } catch (error) {
-      return handleSkillError(c, error);
     }
-  })
-  .get("/:name/files", async (c) => {
-    try {
-      const result = await readRequestedSkillTextFile(c, c.req.param("name"));
-      return c.json(presentSkillFile(result));
-    } catch (error) {
-      return handleSkillError(c, error);
-    }
-  })
-  .get("/:name/versions/:version", async (c) => {
-    try {
-      const result = await readSkill(
-        c.env.DB,
-        c.env.BUCKET,
-        c.req.param("name"),
-        c.req.param("version")
-      );
-      return c.json(presentSkill(result));
-    } catch (error) {
-      return handleSkillError(c, error);
-    }
-  })
-  .get("/:name", async (c) => {
-    try {
-      const result = await readSkill(
-        c.env.DB,
-        c.env.BUCKET,
-        c.req.param("name")
-      );
-      return c.json(presentSkill(result));
-    } catch (error) {
-      return handleSkillError(c, error);
-    }
-  })
-  .delete("/:name", async (c) => {
-    try {
-      await deleteSkill(c.env.DB, c.env.BUCKET, c.req.param("name"));
-      return c.body(null, 204);
-    } catch (error) {
-      return handleSkillError(c, error);
-    }
+
+    return c.json(apiError("Skill route not found"), 404);
+  } catch (error) {
+    return handleSkillError(c, error);
+  }
+};
+
+export const skillsRoute = new Hono<AppBindings>()
+  .get("/", async (c) => {
+    const skills = await listSkills(c.env.DB);
+    return c.json(presentSkillList(skills));
   })
   .post("/", zValidator("json", createSkillSchema), async (c) => {
     try {
-      const result = await createSkill(
+      const result = await createSkillpackSkill(
         c.env.DB,
         c.env.BUCKET,
         c.req.valid("json")
@@ -163,4 +188,5 @@ export const skillsRoute = new Hono<AppBindings>()
     } catch (error) {
       return handleSkillError(c, error);
     }
-  });
+  })
+  .all("/:sourceType/:locator{.+}", handleSourceQualifiedRequest);

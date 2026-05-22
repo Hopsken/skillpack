@@ -21,7 +21,7 @@ export const EmptyLibrary = ({ status, onRefresh }: EmptyLibraryProps) => (
       }}
     >
       <RefreshCwIcon data-icon="inline-start" />
-      Refresh catalog
+      Refresh list
     </Button>
   </div>
 );

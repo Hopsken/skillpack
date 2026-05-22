@@ -1,4 +1,4 @@
-import type { SkillResource } from "@shared/schemas/skills";
+import type { ResourceManifestItem } from "@shared/schemas/skills";
 
 type SkillResourceKind = "code" | "image" | "markdown" | "text";
 
@@ -20,7 +20,7 @@ const getExtension = (path: string) =>
   path.split(".").pop()?.toLowerCase() ?? "";
 
 export const getSkillResourceKind = (
-  resource: Pick<SkillResource, "mediaType" | "path">
+  resource: Pick<ResourceManifestItem, "mediaType" | "path">
 ): SkillResourceKind => {
   const extension = getExtension(resource.path);
 

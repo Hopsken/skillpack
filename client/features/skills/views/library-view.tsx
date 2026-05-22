@@ -1,11 +1,11 @@
-import type { SkillCatalogItem } from "@shared/schemas/skills";
+import type { SkillListItem } from "@shared/schemas/skills";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import { EmptyLibrary } from "../components/empty-library";
 import { SkillRow } from "../components/skill-row";
 
 interface LibraryViewProps {
-  skills: SkillCatalogItem[];
+  skills: SkillListItem[];
   status: string;
   onRefresh: () => Promise<void>;
 }

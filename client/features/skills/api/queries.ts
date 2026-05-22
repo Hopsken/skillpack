@@ -1,19 +1,19 @@
 import {
-  skillCatalogResponseSchema,
-  skillFileResponseSchema,
-  skillReadResponseSchema,
-  skillVersionsResponseSchema,
+  resolvedSkillSchema,
+  skillListResponseSchema,
+  skillResourceResponseSchema,
+  skillVersionListResponseSchema,
 } from "@shared/schemas/skills";
 import type {
-  SkillCatalogResponse,
-  SkillFileResponse,
-  SkillReadResponse,
-  SkillVersionsResponse,
+  ResolvedSkill,
+  SkillListResponse,
+  SkillResourceResponse,
+  SkillVersionListResponse,
 } from "@shared/schemas/skills";
 
 import { api } from "@/shared/api/client";
 
-export const skillCatalogQueryKey = ["skills", "catalog"] as const;
+export const skillListQueryKey = ["skills", "list"] as const;
 
 export const skillDetailQueryKey = (
   name: string | undefined,
@@ -32,43 +32,45 @@ export const skillFileQueryKey = (
   path: string | undefined
 ) => ["skills", "file", name, version, path] as const;
 
-export const fetchSkillCatalog = async (): Promise<SkillCatalogResponse> => {
-  const data = await api.get("skills/catalog").json();
-  return skillCatalogResponseSchema.parse(data);
+export const fetchSkillList = async (): Promise<SkillListResponse> => {
+  const data = await api.get("skills").json();
+  return skillListResponseSchema.parse(data);
 };
 
 export const fetchLatestSkill = async (
-  name: string
-): Promise<SkillReadResponse> => {
-  const data = await api.get(`skills/${name}`).json();
-  return skillReadResponseSchema.parse(data);
+  handle: string
+): Promise<ResolvedSkill> => {
+  const data = await api.get(`skills/skillpack/${handle}`).json();
+  return resolvedSkillSchema.parse(data);
 };
 
 export const fetchSkillDetail = async (
-  name: string,
+  handle: string,
   version: string
-): Promise<SkillReadResponse> => {
-  const data = await api.get(`skills/${name}/versions/${version}`).json();
-  return skillReadResponseSchema.parse(data);
+): Promise<ResolvedSkill> => {
+  const data = await api
+    .get(`skills/skillpack/${handle}`, { searchParams: { version } })
+    .json();
+  return resolvedSkillSchema.parse(data);
 };
 
 export const fetchSkillVersions = async (
-  name: string
-): Promise<SkillVersionsResponse> => {
-  const data = await api.get(`skills/${name}/versions`).json();
-  return skillVersionsResponseSchema.parse(data);
+  handle: string
+): Promise<SkillVersionListResponse> => {
+  const data = await api.get(`skills/skillpack/${handle}/versions`).json();
+  return skillVersionListResponseSchema.parse(data);
 };
 
 export const fetchSkillFile = async (
-  name: string,
+  handle: string,
   version: string,
   path: string
-): Promise<SkillFileResponse> => {
+): Promise<SkillResourceResponse> => {
   const data = await api
-    .get(`skills/${name}/files`, {
+    .get(`skills/skillpack/${handle}/resources`, {
       searchParams: { path, version },
     })
     .json();
 
-  return skillFileResponseSchema.parse(data);
+  return skillResourceResponseSchema.parse(data);
 };

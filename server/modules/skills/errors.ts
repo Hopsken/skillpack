@@ -1,13 +1,16 @@
 export type SkillErrorCode =
   | "duplicate-resource-path"
   | "duplicate-skill-name"
+  | "duplicate-skill-version"
   | "invalid-file-path"
+  | "invalid-skill-locator"
   | "reserved-resource-path"
   | "skill-creation-failed"
   | "skill-file-not-found"
   | "skill-not-found"
   | "skill-object-not-found"
-  | "skill-version-not-found";
+  | "skill-version-not-found"
+  | "unsupported-source-type";
 
 export class SkillModuleError extends Error {
   code: SkillErrorCode;
@@ -27,8 +30,18 @@ export const skillErrors = {
     ),
   duplicateSkillName: () =>
     new SkillModuleError("duplicate-skill-name", "Skill name already exists"),
+  duplicateSkillVersion: () =>
+    new SkillModuleError(
+      "duplicate-skill-version",
+      "Skill version already exists"
+    ),
   invalidFilePath: () =>
     new SkillModuleError("invalid-file-path", "Valid file path is required"),
+  invalidSkillLocator: () =>
+    new SkillModuleError(
+      "invalid-skill-locator",
+      "Valid skill locator is required"
+    ),
   reservedResourcePath: () =>
     new SkillModuleError(
       "reserved-resource-path",
@@ -44,4 +57,9 @@ export const skillErrors = {
     new SkillModuleError("skill-object-not-found", "Skill object not found"),
   skillVersionNotFound: () =>
     new SkillModuleError("skill-version-not-found", "Skill version not found"),
+  unsupportedSourceType: () =>
+    new SkillModuleError(
+      "unsupported-source-type",
+      "Skill source type is not supported"
+    ),
 };

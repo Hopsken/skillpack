@@ -1,7 +1,7 @@
 import type {
-  SkillFileResponse,
-  SkillReadResponse,
-  SkillVersionsResponse,
+  ResolvedSkill,
+  SkillResourceResponse,
+  SkillVersionListResponse,
 } from "@shared/schemas/skills";
 import { useQuery } from "@tanstack/react-query";
 
@@ -19,24 +19,24 @@ import {
 } from "./queries";
 
 interface SkillDetailState {
-  skill: SkillReadResponse | undefined;
+  skill: ResolvedSkill | undefined;
   status: string;
   refresh: () => Promise<void>;
 }
 
 interface LatestSkillState {
-  skill: SkillReadResponse | undefined;
+  skill: ResolvedSkill | undefined;
   status: string;
   refresh: () => Promise<void>;
 }
 
 interface SkillVersionsState {
-  versions: SkillVersionsResponse | undefined;
+  versions: SkillVersionListResponse | undefined;
   status: string;
 }
 
 interface SkillFileState {
-  file: SkillFileResponse | undefined;
+  file: SkillResourceResponse | undefined;
   status: string;
 }
 

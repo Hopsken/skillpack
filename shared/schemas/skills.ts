@@ -7,6 +7,14 @@ export const skillNameSchema = z
   .regex(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/u);
 
 export const skillVersionSchema = z.string().min(1).max(32);
+export const skillSourceTypeSchema = z.enum(["skillpack", "github", "npm"]);
+export const skillTrustStatusSchema = z.enum(["approved"]);
+
+export const skillLocationSchema = z
+  .string()
+  .min(1)
+  .max(240)
+  .startsWith("skill://");
 
 const isSafeRelativePath = (path: string) =>
   !path.startsWith("/") &&
@@ -19,41 +27,58 @@ export const skillResourcePathSchema = z
   .max(240)
   .refine(isSafeRelativePath, "Path must be a safe relative path");
 
-export const skillCatalogItemSchema = z.object({
-  description: z.string().min(1),
-  location: z.string().url().or(z.string().startsWith("skill://")),
-  name: skillNameSchema,
-  version: skillVersionSchema,
+export const skillSourceSchema = z.object({
+  type: skillSourceTypeSchema,
 });
 
-export const skillCatalogResponseSchema = z.object({
-  skills: z.array(skillCatalogItemSchema),
+export const skillTrustSchema = z.object({
+  approvedAt: z.string().datetime(),
+  status: skillTrustStatusSchema,
 });
 
-export const skillResourceSchema = z.object({
+export const resourceManifestItemSchema = z.object({
   mediaType: z.string().min(1),
   path: skillResourcePathSchema,
   sha256: z.string().min(1),
   size: z.number().int().nonnegative(),
 });
 
-export const skillReadResponseSchema = skillCatalogItemSchema.extend({
+export const skillListItemSchema = z.object({
+  description: z.string().min(1),
+  handle: skillNameSchema,
+  location: skillLocationSchema,
+  name: skillNameSchema,
+  source: skillSourceSchema,
+  trust: skillTrustSchema,
+  version: skillVersionSchema,
+});
+
+export const skillListResponseSchema = z.object({
+  skills: z.array(skillListItemSchema),
+});
+
+export const resolvedSkillSchema = skillListItemSchema.extend({
   content: z.string(),
-  resources: z.array(skillResourceSchema),
+  resolvedLocation: skillLocationSchema,
+  resources: z.array(resourceManifestItemSchema),
 });
 
 export const skillVersionItemSchema = z.object({
   createdAt: z.string().datetime(),
-  location: z.string().url().or(z.string().startsWith("skill://")),
+  location: skillLocationSchema,
+  resolvedLocation: skillLocationSchema,
+  trust: skillTrustSchema,
   version: skillVersionSchema,
 });
 
-export const skillVersionsResponseSchema = z.object({
+export const skillVersionListResponseSchema = z.object({
+  handle: skillNameSchema,
+  location: skillLocationSchema,
   name: skillNameSchema,
   versions: z.array(skillVersionItemSchema),
 });
 
-export const skillFileResponseSchema = z.object({
+export const skillResourceResponseSchema = z.object({
   content: z.string(),
   mediaType: z.string().min(1),
   path: skillResourcePathSchema,
@@ -79,11 +104,16 @@ export const createSkillSchema = z.object({
 export type CreateSkillResourceInput = z.infer<
   typeof createSkillResourceSchema
 >;
-export type SkillCatalogItem = z.infer<typeof skillCatalogItemSchema>;
-export type SkillCatalogResponse = z.infer<typeof skillCatalogResponseSchema>;
-export type SkillReadResponse = z.infer<typeof skillReadResponseSchema>;
-export type SkillResource = z.infer<typeof skillResourceSchema>;
+export type ResourceManifestItem = z.infer<typeof resourceManifestItemSchema>;
+export type ResolvedSkill = z.infer<typeof resolvedSkillSchema>;
+export type SkillListItem = z.infer<typeof skillListItemSchema>;
+export type SkillListResponse = z.infer<typeof skillListResponseSchema>;
+export type SkillResourceResponse = z.infer<typeof skillResourceResponseSchema>;
+export type SkillSource = z.infer<typeof skillSourceSchema>;
+export type SkillSourceType = z.infer<typeof skillSourceTypeSchema>;
+export type SkillTrust = z.infer<typeof skillTrustSchema>;
 export type SkillVersionItem = z.infer<typeof skillVersionItemSchema>;
-export type SkillVersionsResponse = z.infer<typeof skillVersionsResponseSchema>;
-export type SkillFileResponse = z.infer<typeof skillFileResponseSchema>;
+export type SkillVersionListResponse = z.infer<
+  typeof skillVersionListResponseSchema
+>;
 export type CreateSkillInput = z.infer<typeof createSkillSchema>;

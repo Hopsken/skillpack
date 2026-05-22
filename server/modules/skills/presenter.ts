@@ -1,10 +1,9 @@
-import { skillLocation } from "@server/lib/http";
 import {
-  skillCatalogItemSchema,
-  skillCatalogResponseSchema,
-  skillFileResponseSchema,
-  skillReadResponseSchema,
-  skillVersionsResponseSchema,
+  resolvedSkillSchema,
+  skillListItemSchema,
+  skillListResponseSchema,
+  skillResourceResponseSchema,
+  skillVersionListResponseSchema,
 } from "@shared/schemas/skills";
 
 import type {
@@ -15,28 +14,44 @@ import type {
   SkillVersionRow,
 } from "./types";
 
-export const presentSkillCatalog = (skills: SkillRow[]) =>
-  skillCatalogResponseSchema.parse({
+const presentTrust = (approvedAt: Date) => ({
+  approvedAt: approvedAt.toISOString(),
+  status: "approved" as const,
+});
+
+const presentSource = (sourceType: string) => ({
+  type: sourceType,
+});
+
+export const presentSkillList = (skills: SkillRow[]) =>
+  skillListResponseSchema.parse({
     skills: skills.map((skill) => ({
       description: skill.description,
-      location: skillLocation(skill.name),
+      handle: skill.handle,
+      location: skill.location,
       name: skill.name,
-      version: skill.latestVersion,
+      source: presentSource(skill.sourceType),
+      trust: presentTrust(skill.updatedAt),
+      version: skill.currentApprovedVersion,
     })),
   });
 
 export const presentSkill = (result: ReadSkillResult) =>
-  skillReadResponseSchema.parse({
+  resolvedSkillSchema.parse({
     content: result.content,
     description: result.skill.description,
-    location: skillLocation(result.skill.name, result.version.entryPath),
+    handle: result.skill.handle,
+    location: result.skill.location,
     name: result.skill.name,
+    resolvedLocation: result.version.resolvedLocation,
     resources: result.resources.map((resource) => ({
       mediaType: resource.mediaType,
       path: resource.path,
       sha256: resource.sha256,
       size: resource.size,
     })),
+    source: presentSource(result.skill.sourceType),
+    trust: presentTrust(result.version.approvedAt),
     version: result.version.version,
   });
 
@@ -44,17 +59,21 @@ export const presentSkillVersions = (
   skill: SkillRow,
   versions: SkillVersionRow[]
 ) =>
-  skillVersionsResponseSchema.parse({
+  skillVersionListResponseSchema.parse({
+    handle: skill.handle,
+    location: skill.location,
     name: skill.name,
     versions: versions.map((version) => ({
       createdAt: version.createdAt.toISOString(),
-      location: skillLocation(skill.name, version.entryPath),
+      location: version.location,
+      resolvedLocation: version.resolvedLocation,
+      trust: presentTrust(version.approvedAt),
       version: version.version,
     })),
   });
 
 export const presentSkillFile = (result: ReadSkillTextFileResult) =>
-  skillFileResponseSchema.parse({
+  skillResourceResponseSchema.parse({
     content: result.content,
     mediaType: result.resource.mediaType,
     path: result.resource.path,
@@ -64,9 +83,15 @@ export const presentSkillFile = (result: ReadSkillTextFileResult) =>
   });
 
 export const presentCreatedSkill = (result: CreateSkillResult) =>
-  skillCatalogItemSchema.parse({
+  skillListItemSchema.parse({
     description: result.description,
-    location: skillLocation(result.name),
+    handle: result.handle,
+    location: result.location,
     name: result.name,
+    source: presentSource("skillpack"),
+    trust: {
+      approvedAt: result.trust.approvedAt.toISOString(),
+      status: result.trust.status,
+    },
     version: result.version,
   });

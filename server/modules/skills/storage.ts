@@ -1,20 +1,17 @@
 import { digestHex } from "@server/lib/crypto";
 import type { CreateSkillResourceInput } from "@shared/schemas/skills";
 
+import { skillContentPath } from "./location";
 import type { StoredResourceObject } from "./types";
 
 export const markdownMediaType = "text/markdown; charset=utf-8";
 const textMediaType = "text/plain; charset=utf-8";
-export const skillEntryPath = "SKILL.md";
 
 const getTextSize = (content: string) =>
   new TextEncoder().encode(content).length;
 
-const getResourceObjectKey = (
-  skillName: string,
-  version: string,
-  path: string
-) => `skills/${skillName}/${version}/${path}`;
+const getResourceObjectKey = (handle: string, version: string, path: string) =>
+  `skills/skillpack/${handle}/${version}/${path}`;
 
 const getDefaultMediaType = (path: string) => {
   const lowerPath = path.toLowerCase();
@@ -48,11 +45,11 @@ const getDefaultMediaType = (path: string) => {
 
 export const putSkillContent = async (
   bucket: R2Bucket,
-  skillName: string,
+  handle: string,
   version: string,
   content: string
 ) => {
-  const objectKey = getResourceObjectKey(skillName, version, skillEntryPath);
+  const objectKey = getResourceObjectKey(handle, version, skillContentPath);
   const sha256 = await digestHex(content);
 
   await bucket.put(objectKey, content, {
@@ -65,12 +62,12 @@ export const putSkillContent = async (
 
 export const putSkillResource = async (
   bucket: R2Bucket,
-  skillName: string,
+  handle: string,
   version: string,
   resource: CreateSkillResourceInput
 ): Promise<StoredResourceObject> => {
   const mediaType = resource.mediaType ?? getDefaultMediaType(resource.path);
-  const objectKey = getResourceObjectKey(skillName, version, resource.path);
+  const objectKey = getResourceObjectKey(handle, version, resource.path);
   const sha256 = await digestHex(resource.content);
   const size = getTextSize(resource.content);
 
@@ -91,11 +88,8 @@ export const putSkillResource = async (
 export const getSkillObject = (bucket: R2Bucket, objectKey: string) =>
   bucket.get(objectKey);
 
-export const deleteSkillObjects = async (
-  bucket: R2Bucket,
-  skillName: string
-) => {
-  const prefix = `skills/${skillName}/`;
+export const deleteSkillObjects = async (bucket: R2Bucket, handle: string) => {
+  const prefix = `skills/skillpack/${handle}/`;
   let cursor: string | undefined;
 
   do {

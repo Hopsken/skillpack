@@ -1,14 +1,31 @@
-import type { skillResources, skillVersions, skills } from "@server/db/schema";
-import type { CreateSkillInput } from "@shared/schemas/skills";
+import type {
+  skillResourcesTable,
+  skillVersionsTable,
+  skillsTable,
+} from "@server/db/schema";
+import type { CreateSkillInput, SkillSourceType } from "@shared/schemas/skills";
 
-export type SkillRow = typeof skills.$inferSelect;
-export type SkillVersionRow = typeof skillVersions.$inferSelect;
-export type SkillResourceRow = typeof skillResources.$inferSelect;
+export type SkillRow = typeof skillsTable.$inferSelect;
+export type SkillVersionRow = typeof skillVersionsTable.$inferSelect;
+export type SkillResourceRow = typeof skillResourcesTable.$inferSelect;
 
 export interface CreateSkillResult {
   description: string;
+  handle: string;
+  location: string;
   name: string;
+  trust: SkillTrustResult;
   version: string;
+}
+
+export interface SkillLocationInput {
+  handle: string;
+  sourceType: SkillSourceType;
+}
+
+export interface SkillTrustResult {
+  approvedAt: Date;
+  status: "approved";
 }
 
 export interface ReadSkillResult {
@@ -26,7 +43,7 @@ export interface SkillFileResource {
 }
 
 export interface ReadSkillFileInput {
-  name: string;
+  location: SkillLocationInput;
   path: string;
   version?: string;
 }

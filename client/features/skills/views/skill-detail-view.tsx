@@ -1,7 +1,4 @@
-import type {
-  SkillReadResponse,
-  SkillVersionItem,
-} from "@shared/schemas/skills";
+import type { ResolvedSkill, SkillVersionItem } from "@shared/schemas/skills";
 import { ArrowLeftIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -24,7 +21,8 @@ const loadResourceViewer = async () => {
 const ResourceViewer = lazy(loadResourceViewer);
 
 interface SkillDetailViewProps {
-  skill: SkillReadResponse | undefined;
+  skill: ResolvedSkill | undefined;
+  skillHandle: string;
   versions: SkillVersionItem[];
   versionsStatus: string;
   activeTab: SkillDetailTab;
@@ -32,14 +30,15 @@ interface SkillDetailViewProps {
 }
 
 interface ResourcesPanelProps {
-  skill: SkillReadResponse | undefined;
+  skill: ResolvedSkill | undefined;
   selectedPath: string | undefined;
   fileContentStatus: string;
   onSelectPath: (path: string) => void;
 }
 
 interface VersionsPanelProps {
-  skill: SkillReadResponse | undefined;
+  skill: ResolvedSkill | undefined;
+  skillHandle: string;
   versions: SkillVersionItem[];
   versionsStatus: string;
 }
@@ -82,13 +81,13 @@ const getRawResourceUrl = (
   }
 
   const searchParams = new URLSearchParams({ path, version });
-  return `/api/v1/skills/${encodeURIComponent(name)}/files/raw?${searchParams}`;
+  return `/api/v1/skills/skillpack/${encodeURIComponent(name)}/resources/raw?${searchParams}`;
 };
 
 const SkillMarkdownPanel = ({
   skill,
 }: {
-  skill: SkillReadResponse | undefined;
+  skill: ResolvedSkill | undefined;
 }) => (
   <MarkdownContent
     content={skill?.content}
@@ -108,12 +107,12 @@ const ResourcesPanel = ({
   const shouldFetchFile =
     selectedResource && getSkillResourceKind(selectedResource) !== "image";
   const { file, status: fileStatus } = useSkillFile(
-    skill?.name,
+    skill?.handle,
     skill?.version,
     shouldFetchFile ? selectedResource.path : undefined
   );
   const rawUrl = getRawResourceUrl(
-    skill?.name,
+    skill?.handle,
     skill?.version,
     selectedResource?.path
   );
@@ -166,6 +165,7 @@ const ResourcesPanel = ({
 
 const VersionsPanel = ({
   skill,
+  skillHandle,
   versions,
   versionsStatus,
 }: VersionsPanelProps) => (
@@ -174,7 +174,7 @@ const VersionsPanel = ({
       versions.map((version) => (
         <Link
           key={version.version}
-          to={`/skills/${skill?.name ?? ""}/v/${version.version}?tab=versions`}
+          to={`/skills/skillpack/${skillHandle}?version=${encodeURIComponent(version.version)}&tab=versions`}
           className={getVersionClassName(skill?.version === version.version)}
         >
           <span className="font-medium">v{version.version}</span>
@@ -193,6 +193,7 @@ const VersionsPanel = ({
 
 export const SkillDetailView = ({
   skill,
+  skillHandle,
   versions,
   versionsStatus,
   activeTab,
@@ -224,9 +225,11 @@ export const SkillDetailView = ({
               <ArrowLeftIcon />
             </Link>
           </Button>
-          <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">
-            {skill?.name ?? "Skill"}
-          </h1>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold tracking-tight">
+              {skill?.name ?? "Skill"}
+            </h1>
+          </div>
         </div>
         <span className="shrink-0 rounded-full border border-border bg-muted px-3 py-1 text-sm font-medium text-foreground">
           {skill ? `v${skill.version}` : "Version"}
@@ -263,6 +266,7 @@ export const SkillDetailView = ({
         {activeTab === "versions" && (
           <VersionsPanel
             skill={skill}
+            skillHandle={skillHandle}
             versions={versions}
             versionsStatus={versionsStatus}
           />

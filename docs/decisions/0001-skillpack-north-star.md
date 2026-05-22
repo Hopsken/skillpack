@@ -8,14 +8,14 @@ informed: Future Skillpack maintainers and coding agents
 
 # ADR-0001: Define Skillpack as a Skill Aggregator and Delivery Layer
 
-Skillpack is a skill aggregator and delivery layer for agents. It aggregates skills from multiple sources, normalizes them into Skill Entries, applies Skill Trust as a safety and curation buffer, and delivers resolved skill content to agent runtimes through Skillpack-mediated interfaces.
+Skillpack is a skill aggregator and delivery layer for agents. It aggregates skills from multiple sources, normalizes them into Skills, applies Skill Trust as a safety and curation buffer, and delivers resolved skill content to agent runtimes through Skillpack-mediated interfaces.
 
 ## Decision
 
 Skillpack's high-level system model is:
 
 ```text
-Skill Source -> Skill Entry -> Skill Trust -> Skill Delivery
+Skill Source -> Skill -> Skill Trust -> Skill Delivery
 ```
 
 This model is the north star for future architecture and product decisions.
@@ -35,11 +35,11 @@ Examples:
 
 Skillpack-managed skills use `skillpack` as their source. User-authored, agent-created, and API-created skills are creation modes inside that source type.
 
-### Skill Entry
+### Skill
 
-A Skill Entry is the primary object in Skillpack. All sources normalize into the same Skill Entry model.
+A Skill is the primary object in Skillpack. All sources normalize into the same Skill model.
 
-A Skill Entry represents a skill that users can understand and agents can consume. Source-specific differences such as content ownership, revision semantics, and sync behavior belong to the source adapter and provenance model.
+A Skill represents a skill that users can understand and agents can consume. Source-specific differences such as content ownership, revision semantics, and sync behavior belong to the source adapter and provenance model.
 
 ### Skill Trust
 
@@ -55,7 +55,7 @@ Materialized distribution, export, and agent-specific filesystem installation ar
 
 ## Skill Library
 
-The Skill Library is a discovery-oriented view over Skill Entries, Skill Trust state, and organization metadata such as categories or tags. It helps users and agents find skills, but it is not a source type and not the delivery contract.
+The Skill Library is a discovery-oriented view over Skills, Skill Trust state, and organization metadata such as categories or tags. It helps users and agents find skills, but it is not a source type and not the delivery contract.
 
 ## Skill Location
 
@@ -99,9 +99,9 @@ Resource content is fetched separately through Skillpack-mediated read operation
 
 ## Consequences
 
-- Skillpack remains source-agnostic: GitHub, npm, Skillpack-managed content, and future registries all feed the same Skill Entry model.
-- Skill Entry stays the primary product object. Skill Sets may exist as business groupings, but they do not replace Skill Entry as the primary object.
-- User-facing import can remain familiar product language while internal architecture treats import as adding or updating Skill Entries from Skill Sources.
+- Skillpack remains source-agnostic: GitHub, npm, Skillpack-managed content, and future registries all feed the same Skill model.
+- Skill stays the primary product object. Skill Sets may exist as business groupings, but they do not replace Skill as the primary object.
+- User-facing import can remain familiar product language while internal architecture treats import as adding or updating Skills from Skill Sources.
 - Agent-facing integrations should pass `skill://` Skill Locations and resolve them through Skillpack rather than embedding raw upstream URLs or database IDs.
 - Trust and approval become first-class system concerns because agent delivery should not automatically follow arbitrary source updates.
 - Runtime resolution is the current delivery focus. Export/package/filesystem installation can be designed later as separate delivery modes.

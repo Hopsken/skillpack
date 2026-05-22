@@ -85,12 +85,13 @@ pnpm deploy
 
 ```text
 GET  /api/health
-GET  /api/v1/skills/catalog
-GET    /api/v1/skills/:name
-GET    /api/v1/skills/:name/files?version=&path=
-GET    /api/v1/skills/:name/files/raw?version=&path=
+GET  /api/v1/skills
+GET    /api/v1/skills/:sourceType/*locator
+GET    /api/v1/skills/:sourceType/*locator?version=
+GET    /api/v1/skills/:sourceType/*locator/resources?version=&path=
+GET    /api/v1/skills/:sourceType/*locator/resources/raw?version=&path=
 POST   /api/v1/skills
-DELETE /api/v1/skills/:name
+DELETE /api/v1/skills/:sourceType/*locator
 ```
 
 Create a skill:
@@ -116,4 +117,10 @@ curl -X POST http://localhost:5173/api/v1/skills \
       }
     ]
   }'
+```
+
+Created Skillpack-managed skills resolve to locations like:
+
+```text
+skill://skillpack/api-skill-demo
 ```

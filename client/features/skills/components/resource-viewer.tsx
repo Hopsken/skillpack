@@ -1,4 +1,7 @@
-import type { SkillFileResponse, SkillResource } from "@shared/schemas/skills";
+import type {
+  ResourceManifestItem,
+  SkillResourceResponse,
+} from "@shared/schemas/skills";
 import DOMPurify from "dompurify";
 import { useEffect, useState } from "react";
 import { createHighlighterCore } from "shiki/core";
@@ -20,9 +23,9 @@ import {
 import { MarkdownContent } from "./markdown-content";
 
 interface ResourceViewerProps {
-  file: SkillFileResponse | undefined;
+  file: SkillResourceResponse | undefined;
   rawUrl: string | undefined;
-  resource: SkillResource | undefined;
+  resource: ResourceManifestItem | undefined;
   status: string;
 }
 
@@ -32,10 +35,10 @@ interface CodeResourceProps {
 }
 
 interface ResourceBodyProps {
-  file: SkillFileResponse | undefined;
+  file: SkillResourceResponse | undefined;
   kind: ReturnType<typeof getSkillResourceKind>;
   rawUrl: string | undefined;
-  resource: SkillResource;
+  resource: ResourceManifestItem;
   status: string;
 }
 
@@ -57,7 +60,7 @@ const supportedLanguages = new Set([
 const ResourceMeta = ({
   resource,
 }: {
-  resource: SkillResource | undefined;
+  resource: ResourceManifestItem | undefined;
 }) => {
   if (!resource) {
     return null;

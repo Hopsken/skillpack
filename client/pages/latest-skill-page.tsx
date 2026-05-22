@@ -2,6 +2,7 @@ import { Navigate, useParams, useSearchParams } from "react-router";
 
 import {
   SkillDetailView,
+  useSkillDetail,
   useLatestSkill,
   useSkillVersions,
 } from "@/features/skills";
@@ -19,23 +20,35 @@ const parseSkillDetailTab = (value: string | null): SkillDetailTab => {
 };
 
 export const LatestSkillPage = () => {
-  const { name } = useParams();
+  const { handle } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { skill } = useLatestSkill(name);
-  const { versions, status: versionsStatus } = useSkillVersions(name);
+  const version = searchParams.get("version") ?? undefined;
+  const latestSkill = useLatestSkill(handle);
+  const versionedSkill = useSkillDetail(handle, version);
+  const { versions, status: versionsStatus } = useSkillVersions(handle);
+  const skill = version ? versionedSkill.skill : latestSkill.skill;
 
-  if (!name) {
+  if (!handle) {
     return <Navigate to="/library" replace />;
   }
 
   const activeTab = parseSkillDetailTab(searchParams.get("tab"));
   const setActiveTab = (tab: SkillDetailTab) => {
-    setSearchParams(tab === "skill" ? {} : { tab });
+    const nextParams = new URLSearchParams(searchParams);
+
+    if (tab === "skill") {
+      nextParams.delete("tab");
+    } else {
+      nextParams.set("tab", tab);
+    }
+
+    setSearchParams(nextParams);
   };
 
   return (
     <SkillDetailView
       skill={skill}
+      skillHandle={handle}
       versions={versions?.versions ?? []}
       versionsStatus={versionsStatus}
       activeTab={activeTab}

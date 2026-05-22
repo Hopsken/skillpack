@@ -94,18 +94,22 @@ State management rule: TanStack Query owns server state from APIs; Zustand owns 
 
 ## Data Model Notes
 
-- `skills.name` is indexed but storage-level duplicates are allowed.
-- Business logic currently enforces unique skill names at API create time.
-- Skill content is stored at `skills/{name}/{version}/SKILL.md` in R2.
-- `skill_versions` keeps version metadata, object keys, and SHA-256 values.
+- Skillpack-managed skills use `source_type = "skillpack"`.
+- Skillpack-managed handles are unique per source and usually equal the skill name.
+- Skill content is stored at `skills/skillpack/{handle}/{version}/SKILL.md` in R2.
+- `skill_versions` keeps version metadata, object keys, SHA-256 values, resolved locations, and approval timestamps.
 
 ## API
 
 ```text
 GET  /api/health
-GET  /api/v1/skills/catalog
-GET  /api/v1/skills/:name
+GET  /api/v1/skills
+GET  /api/v1/skills/skillpack/:handle
+GET  /api/v1/skills/skillpack/:handle?version=:version
+GET  /api/v1/skills/skillpack/:handle/resources?version=:version&path=:path
+GET  /api/v1/skills/skillpack/:handle/resources/raw?version=:version&path=:path
 POST /api/v1/skills
+DELETE /api/v1/skills/skillpack/:handle
 ```
 
 Create a skill locally:

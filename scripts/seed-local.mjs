@@ -9,7 +9,7 @@ Use this skill when validating API-backed skills in local development.
 
 ## Workflow
 
-1. Load the catalog from the API.
+1. Load the skill list from the API.
 2. Read this skill through the API.
 3. Confirm the content is served from R2-backed storage.
 `,
@@ -125,10 +125,13 @@ const getHeaders = () => {
 };
 
 const deleteSkill = async (skill) => {
-  const response = await fetch(`${apiUrl}/api/v1/skills/${skill.name}`, {
-    headers: getHeaders(),
-    method: "DELETE",
-  });
+  const response = await fetch(
+    `${apiUrl}/api/v1/skills/skillpack/${skill.name}`,
+    {
+      headers: getHeaders(),
+      method: "DELETE",
+    }
+  );
 
   if (response.status === 204 || response.status === 404) {
     return;

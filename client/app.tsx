@@ -28,15 +28,9 @@ const loadLoginPage = async () => {
   return { default: module.LoginPage };
 };
 
-const loadSkillDetailPage = async () => {
-  const module = await import("@/pages/skill-detail-page");
-  return { default: module.SkillDetailPage };
-};
-
 const LatestSkillPage = lazy(loadLatestSkillPage);
 const LibraryPage = lazy(loadLibraryPage);
 const LoginPage = lazy(loadLoginPage);
-const SkillDetailPage = lazy(loadSkillDetailPage);
 
 const getLoginPath = (pathname: string, search: string) => {
   const redirect = `${pathname}${search}`;
@@ -73,8 +67,7 @@ export const App = () => (
       <Route element={<ProtectedLayout />}>
         <Route index element={<Navigate to="/library" replace />} />
         <Route path="library" element={<LibraryPage />} />
-        <Route path="skills/:name" element={<LatestSkillPage />} />
-        <Route path="skills/:name/v/:version" element={<SkillDetailPage />} />
+        <Route path="skills/skillpack/:handle" element={<LatestSkillPage />} />
       </Route>
     </Routes>
   </Suspense>
