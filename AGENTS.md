@@ -22,7 +22,8 @@ Key files:
 ```text
 server/app.ts                 # Hono app composition
 server/worker.ts              # Worker entrypoint
-server/routes/skills.ts       # Skills API routes
+server/modules/skills/route.ts # Skills API routes
+server/modules/skills/service.ts # Skills business flows
 server/db/schema.ts           # Drizzle D1 schema
 shared/schemas/skills.ts      # Zod schemas shared by API and SPA
 client/app.tsx                # SPA entry UI
@@ -64,6 +65,7 @@ After creating D1, update `wrangler.jsonc` with the production `database_id`.
 - Use `tsconfig.client.json` and `tsconfig.server.json`; root `tsconfig.json` only contains project references.
 - Must read `docs/backend-architecture.md` before adding or reorganizing backend files.
 - Backend code follows module-first architecture under `server/modules/<module>/` with lightweight `route/service/repository/storage/presenter` layers.
+- In server code, prefer the `@server/*` alias for cross-module or deep imports instead of long relative paths like `../../../`.
 - Keep Hono route files focused on HTTP concerns; move business logic to module services, D1 access to repositories, and R2 access to storage helpers.
 - Use shared Zod schemas from `shared/schemas/*` for request/response validation and client parsing.
 - Use Cloudflare bindings directly through `c.env`; avoid Cloudflare REST calls from inside the Worker.

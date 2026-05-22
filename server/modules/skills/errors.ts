@@ -1,0 +1,47 @@
+export type SkillErrorCode =
+  | "duplicate-resource-path"
+  | "duplicate-skill-name"
+  | "invalid-file-path"
+  | "reserved-resource-path"
+  | "skill-creation-failed"
+  | "skill-file-not-found"
+  | "skill-not-found"
+  | "skill-object-not-found"
+  | "skill-version-not-found";
+
+export class SkillModuleError extends Error {
+  code: SkillErrorCode;
+
+  constructor(code: SkillErrorCode, message: string) {
+    super(message);
+    this.name = "SkillModuleError";
+    this.code = code;
+  }
+}
+
+export const skillErrors = {
+  duplicateResourcePath: () =>
+    new SkillModuleError(
+      "duplicate-resource-path",
+      "Resource paths must be unique"
+    ),
+  duplicateSkillName: () =>
+    new SkillModuleError("duplicate-skill-name", "Skill name already exists"),
+  invalidFilePath: () =>
+    new SkillModuleError("invalid-file-path", "Valid file path is required"),
+  reservedResourcePath: () =>
+    new SkillModuleError(
+      "reserved-resource-path",
+      "Resource path is reserved for SKILL.md"
+    ),
+  skillCreationFailed: (message: string) =>
+    new SkillModuleError("skill-creation-failed", message),
+  skillFileNotFound: () =>
+    new SkillModuleError("skill-file-not-found", "Skill file not found"),
+  skillNotFound: () =>
+    new SkillModuleError("skill-not-found", "Skill not found"),
+  skillObjectNotFound: () =>
+    new SkillModuleError("skill-object-not-found", "Skill object not found"),
+  skillVersionNotFound: () =>
+    new SkillModuleError("skill-version-not-found", "Skill version not found"),
+};
