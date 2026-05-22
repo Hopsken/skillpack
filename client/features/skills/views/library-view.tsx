@@ -46,11 +46,11 @@ export const LibraryView = ({
       options={{ scrollbars: { autoHide: "leave", theme: "os-theme-dark" } }}
       className="min-h-0 flex-1"
     >
-      <section className="px-6 py-4">
+      <section>
         {skills.length === 0 ? (
           <EmptyLibrary status={status} onRefresh={onRefresh} />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+          <div>
             {skills.map((skill) => (
               <SkillRow key={skill.location} skill={skill} />
             ))}
