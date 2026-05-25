@@ -18,3 +18,4 @@ Architecture Decision Records capture important architecture decisions, their co
 ## ADRs
 
 - [ADR-0001: Define Skillpack as a Skills Management Platform](0001-skillpack-north-star.md) — proposed
+- [ADR-0002: Separate Skill Origin Adapters from Managed Skill Lifecycle](0002-origin-adapters.md) — proposed

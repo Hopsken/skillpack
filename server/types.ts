@@ -1,4 +1,5 @@
 import type { createDb } from "./db/client";
+import type { OriginService } from "./modules/origins/service";
 import type { SkillRepository } from "./modules/skills/repository";
 import type { SkillService } from "./modules/skills/service";
 import type { SkillStorage } from "./modules/skills/storage";
@@ -9,6 +10,7 @@ export interface AppBindings {
   Bindings: Env;
   Variables: {
     db: Database;
+    originService: OriginService;
     skillRepository: SkillRepository;
     skillService: SkillService;
     skillStorage: SkillStorage;

@@ -16,6 +16,10 @@ _Avoid_: Prompt snippet, plugin, tool
 The provenance of a Managed Skill before it entered Skillpack, such as GitHub, npm, another registry, user authoring, agent creation, or API creation. Origins are metadata attached to Managed Skills and never form the skill's primary identity.
 _Avoid_: Skill Source, source type, import backend, upstream identity, native source
 
+**Origin Adapter**:
+A Skillpack capability that knows how to discover Skills at a specific kind of Skill Origin and read a selected Skill's definition and resources so Skillpack can Fork it into a Managed Skill.
+_Avoid_: Source adapter, importer, sync backend, registry identity
+
 **Managed Skill**:
 A platform-owned skill record in Skillpack's library that users can understand and agents can consume. Forked, user-authored, agent-created, and API-created skills all become Managed Skills once Skillpack stores and owns their content lifecycle.
 _Avoid_: Skill Entry, imported skill, raw source file, database row
@@ -23,6 +27,10 @@ _Avoid_: Skill Entry, imported skill, raw source file, database row
 **Fork**:
 A workflow that creates a Managed Skill copy from a Skill Origin or another Managed Skill. Forking expresses user ownership and responsibility for reviewing, curating, and maintaining the resulting Managed Skill.
 _Avoid_: Import, sync, mirror
+
+**Batch Fork**:
+A Fork workflow that creates Managed Skill copies for multiple selected Skills from one Skill Origin. Batch Fork uses partial success: one selected Skill failing to Fork does not prevent other selected Skills from becoming Managed Skills.
+_Avoid_: All-or-nothing import, sync batch, origin mirror
 
 **Origin Comparison**:
 A lightweight review workflow that compares a Managed Skill with the current content available from its Skill Origin. In the MVP, GitHub-origin comparisons use the repository's default branch and produce a simple diff for user review.

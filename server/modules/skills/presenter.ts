@@ -1,5 +1,6 @@
 import {
   resolvedSkillSchema,
+  forkSkillResponseSchema,
   restoreVersionResponseSchema,
   skillListItemSchema,
   skillListResponseSchema,
@@ -10,6 +11,7 @@ import {
 
 import type {
   PatchSkillResult,
+  ForkSkillServiceResult,
   ReadSkillTextFileResult,
   ResolvedSkillResult,
   RestoreSkillVersionResult,
@@ -71,6 +73,21 @@ export const presentSkillSummary = (result: ResolvedSkillResult) =>
     name: result.skill.name,
     origin: presentOrigin(result.origin),
     updatedAt: result.skill.updatedAt.toISOString(),
+  });
+
+export const presentForkedSkills = (result: ForkSkillServiceResult) =>
+  forkSkillResponseSchema.parse({
+    results: result.results.map((item) => {
+      if (item.status === "failed") {
+        return item;
+      }
+
+      return {
+        selection: item.selection,
+        skill: presentSkillSummary(item.skill),
+        status: item.status,
+      };
+    }),
   });
 
 export const presentSkillVersions = (

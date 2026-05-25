@@ -78,6 +78,22 @@ export interface RestoreSkillVersionResult {
   restoredFromVersion: number;
 }
 
+export type ForkSkillResult =
+  | {
+      selection: ForkSkillInput["selections"][number];
+      skill: ResolvedSkillResult;
+      status: "forked";
+    }
+  | {
+      error: string;
+      selection: ForkSkillInput["selections"][number];
+      status: "failed";
+    };
+
+export interface ForkSkillServiceResult {
+  results: ForkSkillResult[];
+}
+
 export type CreateSkillServiceInput = CreateSkillInput;
 export type ForkSkillServiceInput = ForkSkillInput;
 export type PatchSkillServiceInput = PatchSkillInput;

@@ -24,8 +24,14 @@ server/
       errors.ts
       types.ts
       storage.ts        # only when this module owns object/blob storage
-      sources/          # only when this module integrates external sources
       packager.ts       # only when this module owns packaging/building logic
+
+    origins/            # Skill Origin discovery and definition retrieval
+      route.ts
+      service.ts
+      adapters/
+        github.ts
+        npm.ts
 
   db/
     client.ts
@@ -46,7 +52,7 @@ Examples of module-sized capabilities:
 - Import workflows
 - Classification and metadata workflows
 - Collection, packaging, or export workflows
-- External source integrations
+- Skill Origin discovery and definition retrieval
 
 Shared low-level utilities belong in `server/lib`. Database table definitions belong in `server/db/schema.ts`. Shared API contracts belong in `shared/contract/*`.
 
@@ -78,7 +84,7 @@ A route file should read like the API surface for the module.
 
 `service.ts` handles use cases and business flows:
 
-- Orchestrating repository, storage, source, and packaging helpers
+- Orchestrating repository, storage, Origin Adapter, and packaging helpers
 - Enforcing business rules
 - Managing cross-resource consistency strategy
 - Throwing module-level errors
@@ -162,7 +168,7 @@ if (error instanceof EntityNotFoundError) {
 - Service inputs and outputs
 - Repository DTOs
 - Storage DTOs
-- Source DTOs
+- Origin Adapter DTOs
 
 Public API contracts belong in `shared/contract/*`.
 
@@ -215,8 +221,6 @@ types.ts
 Use descriptive helper filenames for optional concerns:
 
 ```text
-git-source.ts
-npm-source.ts
 packager.ts
 ```
 
@@ -268,9 +272,9 @@ New response field
   shared/contract/*.ts
   server/modules/<module>/presenter.ts
 
-New external source integration
-  server/modules/<module>/sources/<source>-source.ts
-  server/modules/<module>/service.ts
+New Skill Origin adapter
+  server/modules/origins/adapters/<origin>.ts
+  server/modules/origins/service.ts
 
 New packaging/building rule
   server/modules/<module>/packager.ts

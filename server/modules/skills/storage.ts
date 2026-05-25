@@ -1,8 +1,9 @@
+import { skillContentPath } from "@server/constants";
 import { digestHex } from "@server/lib/crypto";
 
 import type { StoredResourceObject, TextResourceInput } from "./types";
 
-export const skillContentPath = "SKILL.md";
+export { skillContentPath };
 export const markdownMediaType = "text/markdown; charset=utf-8";
 const textMediaType = "text/plain; charset=utf-8";
 

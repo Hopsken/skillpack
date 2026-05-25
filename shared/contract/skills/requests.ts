@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { originSelectionSchema, skillOriginSchema } from "../origins/requests";
+
 const skillNameSchema = z.string().min(1).max(80);
 const skillDescriptionSchema = z.string().min(1).max(500);
 const skillVersionLabelSchema = z.string().min(1).max(80).optional();
@@ -47,9 +49,8 @@ export const restoreVersionSchema = z.object({
 });
 
 export const forkSkillSchema = z.object({
-  branch: z.string().min(1).max(160).optional(),
-  repoUrl: z.string().url(),
-  skillName: skillNameSchema,
+  origin: skillOriginSchema,
+  selections: z.array(originSelectionSchema).min(1),
   versionLabel: skillVersionLabelSchema,
 });
 

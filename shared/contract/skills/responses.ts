@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { originSelectionSchema } from "../origins/requests";
+
 const skillIdSchema = z.coerce.number().int().positive();
 const skillVersionNumberSchema = z.coerce.number().int().positive();
 
@@ -94,6 +96,24 @@ export const restoreVersionResponseSchema = z.object({
   restoredFromVersion: skillVersionNumberSchema,
 });
 
+export const forkSkillResultSchema = z.discriminatedUnion("status", [
+  z.object({
+    selection: originSelectionSchema,
+    skill: skillListItemSchema,
+    status: z.literal("forked"),
+  }),
+  z.object({
+    error: z.string().min(1),
+    selection: originSelectionSchema,
+    status: z.literal("failed"),
+  }),
+]);
+
+export const forkSkillResponseSchema = z.object({
+  results: z.array(forkSkillResultSchema),
+});
+
+export type ForkSkillResponse = z.infer<typeof forkSkillResponseSchema>;
 export type ResolvedSkill = z.infer<typeof resolvedSkillSchema>;
 export type ResourceManifestItem = z.infer<typeof resourceManifestItemSchema>;
 export type SkillListItem = z.infer<typeof skillListItemSchema>;

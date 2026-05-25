@@ -9,8 +9,7 @@ export type SkillErrorCode =
   | "skill-file-not-found"
   | "skill-not-found"
   | "skill-object-not-found"
-  | "skill-version-not-found"
-  | "unsupported-source-type";
+  | "skill-version-not-found";
 
 export class SkillModuleError extends Error {
   code: SkillErrorCode;
@@ -57,9 +56,4 @@ export const skillErrors = {
     new SkillModuleError("skill-object-not-found", "Skill object not found"),
   skillVersionNotFound: () =>
     new SkillModuleError("skill-version-not-found", "Skill version not found"),
-  unsupportedSourceType: () =>
-    new SkillModuleError(
-      "unsupported-source-type",
-      "Skill source type is not supported"
-    ),
 };

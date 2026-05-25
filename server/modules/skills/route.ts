@@ -18,6 +18,7 @@ import {
 import { SkillModuleError, skillErrors } from "./errors";
 import {
   presentPatchedSkill,
+  presentForkedSkills,
   presentRestoredSkill,
   presentSkill,
   presentSkillFile,
@@ -39,7 +40,6 @@ const skillErrorStatus = {
   "skill-not-found": 404,
   "skill-object-not-found": 404,
   "skill-version-not-found": 404,
-  "unsupported-source-type": 400,
 } as const;
 
 type SkillContext = Context<AppBindings>;
@@ -116,7 +116,10 @@ export const skillsRoute = new Hono<AppBindings>()
   })
   .post("/fork", zValidator("json", forkSkillSchema), async (c) => {
     const result = await c.var.skillService.forkSkill(c.req.valid("json"));
-    return c.json(presentSkillSummary(result), 201);
+    const status = result.results.some((item) => item.status === "forked")
+      ? 201
+      : 422;
+    return c.json(presentForkedSkills(result), status);
   })
   .get("/:skillId", async (c) => {
     const result = await c.var.skillService.resolveSkill(

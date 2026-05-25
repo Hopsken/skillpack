@@ -1,3 +1,6 @@
+import type { OriginService } from "@server/modules/origins/service";
+import type { OriginSkillDefinition } from "@server/modules/origins/types";
+
 import { skillErrors } from "./errors";
 import type { SkillRepository } from "./repository";
 import { markdownMediaType, skillContentPath } from "./storage";
@@ -5,6 +8,7 @@ import type { SkillStorage } from "./storage";
 import type {
   CreateSkillServiceInput,
   ForkSkillServiceInput,
+  ForkSkillServiceResult,
   PatchSkillResult,
   PatchSkillServiceInput,
   ReadSkillFileInput,
@@ -17,132 +21,6 @@ import type {
   StoredResourceObject,
   TextResourceInput,
 } from "./types";
-
-interface GitHubTreeItem {
-  path: string;
-  type: string;
-  url: string;
-}
-
-interface GitHubCommit {
-  commit: {
-    tree: {
-      sha: string;
-    };
-  };
-  sha: string;
-}
-
-const frontmatterDescriptionPattern =
-  /^---\s*\n(?<frontmatter>[\s\S]*?)\n---\s*/u;
-const descriptionPattern =
-  /^description:\s*["']?(?<description>.+?)["']?\s*$/mu;
-
-const getSkillDescription = (content: string, fallback: string) => {
-  const frontmatter =
-    frontmatterDescriptionPattern.exec(content)?.groups?.frontmatter;
-
-  if (!frontmatter) {
-    return fallback;
-  }
-
-  return (
-    descriptionPattern.exec(frontmatter)?.groups?.description?.trim() ??
-    fallback
-  );
-};
-
-const parseGitHubRepoUrl = (repoUrl: string) => {
-  const url = new URL(repoUrl);
-  const [owner, repo] = url.pathname.replaceAll(/^\/|\.git$/gu, "").split("/");
-
-  if (url.hostname !== "github.com" || !(owner && repo)) {
-    throw skillErrors.invalidSkillLocator();
-  }
-
-  return { owner, repo };
-};
-
-const fetchJson = async <T>(url: string): Promise<T> => {
-  const response = await fetch(url, {
-    headers: {
-      accept: "application/vnd.github+json",
-      "user-agent": "skillpack",
-    },
-  });
-
-  if (!response.ok) {
-    throw skillErrors.skillCreationFailed("GitHub request failed");
-  }
-
-  return response.json<T>();
-};
-
-const fetchText = async (url: string) => {
-  const response = await fetch(url, {
-    headers: { "user-agent": "skillpack" },
-  });
-
-  if (!response.ok) {
-    throw skillErrors.skillCreationFailed("GitHub raw file request failed");
-  }
-
-  return response.text();
-};
-
-const getGithubRawUrl = (
-  owner: string,
-  repo: string,
-  revision: string,
-  path: string
-) => `https://raw.githubusercontent.com/${owner}/${repo}/${revision}/${path}`;
-
-const getGithubSkillPrefix = (tree: GitHubTreeItem[], skillName: string) => {
-  const skillFile = tree.find((item) => {
-    const parts = item.path.split("/");
-    return (
-      item.type === "blob" &&
-      item.path.endsWith(`/${skillContentPath}`) &&
-      parts.at(-2) === skillName
-    );
-  });
-
-  if (!skillFile) {
-    throw skillErrors.skillFileNotFound();
-  }
-
-  return skillFile.path.slice(0, -skillContentPath.length);
-};
-
-const forkResourcesFromGithub = async (
-  owner: string,
-  repo: string,
-  revision: string,
-  skillPrefix: string,
-  tree: GitHubTreeItem[]
-) => {
-  const resources: TextResourceInput[] = [];
-
-  for (const item of tree) {
-    if (
-      item.type !== "blob" ||
-      !item.path.startsWith(skillPrefix) ||
-      item.path.endsWith(`/${skillContentPath}`)
-    ) {
-      continue;
-    }
-
-    const path = item.path.slice(skillPrefix.length);
-    resources.push({
-      content: await fetchText(
-        getGithubRawUrl(owner, repo, revision, item.path)
-      ),
-      path,
-    });
-  }
-
-  return resources;
-};
 
 const validateResourcePaths = (resources: TextResourceInput[]) => {
   const resourcePaths = new Set(resources.map((resource) => resource.path));
@@ -167,16 +45,22 @@ const toStoredResource = (
 
 const toStoredResources = (
   resources: SkillResourceRow[]
-): StoredResourceObject[] =>
-  resources.map((resource) => toStoredResource(resource));
+): StoredResourceObject[] => resources.map(toStoredResource);
 
 export class SkillService {
   private readonly repository: SkillRepository;
 
+  private readonly originService: OriginService;
+
   private readonly storage: SkillStorage;
 
-  constructor(repository: SkillRepository, storage: SkillStorage) {
+  constructor(
+    repository: SkillRepository,
+    storage: SkillStorage,
+    originService: OriginService
+  ) {
     this.repository = repository;
+    this.originService = originService;
     this.storage = storage;
   }
 
@@ -387,57 +271,61 @@ export class SkillService {
     await this.repository.deleteSkillById(skill.id);
   }
 
-  async forkSkill(input: ForkSkillServiceInput) {
-    const { owner, repo } = parseGitHubRepoUrl(input.repoUrl);
-    const repoInfo = await fetchJson<{ default_branch: string }>(
-      `https://api.github.com/repos/${owner}/${repo}`
+  async forkSkill(
+    input: ForkSkillServiceInput
+  ): Promise<ForkSkillServiceResult> {
+    const definitions = await this.originService.readSkillDefinitions(
+      input.origin,
+      input.selections
     );
-    const branch = input.branch ?? repoInfo.default_branch;
-    const commit = await fetchJson<GitHubCommit>(
-      `https://api.github.com/repos/${owner}/${repo}/commits/${encodeURIComponent(branch)}`
-    );
-    const treeInfo = await fetchJson<{ sha: string; tree: GitHubTreeItem[] }>(
-      `https://api.github.com/repos/${owner}/${repo}/git/trees/${commit.commit.tree.sha}?recursive=1`
-    );
-    const skillPrefix = getGithubSkillPrefix(treeInfo.tree, input.skillName);
-    const content = await fetchText(
-      getGithubRawUrl(
-        owner,
-        repo,
-        commit.sha,
-        `${skillPrefix}${skillContentPath}`
-      )
-    );
-    const description = getSkillDescription(
-      content,
-      `Forked from ${input.repoUrl}`
-    );
-    const resources = await forkResourcesFromGithub(
-      owner,
-      repo,
-      commit.sha,
-      skillPrefix,
-      treeInfo.tree
-    );
+    const results: ForkSkillServiceResult["results"] = [];
+
+    for (const definitionResult of definitions) {
+      if (definitionResult.status === "failed") {
+        results.push(definitionResult);
+        continue;
+      }
+
+      try {
+        results.push({
+          selection: definitionResult.definition.selection,
+          skill: await this.forkSkillDefinition(
+            definitionResult.definition,
+            input.versionLabel
+          ),
+          status: "forked",
+        });
+      } catch (error) {
+        results.push({
+          error: error instanceof Error ? error.message : "Fork failed",
+          selection: definitionResult.definition.selection,
+          status: "failed",
+        });
+      }
+    }
+
+    return { results };
+  }
+
+  private async forkSkillDefinition(
+    definition: OriginSkillDefinition,
+    versionLabel: string | undefined
+  ) {
     const created = await this.createSkill({
-      content,
-      description,
-      name: input.skillName,
-      resources,
-      versionLabel: input.versionLabel,
+      content: definition.content,
+      description: definition.description,
+      name: definition.name,
+      resources: definition.resources,
+      versionLabel,
     });
     const now = new Date();
 
     await this.repository.insertSkillOrigin(
       {
-        kind: "github",
-        metadata: {
-          branch,
-          resolvedSkillPath: `${skillPrefix}${skillContentPath}`,
-          rev: commit.sha,
-        },
+        kind: definition.provenance.kind,
+        metadata: definition.provenance.metadata,
         skillId: created.skill.id,
-        url: input.repoUrl,
+        url: definition.provenance.url,
       },
       now
     );

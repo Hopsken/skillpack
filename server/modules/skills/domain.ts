@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export { skillContentPath } from "@server/constants";
+
 export const skillIdSchema = z.coerce.number().int().positive();
 export const skillVersionNumberSchema = z.coerce.number().int().positive();
 

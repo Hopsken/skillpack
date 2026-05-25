@@ -8,7 +8,9 @@ This document defines the target API contracts for Skillpack as a Skills Managem
 - Skill Name is display and search metadata, and duplicate names are allowed.
 - Skill description belongs to the resolved version snapshot.
 - Version pins use system-generated version numbers.
-- Fork from GitHub uses repository URL, branch, and Skill Name.
+- Skill Origin discovery is separate from Fork.
+- Fork accepts one Skill Origin plus one or more selected Skills.
+- Batch Fork uses partial success.
 - Partial updates use PATCH and create a new version snapshot.
 
 Base path:
@@ -24,6 +26,22 @@ type SkillOriginSummary = {
   kind: "github";
   url: string;
   metadata: Record<string, unknown> | null;
+};
+
+type SkillOrigin =
+  | {
+      kind: "github";
+      repoUrl: string;
+      branch?: string;
+    }
+  | {
+      kind: "npm";
+      packageName: string;
+      version?: string;
+    };
+
+type OriginSelection = {
+  skillName: string;
 };
 
 type ResourceManifestItem = {
@@ -318,7 +336,54 @@ x-skill-version: {versionNumber}
 
 Response body is the raw resource bytes.
 
-## Fork From GitHub
+## Discover Origin Skills
+
+```http
+POST /api/v1/origins/discover
+```
+
+Request:
+
+```ts
+type DiscoverSkillsRequest = {
+  origin: SkillOrigin;
+};
+```
+
+Response:
+
+```ts
+type DiscoverSkillsResponse = {
+  origin: SkillOrigin;
+  resolvedOrigin:
+    | {
+        kind: "github";
+        repoUrl: string;
+        branch: string;
+        rev: string;
+      }
+    | {
+        kind: "npm";
+        packageName: string;
+        version: string;
+      };
+  candidates: Array<{
+    selection: OriginSelection;
+    name: string;
+    description?: string;
+    path?: string;
+  }>;
+};
+```
+
+Behavior:
+
+- Reads one Skill Origin and returns candidate Skills that can be Forked.
+- GitHub discovery resolves the requested branch, or the repository's default branch when `branch` is omitted.
+- GitHub discovery scans well-known skill roots in order: `skills`, `.agents/skills`, `.claude/skills`, then `.codex/skills`.
+- Does not create Managed Skills or origin provenance records.
+
+## Fork From Origin
 
 ```http
 POST /api/v1/skills/fork
@@ -328,9 +393,8 @@ Request:
 
 ```ts
 type ForkSkillRequest = {
-  repoUrl: string;
-  branch?: string;
-  skillName: string;
+  origin: SkillOrigin;
+  selections: OriginSelection[];
   versionLabel?: string;
 };
 ```
@@ -338,20 +402,31 @@ type ForkSkillRequest = {
 Response:
 
 ```ts
-type ForkSkillResponse = SkillListItem;
+type ForkSkillResponse = {
+  results: Array<
+    | {
+        status: "forked";
+        selection: OriginSelection;
+        skill: SkillListItem;
+      }
+    | {
+        status: "failed";
+        selection: OriginSelection;
+        error: string;
+      }
+  >;
+};
 ```
 
 Behavior:
 
-- Reads the requested GitHub branch, or resolves the repository's default branch when `branch` is omitted.
-- Resolves the requested skill by `skillName` through the GitHub adapter.
-- Records the actual branch used for the fork.
-- Records the resolved Git revision as `rev`.
-- Creates a Managed Skill using the resolved skill name, description, content, and resources.
-- Creates version `1`.
-- Stores origin provenance with `kind`, repository URL, and metadata containing branch, revision, and resolved skill path.
+- Reads selected Skill definitions from the provided Skill Origin.
+- Creates one Managed Skill per successfully resolved selection.
+- Creates version `1` for each successfully Forked Managed Skill.
+- Stores origin provenance for each successfully Forked Managed Skill.
 - Uses SHA-256-based R2 object deduplication for all forked files.
-- Returns the created Managed Skill.
+- Uses partial success: one failed selection does not prevent other selections from becoming Managed Skills.
+- Returns per-selection success or failure results.
 
 ## Deferred APIs
 

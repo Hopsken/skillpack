@@ -6,7 +6,7 @@ This document defines the target data model for Skillpack as a Skills Management
 
 - Managed Skill identity is Skill ID.
 - Skill Name is display and search metadata, and duplicate names are allowed.
-- Skill Origin is GitHub provenance metadata for forked skills.
+- Skill Origin is provenance metadata for forked skills.
 - Fork creates a Skillpack-owned Managed Skill copy.
 - Versions are system-generated incrementing snapshots.
 - Skill description belongs to each version snapshot.
@@ -114,13 +114,13 @@ Behavior:
 
 ## `skill_origins`
 
-GitHub provenance metadata for forked Managed Skills.
+Origin provenance metadata for forked Managed Skills.
 
 ```ts
 skill_origins {
   id: number
   skillId: number
-  kind: "github"
+  kind: string
   url: string
   metadata: Record<string, unknown> | null
   createdAt: Date
@@ -137,12 +137,12 @@ foreign key: skillId -> skills.id
 
 Behavior:
 
-- Only GitHub origins are in scope for now.
+- GitHub is the first implemented Origin Adapter.
 - `kind` identifies the origin adapter type.
-- `url` is the GitHub repository URL.
+- `url` is the source URL recorded for provenance.
 - `metadata` is a JSON field for adapter-specific details such as branch, resolved revision, and resolved skill path.
 - User-created skills do not create origin records.
-- The GitHub adapter resolves skill content from repository URL, branch, and Skill Name.
+- Origin Adapters resolve skill content before Fork stores Managed Skill provenance.
 
 ## Future: `skill_sets`
 

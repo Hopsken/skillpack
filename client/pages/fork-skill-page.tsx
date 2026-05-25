@@ -1,16 +1,26 @@
+import type { DiscoverSkillsInput } from "@shared/contract/origins/requests";
 import type { ForkSkillInput } from "@shared/contract/skills/requests";
-import { useNavigate } from "react-router";
 
-import { SkillForkView, useForkSkill } from "@/features/skills";
+import {
+  SkillForkView,
+  useDiscoverSkills,
+  useForkSkill,
+} from "@/features/skills";
 
 export const ForkSkillPage = () => {
+  const discoverSkills = useDiscoverSkills();
   const forkSkill = useForkSkill();
-  const navigate = useNavigate();
 
-  const submit = async (input: ForkSkillInput) => {
-    const forked = await forkSkill.mutateAsync(input);
-    navigate(`/skills/${forked.id}`);
-  };
+  const discover = (input: DiscoverSkillsInput) =>
+    discoverSkills.mutateAsync(input);
 
-  return <SkillForkView status="Review source before use" onSubmit={submit} />;
+  const submit = (input: ForkSkillInput) => forkSkill.mutateAsync(input);
+
+  return (
+    <SkillForkView
+      status="Review origin before use"
+      onDiscover={discover}
+      onSubmit={submit}
+    />
+  );
 };

@@ -1,3 +1,4 @@
+import type { DiscoverSkillsInput } from "@shared/contract/origins/requests";
 import type {
   CreateSkillInput,
   ForkSkillInput,
@@ -8,6 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
   createManagedSkill,
+  discoverSkills,
   forkManagedSkill,
   patchManagedSkill,
   restoreManagedSkillVersion,
@@ -90,3 +92,8 @@ export const useForkSkill = () => {
     },
   });
 };
+
+export const useDiscoverSkills = () =>
+  useMutation({
+    mutationFn: (input: DiscoverSkillsInput) => discoverSkills(input),
+  });

@@ -5,6 +5,7 @@ import { contextStorage } from "hono/context-storage";
 import { createAuth } from "./auth";
 import { createDb } from "./db/client";
 import { apiError } from "./lib/http";
+import { OriginService } from "./modules/origins/service";
 import { SkillRepository } from "./modules/skills/repository";
 import { SkillService } from "./modules/skills/service";
 import { SkillStorage } from "./modules/skills/storage";
@@ -15,13 +16,18 @@ const getRequestOrigin = (url: string) => new URL(url).origin;
 
 const setRequestServices = async (c: Context<AppBindings>, next: Next) => {
   const db = createDb(c.env.DB);
+  const originService = new OriginService();
   const skillRepository = new SkillRepository(db);
   const skillStorage = new SkillStorage(c.env.BUCKET);
 
   c.set("db", db);
+  c.set("originService", originService);
   c.set("skillRepository", skillRepository);
   c.set("skillStorage", skillStorage);
-  c.set("skillService", new SkillService(skillRepository, skillStorage));
+  c.set(
+    "skillService",
+    new SkillService(skillRepository, skillStorage, originService)
+  );
   await next();
 };
 
@@ -52,6 +58,8 @@ export const app = new Hono<AppBindings>()
     const origin = getRequestOrigin(c.req.url);
     return createAuth(c.env, origin).handler(c.req.raw);
   })
+  .use("/api/v1/origins", requireAuth)
+  .use("/api/v1/origins/*", requireAuth)
   .use("/api/v1/skills", requireAuth)
   .use("/api/v1/skills/*", requireAuth)
   .route("/", apiRoutes);

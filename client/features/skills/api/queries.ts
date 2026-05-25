@@ -1,3 +1,6 @@
+import type { DiscoverSkillsInput } from "@shared/contract/origins/requests";
+import { discoverSkillsResponseSchema } from "@shared/contract/origins/responses";
+import type { DiscoverSkillsResponse } from "@shared/contract/origins/responses";
 import type {
   CreateSkillInput,
   ForkSkillInput,
@@ -5,6 +8,7 @@ import type {
   RestoreVersionInput,
 } from "@shared/contract/skills/requests";
 import {
+  forkSkillResponseSchema,
   resolvedSkillSchema,
   restoreVersionResponseSchema,
   skillListItemSchema,
@@ -15,6 +19,7 @@ import {
 } from "@shared/contract/skills/responses";
 import type {
   ResolvedSkill,
+  ForkSkillResponse,
   SkillListItem,
   SkillListResponse,
   SkillPatchedResponse,
@@ -93,6 +98,13 @@ export const createManagedSkill = async (
   return skillListItemSchema.parse(data);
 };
 
+export const discoverSkills = async (
+  input: DiscoverSkillsInput
+): Promise<DiscoverSkillsResponse> => {
+  const data = await api.post("origins/discover", { json: input }).json();
+  return discoverSkillsResponseSchema.parse(data);
+};
+
 export const patchManagedSkill = async (
   skillId: number,
   input: PatchSkillInput
@@ -114,7 +126,7 @@ export const restoreManagedSkillVersion = async (
 
 export const forkManagedSkill = async (
   input: ForkSkillInput
-): Promise<SkillListItem> => {
+): Promise<ForkSkillResponse> => {
   const data = await api.post("skills/fork", { json: input }).json();
-  return skillListItemSchema.parse(data);
+  return forkSkillResponseSchema.parse(data);
 };

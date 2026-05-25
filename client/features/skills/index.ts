@@ -6,6 +6,7 @@ export {
 } from "./api/use-skill-detail";
 export {
   useCreateSkill,
+  useDiscoverSkills,
   useForkSkill,
   usePatchSkill,
   useRestoreSkillVersion,
