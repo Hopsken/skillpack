@@ -41,7 +41,7 @@ This reference is loaded from an R2-backed skill resource.
         path: "scripts/greet.ts",
       },
     ],
-    version: "0.1.0",
+    versionLabel: "local seed",
   },
   {
     content: `# Cloudflare Worker Review
@@ -58,7 +58,7 @@ Use this skill when reviewing a Cloudflare Worker before local testing or deploy
     description:
       "Review Cloudflare Worker code for bindings, routing, and deployment readiness.",
     name: "cloudflare-worker-review",
-    version: "0.1.0",
+    versionLabel: "local seed",
   },
   {
     content: `# Frontend Structure Check
@@ -76,7 +76,7 @@ Use this skill when adding or moving frontend files.
     description:
       "Check frontend files against the pages, features, domain, components, and shared structure.",
     name: "frontend-structure-check",
-    version: "0.1.0",
+    versionLabel: "local seed",
   },
   {
     content: `# Skill Authoring Guide
@@ -93,7 +93,7 @@ Use this skill when writing a new Agent Skill.
     description:
       "Draft concise Agent Skills with clear triggers, workflows, and references.",
     name: "skill-authoring-guide",
-    version: "0.1.0",
+    versionLabel: "local seed",
   },
   {
     content: `# API Debugging Helper
@@ -110,7 +110,7 @@ Use this skill when a local API endpoint behaves unexpectedly.
     description:
       "Debug local Hono API behavior from request shape to response validation.",
     name: "api-debugging-helper",
-    version: "0.1.0",
+    versionLabel: "local seed",
   },
 ];
 
@@ -124,25 +124,35 @@ const getHeaders = () => {
   return headers;
 };
 
-const deleteSkill = async (skill) => {
-  const response = await fetch(
-    `${apiUrl}/api/v1/skills/skillpack/${skill.name}`,
-    {
-      headers: getHeaders(),
-      method: "DELETE",
-    }
-  );
+const deleteExistingSkills = async (skill) => {
+  const listResponse = await fetch(`${apiUrl}/api/v1/skills`, {
+    headers: getHeaders(),
+  });
 
-  if (response.status === 204 || response.status === 404) {
+  if (!listResponse.ok) {
     return;
   }
 
-  const body = await response.text();
-  throw new Error(`Failed to delete ${skill.name}: ${response.status} ${body}`);
+  const body = await listResponse.json();
+  const matches = body.skills?.filter((item) => item.name === skill.name) ?? [];
+
+  for (const match of matches) {
+    const response = await fetch(`${apiUrl}/api/v1/skills/${match.id}`, {
+      headers: getHeaders(),
+      method: "DELETE",
+    });
+
+    if (response.status !== 204 && response.status !== 404) {
+      const errorBody = await response.text();
+      throw new Error(
+        `Failed to delete ${skill.name}: ${response.status} ${errorBody}`
+      );
+    }
+  }
 };
 
 const createSkill = async (skill) => {
-  await deleteSkill(skill);
+  await deleteExistingSkills(skill);
 
   const response = await fetch(`${apiUrl}/api/v1/skills`, {
     body: JSON.stringify(skill),

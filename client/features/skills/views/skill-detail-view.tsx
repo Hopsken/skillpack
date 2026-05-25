@@ -1,5 +1,8 @@
-import type { ResolvedSkill, SkillVersionItem } from "@shared/schemas/skills";
-import { ArrowLeftIcon } from "lucide-react";
+import type {
+  ResolvedSkill,
+  SkillVersionItem,
+} from "@shared/contract/skills/responses";
+import { ArrowLeftIcon, RotateCcwIcon, SquarePenIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -22,11 +25,12 @@ const ResourceViewer = lazy(loadResourceViewer);
 
 interface SkillDetailViewProps {
   skill: ResolvedSkill | undefined;
-  skillHandle: string;
+  skillId: number;
   versions: SkillVersionItem[];
   versionsStatus: string;
   activeTab: SkillDetailTab;
   onTabChange: (tab: SkillDetailTab) => void;
+  onRestoreVersion: (version: number) => Promise<void>;
 }
 
 interface ResourcesPanelProps {
@@ -38,9 +42,10 @@ interface ResourcesPanelProps {
 
 interface VersionsPanelProps {
   skill: ResolvedSkill | undefined;
-  skillHandle: string;
+  skillId: number;
   versions: SkillVersionItem[];
   versionsStatus: string;
+  onRestoreVersion: (version: number) => Promise<void>;
 }
 
 const tabs = [
@@ -72,16 +77,16 @@ const getVersionClassName = (isCurrent: boolean) =>
   );
 
 const getRawResourceUrl = (
-  name: string | undefined,
-  version: string | undefined,
+  skillId: number | undefined,
+  version: number | undefined,
   path: string | undefined
 ) => {
-  if (!(name && version && path)) {
+  if (!(skillId && version && path)) {
     return;
   }
 
-  const searchParams = new URLSearchParams({ path, version });
-  return `/api/v1/skills/skillpack/${encodeURIComponent(name)}/resources/raw?${searchParams}`;
+  const searchParams = new URLSearchParams({ path, version: String(version) });
+  return `/api/v1/skills/${skillId}/resources/raw?${searchParams}`;
 };
 
 const SkillMarkdownPanel = ({
@@ -107,12 +112,12 @@ const ResourcesPanel = ({
   const shouldFetchFile =
     selectedResource && getSkillResourceKind(selectedResource) !== "image";
   const { file, status: fileStatus } = useSkillFile(
-    skill?.handle,
+    skill?.id,
     skill?.version,
     shouldFetchFile ? selectedResource.path : undefined
   );
   const rawUrl = getRawResourceUrl(
-    skill?.handle,
+    skill?.id,
     skill?.version,
     selectedResource?.path
   );
@@ -165,23 +170,47 @@ const ResourcesPanel = ({
 
 const VersionsPanel = ({
   skill,
-  skillHandle,
+  skillId,
   versions,
   versionsStatus,
+  onRestoreVersion,
 }: VersionsPanelProps) => (
   <section>
     {versions.length ? (
       versions.map((version) => (
-        <Link
+        <div
           key={version.version}
-          to={`/skills/skillpack/${skillHandle}?version=${encodeURIComponent(version.version)}&tab=versions`}
           className={getVersionClassName(skill?.version === version.version)}
         >
-          <span className="font-medium">v{version.version}</span>
-          <span className="text-muted-foreground">
-            {new Date(version.createdAt).toLocaleString()}
-          </span>
-        </Link>
+          <Link
+            to={`/skills/${skillId}?version=${version.version}&tab=versions`}
+            className="grid min-w-0 flex-1 gap-1"
+          >
+            <span className="font-medium">
+              v{version.version}
+              {version.label ? ` · ${version.label}` : ""}
+            </span>
+            <span className="truncate text-muted-foreground">
+              {version.description}
+            </span>
+          </Link>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="text-muted-foreground">
+              {new Date(version.createdAt).toLocaleString()}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void onRestoreVersion(version.version);
+              }}
+            >
+              <RotateCcwIcon />
+              Restore
+            </Button>
+          </div>
+        </div>
       ))
     ) : (
       <p className="px-6 py-4 text-sm text-muted-foreground">
@@ -193,11 +222,12 @@ const VersionsPanel = ({
 
 export const SkillDetailView = ({
   skill,
-  skillHandle,
+  skillId,
   versions,
   versionsStatus,
   activeTab,
   onTabChange,
+  onRestoreVersion,
 }: SkillDetailViewProps) => {
   const [selectedResourcePath, setSelectedResourcePath] = useState<string>();
   const firstResourcePath = skill?.resources.at(0)?.path;
@@ -221,7 +251,7 @@ export const SkillDetailView = ({
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
-            <Link to="/library" aria-label="Back to library">
+            <Link to="/skills" aria-label="Back to Managed Skills">
               <ArrowLeftIcon />
             </Link>
           </Button>
@@ -231,9 +261,19 @@ export const SkillDetailView = ({
             </h1>
           </div>
         </div>
-        <span className="shrink-0 rounded-full border border-border bg-muted px-3 py-1 text-sm font-medium text-foreground">
-          {skill ? `v${skill.version}` : "Version"}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded-full border border-border bg-muted px-3 py-1 text-sm font-medium text-foreground">
+            {skill ? `v${skill.version}` : "Version"}
+          </span>
+          {skill && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/skills/${skill.id}/edit`}>
+                <SquarePenIcon />
+                Edit
+              </Link>
+            </Button>
+          )}
+        </div>
       </header>
 
       <div className="flex h-12 shrink-0 items-end gap-1 border-b border-border px-6">
@@ -266,9 +306,10 @@ export const SkillDetailView = ({
         {activeTab === "versions" && (
           <VersionsPanel
             skill={skill}
-            skillHandle={skillHandle}
+            skillId={skillId}
             versions={versions}
             versionsStatus={versionsStatus}
+            onRestoreVersion={onRestoreVersion}
           />
         )}
       </OverlayScrollbarsComponent>

@@ -2,12 +2,15 @@ import { FileTextIcon, RefreshCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-interface EmptyLibraryProps {
+interface EmptyManagedSkillsProps {
   status: string;
   onRefresh: () => Promise<void>;
 }
 
-export const EmptyLibrary = ({ status, onRefresh }: EmptyLibraryProps) => (
+export const EmptyManagedSkills = ({
+  status,
+  onRefresh,
+}: EmptyManagedSkillsProps) => (
   <div className="flex min-h-80 flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border bg-card px-6 text-center">
     <FileTextIcon className="text-muted-foreground" />
     <div className="flex flex-col gap-1">

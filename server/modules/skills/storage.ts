@@ -1,17 +1,17 @@
 import { digestHex } from "@server/lib/crypto";
-import type { CreateSkillResourceInput } from "@shared/schemas/skills";
 
-import { skillContentPath } from "./location";
-import type { StoredResourceObject } from "./types";
+import type { StoredResourceObject, TextResourceInput } from "./types";
 
+export const skillContentPath = "SKILL.md";
 export const markdownMediaType = "text/markdown; charset=utf-8";
 const textMediaType = "text/plain; charset=utf-8";
 
-const getTextSize = (content: string) =>
-  new TextEncoder().encode(content).length;
+const textEncoder = new TextEncoder();
 
-const getResourceObjectKey = (handle: string, version: string, path: string) =>
-  `skills/skillpack/${handle}/${version}/${path}`;
+const getTextSize = (content: string) => textEncoder.encode(content).length;
+
+export const getResourceObjectKey = (sha256: string) =>
+  `objects/sha256/${sha256}`;
 
 const getDefaultMediaType = (path: string) => {
   const lowerPath = path.toLowerCase();
@@ -43,63 +43,37 @@ const getDefaultMediaType = (path: string) => {
   return textMediaType;
 };
 
-export const putSkillContent = async (
-  bucket: R2Bucket,
-  handle: string,
-  version: string,
-  content: string
-) => {
-  const objectKey = getResourceObjectKey(handle, version, skillContentPath);
-  const sha256 = await digestHex(content);
+export class SkillStorage {
+  private readonly bucket: R2Bucket;
 
-  await bucket.put(objectKey, content, {
-    customMetadata: { sha256 },
-    httpMetadata: { contentType: markdownMediaType },
-  });
+  constructor(bucket: R2Bucket) {
+    this.bucket = bucket;
+  }
 
-  return { objectKey, sha256 };
-};
+  async putTextResource(
+    resource: TextResourceInput
+  ): Promise<StoredResourceObject> {
+    const mediaType = resource.mediaType ?? getDefaultMediaType(resource.path);
+    const sha256 = await digestHex(resource.content);
+    const objectKey = getResourceObjectKey(sha256);
+    const existing = await this.bucket.head(objectKey);
 
-export const putSkillResource = async (
-  bucket: R2Bucket,
-  handle: string,
-  version: string,
-  resource: CreateSkillResourceInput
-): Promise<StoredResourceObject> => {
-  const mediaType = resource.mediaType ?? getDefaultMediaType(resource.path);
-  const objectKey = getResourceObjectKey(handle, version, resource.path);
-  const sha256 = await digestHex(resource.content);
-  const size = getTextSize(resource.content);
-
-  await bucket.put(objectKey, resource.content, {
-    customMetadata: { sha256 },
-    httpMetadata: { contentType: mediaType },
-  });
-
-  return {
-    mediaType,
-    objectKey,
-    path: resource.path,
-    sha256,
-    size,
-  };
-};
-
-export const getSkillObject = (bucket: R2Bucket, objectKey: string) =>
-  bucket.get(objectKey);
-
-export const deleteSkillObjects = async (bucket: R2Bucket, handle: string) => {
-  const prefix = `skills/skillpack/${handle}/`;
-  let cursor: string | undefined;
-
-  do {
-    const listed = await bucket.list({ cursor, prefix });
-    const keys = listed.objects.map((object) => object.key);
-
-    if (keys.length > 0) {
-      await bucket.delete(keys);
+    if (!existing) {
+      await this.bucket.put(objectKey, resource.content, {
+        customMetadata: { sha256 },
+        httpMetadata: { contentType: mediaType },
+      });
     }
 
-    cursor = listed.truncated ? listed.cursor : undefined;
-  } while (cursor);
-};
+    return {
+      mediaType,
+      path: resource.path,
+      sha256,
+      size: getTextSize(resource.content),
+    };
+  }
+
+  getSkillObject(sha256: string) {
+    return this.bucket.get(getResourceObjectKey(sha256));
+  }
+}

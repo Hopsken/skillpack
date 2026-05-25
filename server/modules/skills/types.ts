@@ -1,38 +1,30 @@
 import type {
+  skillOriginsTable,
   skillResourcesTable,
   skillVersionsTable,
   skillsTable,
 } from "@server/db/schema";
-import type { CreateSkillInput, SkillSourceType } from "@shared/schemas/skills";
+import type {
+  CreateSkillInput,
+  ForkSkillInput,
+  PatchSkillInput,
+  RestoreVersionInput,
+} from "@shared/contract/skills/requests";
 
 export type SkillRow = typeof skillsTable.$inferSelect;
 export type SkillVersionRow = typeof skillVersionsTable.$inferSelect;
 export type SkillResourceRow = typeof skillResourcesTable.$inferSelect;
+export type SkillOriginRow = typeof skillOriginsTable.$inferSelect;
 
-export interface CreateSkillResult {
-  description: string;
-  handle: string;
-  location: string;
-  name: string;
-  trust: SkillTrustResult;
-  version: string;
-}
-
-export interface SkillLocationInput {
-  handle: string;
-  sourceType: SkillSourceType;
-}
-
-export interface SkillTrustResult {
-  approvedAt: Date;
-  status: "approved";
-}
-
-export interface ReadSkillResult {
-  content: string;
-  resources: SkillResourceRow[];
+export interface SkillWithCurrentVersion {
+  origin?: SkillOriginRow | null;
   skill: SkillRow;
   version: SkillVersionRow;
+}
+
+export interface ResolvedSkillResult extends SkillWithCurrentVersion {
+  content: string;
+  resources: SkillResourceRow[];
 }
 
 export interface SkillFileResource {
@@ -43,9 +35,9 @@ export interface SkillFileResource {
 }
 
 export interface ReadSkillFileInput {
-  location: SkillLocationInput;
   path: string;
-  version?: string;
+  skillId: number;
+  version?: number;
 }
 
 export interface ReadSkillFileResult {
@@ -62,10 +54,31 @@ export interface ReadSkillTextFileResult {
 
 export interface StoredResourceObject {
   mediaType: string;
-  objectKey: string;
   path: string;
   sha256: string;
   size: number;
 }
 
+export interface TextResourceInput {
+  content: string;
+  mediaType?: string;
+  path: string;
+}
+
+export interface PatchSkillResult {
+  currentVersion: number;
+  description: string;
+  id: number;
+  name: string;
+}
+
+export interface RestoreSkillVersionResult {
+  currentVersion: number;
+  id: number;
+  restoredFromVersion: number;
+}
+
 export type CreateSkillServiceInput = CreateSkillInput;
+export type ForkSkillServiceInput = ForkSkillInput;
+export type PatchSkillServiceInput = PatchSkillInput;
+export type RestoreVersionServiceInput = RestoreVersionInput;

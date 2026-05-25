@@ -1,7 +1,7 @@
 import type {
   ResourceManifestItem,
   SkillResourceResponse,
-} from "@shared/schemas/skills";
+} from "@shared/contract/skills/responses";
 import DOMPurify from "dompurify";
 import { useEffect, useState } from "react";
 import { createHighlighterCore } from "shiki/core";

@@ -1,4 +1,4 @@
-import type { ResourceManifestItem } from "@shared/schemas/skills";
+import type { ResourceManifestItem } from "@shared/contract/skills/responses";
 
 type SkillResourceKind = "code" | "image" | "markdown" | "text";
 

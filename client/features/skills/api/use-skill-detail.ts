@@ -2,7 +2,7 @@ import type {
   ResolvedSkill,
   SkillResourceResponse,
   SkillVersionListResponse,
-} from "@shared/schemas/skills";
+} from "@shared/contract/skills/responses";
 import { useQuery } from "@tanstack/react-query";
 
 import { getApiErrorMessage } from "@/shared/api/client";
@@ -40,11 +40,13 @@ interface SkillFileState {
   status: string;
 }
 
-export const useLatestSkill = (name: string | undefined): LatestSkillState => {
+export const useLatestSkill = (
+  skillId: number | undefined
+): LatestSkillState => {
   const query = useQuery({
-    enabled: Boolean(name),
-    queryFn: () => fetchLatestSkill(name ?? ""),
-    queryKey: latestSkillQueryKey(name),
+    enabled: Boolean(skillId),
+    queryFn: () => fetchLatestSkill(skillId ?? 0),
+    queryKey: latestSkillQueryKey(skillId),
   });
 
   const status = query.isLoading
@@ -64,13 +66,13 @@ export const useLatestSkill = (name: string | undefined): LatestSkillState => {
 };
 
 export const useSkillDetail = (
-  name: string | undefined,
-  version: string | undefined
+  skillId: number | undefined,
+  version: number | undefined
 ): SkillDetailState => {
   const query = useQuery({
-    enabled: Boolean(name && version),
-    queryFn: () => fetchSkillDetail(name ?? "", version ?? ""),
-    queryKey: skillDetailQueryKey(name, version),
+    enabled: Boolean(skillId && version),
+    queryFn: () => fetchSkillDetail(skillId ?? 0, version ?? 0),
+    queryKey: skillDetailQueryKey(skillId, version),
   });
 
   const status = query.isLoading
@@ -90,12 +92,12 @@ export const useSkillDetail = (
 };
 
 export const useSkillVersions = (
-  name: string | undefined
+  skillId: number | undefined
 ): SkillVersionsState => {
   const query = useQuery({
-    enabled: Boolean(name),
-    queryFn: () => fetchSkillVersions(name ?? ""),
-    queryKey: skillVersionsQueryKey(name),
+    enabled: Boolean(skillId),
+    queryFn: () => fetchSkillVersions(skillId ?? 0),
+    queryKey: skillVersionsQueryKey(skillId),
   });
 
   const versionCount = query.data?.versions.length ?? 0;
@@ -107,14 +109,14 @@ export const useSkillVersions = (
 };
 
 export const useSkillFile = (
-  name: string | undefined,
-  version: string | undefined,
+  skillId: number | undefined,
+  version: number | undefined,
   path: string | undefined
 ): SkillFileState => {
   const query = useQuery({
-    enabled: Boolean(name && version && path),
-    queryFn: () => fetchSkillFile(name ?? "", version ?? "", path ?? ""),
-    queryKey: skillFileQueryKey(name, version, path),
+    enabled: Boolean(skillId && version && path),
+    queryFn: () => fetchSkillFile(skillId ?? 0, version ?? 0, path ?? ""),
+    queryKey: skillFileQueryKey(skillId, version, path),
   });
 
   if (!path) {

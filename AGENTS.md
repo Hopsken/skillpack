@@ -14,7 +14,7 @@ The stack is Cloudflare Workers, Hono, D1, Drizzle ORM, R2, React, Vite, Tailwin
 ```text
 client/   # Vite React SPA
 server/   # Cloudflare Worker, Hono app, routes, D1 schema
-shared/   # Zod schemas and shared TypeScript types
+shared/   # frontend/backend API contracts only
 ```
 
 Key files:
@@ -25,7 +25,7 @@ server/worker.ts              # Worker entrypoint
 server/modules/skills/route.ts # Skills API routes
 server/modules/skills/service.ts # Skills business flows
 server/db/schema.ts           # Drizzle D1 schema
-shared/schemas/skills.ts      # Zod schemas shared by API and SPA
+shared/contract/skills/*      # Zod request/response contracts
 client/app.tsx                # SPA entry UI
 wrangler.jsonc                # Cloudflare Worker, D1, R2, assets config
 vite.config.ts                # Vite + Cloudflare plugin config
@@ -67,7 +67,8 @@ After creating D1, update `wrangler.jsonc` with the production `database_id`.
 - Backend code follows module-first architecture under `server/modules/<module>/` with lightweight `route/service/repository/storage/presenter` layers.
 - In server code, prefer the `@server/*` alias for cross-module or deep imports instead of long relative paths like `../../../`.
 - Keep Hono route files focused on HTTP concerns; move business logic to module services, D1 access to repositories, and R2 access to storage helpers.
-- Use shared Zod schemas from `shared/schemas/*` for request/response validation and client parsing.
+- Use shared Zod schemas from `shared/contract/*` only for frontend/backend request and response contracts. Keep domain schemas in the owning server module.
+- In repositories, prefer Drizzle relational query API (`db.query.*`) for reads. Use insert/update/delete builders for writes.
 - Use Cloudflare bindings directly through `c.env`; avoid Cloudflare REST calls from inside the Worker.
 - Store skill content in R2 and store metadata/manifests in D1.
 

@@ -1,429 +1,234 @@
 import {
-  skillsTable,
+  skillOriginsTable,
   skillResourcesTable,
+  skillsTable,
   skillVersionsTable,
 } from "@server/db/schema";
 import type { Database } from "@server/types";
-import { and, eq, inArray, sql } from "drizzle-orm";
-import type { BatchItem } from "drizzle-orm/batch";
+import { eq as sqlEq, inArray } from "drizzle-orm";
 
 import type { StoredResourceObject } from "./types";
 
-interface InsertVersionInput {
-  contentObjectKey: string;
-  location: string;
-  resources: StoredResourceObject[];
-  resolvedLocation: string;
-  sha256: string;
-  skillId: number;
-  version: string;
-}
+export class SkillRepository {
+  private readonly db: Database;
 
-type SkillBatch = [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]];
-
-export const listSkills = (db: Database) => db.select().from(skillsTable).all();
-
-export const findSkillByLocation = async (
-  db: Database,
-  sourceType: string,
-  handle: string
-) => {
-  const [skill] = await db
-    .select()
-    .from(skillsTable)
-    .where(
-      and(
-        eq(skillsTable.sourceType, sourceType),
-        eq(skillsTable.handle, handle)
-      )
-    )
-    .limit(1);
-
-  return skill;
-};
-
-export const findSkillVersion = async (
-  db: Database,
-  skillId: number,
-  versionName: string
-) => {
-  const [version] = await db
-    .select()
-    .from(skillVersionsTable)
-    .where(
-      and(
-        eq(skillVersionsTable.skillId, skillId),
-        eq(skillVersionsTable.version, versionName)
-      )
-    )
-    .limit(1);
-
-  return version;
-};
-
-export const listSkillVersions = (db: Database, skillId: number) =>
-  db
-    .select()
-    .from(skillVersionsTable)
-    .where(eq(skillVersionsTable.skillId, skillId))
-    .all();
-
-export const listResourcesByVersionId = (
-  db: Database,
-  skillVersionId: number
-) =>
-  db
-    .select()
-    .from(skillResourcesTable)
-    .where(eq(skillResourcesTable.skillVersionId, skillVersionId))
-    .all();
-
-export const findResourceByPath = async (
-  db: Database,
-  skillVersionId: number,
-  path: string
-) => {
-  const [resource] = await db
-    .select()
-    .from(skillResourcesTable)
-    .where(
-      and(
-        eq(skillResourcesTable.skillVersionId, skillVersionId),
-        eq(skillResourcesTable.path, path)
-      )
-    )
-    .limit(1);
-
-  return resource;
-};
-
-const insertVersionStatement = (
-  db: Database,
-  input: InsertVersionInput,
-  now: Date
-) =>
-  db.insert(skillVersionsTable).values({
-    approvedAt: now,
-    createdAt: now,
-    entryPath: "SKILL.md",
-    location: input.location,
-    objectKey: input.contentObjectKey,
-    resolvedLocation: input.resolvedLocation,
-    sha256: input.sha256,
-    skillId: input.skillId,
-    version: input.version,
-  });
-
-const insertVersionForLocationStatement = (
-  db: Database,
-  input: Omit<InsertVersionInput, "skillId"> & {
-    handle: string;
-    sourceType: string;
-  },
-  now: Date
-) =>
-  db.insert(skillVersionsTable).values({
-    approvedAt: now,
-    createdAt: now,
-    entryPath: "SKILL.md",
-    location: input.location,
-    objectKey: input.contentObjectKey,
-    resolvedLocation: input.resolvedLocation,
-    sha256: input.sha256,
-    skillId: sql<number>`(
-      select id from skills
-      where source_type = ${input.sourceType} and handle = ${input.handle}
-    )`,
-    version: input.version,
-  });
-
-const insertResourceForVersionStatement = (
-  db: Database,
-  resource: StoredResourceObject,
-  input: { skillId: number; version: string },
-  now: Date
-) =>
-  db.insert(skillResourcesTable).values({
-    createdAt: now,
-    mediaType: resource.mediaType,
-    objectKey: resource.objectKey,
-    path: resource.path,
-    sha256: resource.sha256,
-    size: resource.size,
-    skillVersionId: sql<number>`(
-      select id from skill_versions
-      where skill_id = ${input.skillId} and version = ${input.version}
-    )`,
-  });
-
-const insertResourceForLocationStatement = (
-  db: Database,
-  resource: StoredResourceObject,
-  input: { handle: string; sourceType: string; version: string },
-  now: Date
-) =>
-  db.insert(skillResourcesTable).values({
-    createdAt: now,
-    mediaType: resource.mediaType,
-    objectKey: resource.objectKey,
-    path: resource.path,
-    sha256: resource.sha256,
-    size: resource.size,
-    skillVersionId: sql<number>`(
-      select skill_versions.id
-      from skill_versions
-      inner join skills on skills.id = skill_versions.skill_id
-      where skills.source_type = ${input.sourceType}
-        and skills.handle = ${input.handle}
-        and skill_versions.version = ${input.version}
-    )`,
-  });
-
-const approveVersionStatement = (
-  db: Database,
-  input: { description: string; skillId: number; versionName: string },
-  now: Date
-) =>
-  db
-    .update(skillsTable)
-    .set({
-      currentApprovedVersion: input.versionName,
-      currentApprovedVersionId: sql<number>`(
-        select id from skill_versions
-        where skill_id = ${input.skillId} and version = ${input.versionName}
-      )`,
-      description: input.description,
-      updatedAt: now,
-    })
-    .where(eq(skillsTable.id, input.skillId));
-
-const writeSkillBatchByLocation = async (
-  db: Database,
-  statements: SkillBatch,
-  sourceType: string,
-  handle: string,
-  versionName: string
-) => {
-  await db.batch(statements);
-
-  const [skill] = await db
-    .select()
-    .from(skillsTable)
-    .where(
-      and(
-        eq(skillsTable.sourceType, sourceType),
-        eq(skillsTable.handle, handle)
-      )
-    )
-    .limit(1);
-  if (!skill) {
-    throw new Error("Skill was not created");
+  constructor(db: Database) {
+    this.db = db;
   }
 
-  const [version] = await db
-    .select()
-    .from(skillVersionsTable)
-    .where(
-      and(
-        eq(skillVersionsTable.skillId, skill.id),
-        eq(skillVersionsTable.version, versionName)
-      )
-    )
-    .limit(1);
-  if (!version) {
-    throw new Error("Skill version was not created");
-  }
-
-  return { skill, version };
-};
-
-const writeSkillBatchById = async (
-  db: Database,
-  statements: SkillBatch,
-  skillId: number,
-  versionName: string
-) => {
-  await db.batch(statements);
-
-  const [skill] = await db
-    .select()
-    .from(skillsTable)
-    .where(eq(skillsTable.id, skillId))
-    .limit(1);
-  if (!skill) {
-    throw new Error("Skill was not approved");
-  }
-
-  const [version] = await db
-    .select()
-    .from(skillVersionsTable)
-    .where(
-      and(
-        eq(skillVersionsTable.skillId, skill.id),
-        eq(skillVersionsTable.version, versionName)
-      )
-    )
-    .limit(1);
-  if (!version) {
-    throw new Error("Skill version was not created");
-  }
-
-  return { skill, version };
-};
-
-export const insertSkillWithVersion = (
-  db: Database,
-  input: {
-    contentObjectKey: string;
-    description: string;
-    handle: string;
-    location: string;
-    name: string;
-    resources: StoredResourceObject[];
-    resolvedLocation: string;
-    sha256: string;
-    sourceType: string;
-    version: string;
-  }
-) => {
-  const now = new Date();
-  const statements: SkillBatch = [
-    db.insert(skillsTable).values({
-      createdAt: now,
-      currentApprovedVersion: input.version,
-      currentApprovedVersionId: 0,
-      description: input.description,
-      handle: input.handle,
-      location: input.location,
-      name: input.name,
-      sourceType: input.sourceType,
-      trustStatus: "approved",
-      updatedAt: now,
-    }),
-    insertVersionForLocationStatement(
-      db,
-      {
-        contentObjectKey: input.contentObjectKey,
-        handle: input.handle,
-        location: input.location,
-        resolvedLocation: input.resolvedLocation,
-        resources: input.resources,
-        sha256: input.sha256,
-        sourceType: input.sourceType,
-        version: input.version,
+  async listSkills() {
+    const rows = await this.db.query.skillsTable.findMany({
+      orderBy: (skills, { desc }) => [desc(skills.updatedAt)],
+      where: (skills, { isNotNull }) => isNotNull(skills.currentVersionId),
+      with: {
+        currentVersion: true,
+        origins: true,
       },
-      now
-    ),
-    ...input.resources.map((resource) =>
-      insertResourceForLocationStatement(
-        db,
-        resource,
+    });
+
+    return rows.flatMap((row) => {
+      if (!row.currentVersion) {
+        return [];
+      }
+
+      return [
         {
-          handle: input.handle,
-          sourceType: input.sourceType,
-          version: input.version,
+          origin: row.origins.at(0),
+          skill: row,
+          version: row.currentVersion,
         },
-        now
-      )
-    ),
-    db
+      ];
+    });
+  }
+
+  findSkillById(skillId: number) {
+    return this.db.query.skillsTable.findFirst({
+      where: (skills, { eq }) => eq(skills.id, skillId),
+    });
+  }
+
+  findCurrentSkillVersion(currentVersionId: number) {
+    return this.db.query.skillVersionsTable.findFirst({
+      where: (versions, { eq }) => eq(versions.id, currentVersionId),
+    });
+  }
+
+  findSkillVersionByNumber(skillId: number, versionNumber: number) {
+    return this.db.query.skillVersionsTable.findFirst({
+      where: (versions, { and, eq }) =>
+        and(
+          eq(versions.skillId, skillId),
+          eq(versions.versionNumber, versionNumber)
+        ),
+    });
+  }
+
+  async findLatestVersionNumber(skillId: number) {
+    const version = await this.db.query.skillVersionsTable.findFirst({
+      columns: { versionNumber: true },
+      orderBy: (versions, { desc }) => [desc(versions.versionNumber)],
+      where: (versions, { eq }) => eq(versions.skillId, skillId),
+    });
+
+    return version?.versionNumber ?? 0;
+  }
+
+  findSkillOrigin(skillId: number) {
+    return this.db.query.skillOriginsTable.findFirst({
+      where: (origins, { eq }) => eq(origins.skillId, skillId),
+    });
+  }
+
+  listSkillVersions(skillId: number) {
+    return this.db.query.skillVersionsTable.findMany({
+      orderBy: (versions, { desc }) => [desc(versions.versionNumber)],
+      where: (versions, { eq }) => eq(versions.skillId, skillId),
+    });
+  }
+
+  listResourcesByVersionId(skillVersionId: number) {
+    return this.db.query.skillResourcesTable.findMany({
+      where: (resources, { eq }) =>
+        eq(resources.skillVersionId, skillVersionId),
+    });
+  }
+
+  findResourceByPath(skillVersionId: number, path: string) {
+    return this.db.query.skillResourcesTable.findFirst({
+      where: (resources, { and, eq }) =>
+        and(
+          eq(resources.skillVersionId, skillVersionId),
+          eq(resources.path, path)
+        ),
+    });
+  }
+
+  async insertSkill(name: string, now: Date) {
+    const [skill] = await this.db
+      .insert(skillsTable)
+      .values({
+        createdAt: now,
+        name,
+        updatedAt: now,
+      })
+      .returning();
+
+    if (!skill) {
+      throw new Error("Skill was not created");
+    }
+
+    return skill;
+  }
+
+  updateSkillCurrentVersion(input: {
+    currentVersionId: number;
+    name?: string;
+    skillId: number;
+    updatedAt: Date;
+  }) {
+    return this.db
       .update(skillsTable)
       .set({
-        currentApprovedVersionId: sql<number>`(
-          select skill_versions.id
-          from skill_versions
-          inner join skills on skills.id = skill_versions.skill_id
-          where skills.source_type = ${input.sourceType}
-            and skills.handle = ${input.handle}
-            and skill_versions.version = ${input.version}
-        )`,
+        currentVersionId: input.currentVersionId,
+        name: input.name,
+        updatedAt: input.updatedAt,
       })
-      .where(
-        and(
-          eq(skillsTable.sourceType, input.sourceType),
-          eq(skillsTable.handle, input.handle)
-        )
-      ),
-  ];
-
-  return writeSkillBatchByLocation(
-    db,
-    statements,
-    input.sourceType,
-    input.handle,
-    input.version
-  );
-};
-
-export const insertVersionForSkill = (
-  db: Database,
-  input: {
-    contentObjectKey: string;
-    description: string;
-    location: string;
-    resources: StoredResourceObject[];
-    resolvedLocation: string;
-    sha256: string;
-    skillId: number;
-    version: string;
+      .where(sqlEq(skillsTable.id, input.skillId));
   }
-) => {
-  const now = new Date();
-  const statements: SkillBatch = [
-    insertVersionStatement(
-      db,
-      {
-        contentObjectKey: input.contentObjectKey,
-        location: input.location,
-        resolvedLocation: input.resolvedLocation,
-        resources: input.resources,
-        sha256: input.sha256,
-        skillId: input.skillId,
-        version: input.version,
-      },
-      now
-    ),
-    ...input.resources.map((resource) =>
-      insertResourceForVersionStatement(
-        db,
-        resource,
-        {
-          skillId: input.skillId,
-          version: input.version,
-        },
-        now
-      )
-    ),
-    approveVersionStatement(
-      db,
-      {
+
+  async insertSkillVersion(
+    input: {
+      changeSummary?: string;
+      description: string;
+      label?: string;
+      skillId: number;
+      versionNumber: number;
+    },
+    now: Date
+  ) {
+    const [version] = await this.db
+      .insert(skillVersionsTable)
+      .values({
+        changeSummary: input.changeSummary ?? null,
+        createdAt: now,
         description: input.description,
+        label: input.label ?? null,
         skillId: input.skillId,
-        versionName: input.version,
-      },
-      now
-    ),
-  ];
+        versionNumber: input.versionNumber,
+      })
+      .returning();
 
-  return writeSkillBatchById(db, statements, input.skillId, input.version);
-};
+    if (!version) {
+      throw new Error("Skill version was not created");
+    }
 
-export const deleteSkillById = async (db: Database, skillId: number) => {
-  const versions = await db
-    .select({ id: skillVersionsTable.id })
-    .from(skillVersionsTable)
-    .where(eq(skillVersionsTable.skillId, skillId))
-    .all();
-  const versionIds = versions.map((version) => version.id);
-
-  if (versionIds.length > 0) {
-    await db
-      .delete(skillResourcesTable)
-      .where(inArray(skillResourcesTable.skillVersionId, versionIds));
+    return version;
   }
 
-  await db
-    .delete(skillVersionsTable)
-    .where(eq(skillVersionsTable.skillId, skillId));
-  await db.delete(skillsTable).where(eq(skillsTable.id, skillId));
-};
+  insertSkillResources(
+    skillVersionId: number,
+    resources: StoredResourceObject[],
+    now: Date
+  ) {
+    if (resources.length === 0) {
+      return;
+    }
+
+    return this.db.insert(skillResourcesTable).values(
+      resources.map((resource) => ({
+        createdAt: now,
+        mediaType: resource.mediaType,
+        path: resource.path,
+        sha256: resource.sha256,
+        size: resource.size,
+        skillVersionId,
+      }))
+    );
+  }
+
+  insertSkillOrigin(
+    input: {
+      kind: "github";
+      metadata: Record<string, unknown> | null;
+      skillId: number;
+      url: string;
+    },
+    now: Date
+  ) {
+    return this.db.insert(skillOriginsTable).values({
+      createdAt: now,
+      kind: input.kind,
+      metadata: input.metadata,
+      skillId: input.skillId,
+      updatedAt: now,
+      url: input.url,
+    });
+  }
+
+  async deleteSkillById(skillId: number) {
+    const versions = await this.db.query.skillVersionsTable.findMany({
+      columns: { id: true },
+      where: (version, { eq }) => eq(version.skillId, skillId),
+    });
+    const versionIds = versions.map((version) => version.id);
+
+    await this.db
+      .update(skillsTable)
+      .set({ currentVersionId: null })
+      .where(sqlEq(skillsTable.id, skillId));
+
+    if (versionIds.length > 0) {
+      await this.db
+        .delete(skillResourcesTable)
+        .where(inArray(skillResourcesTable.skillVersionId, versionIds));
+    }
+
+    await this.db
+      .delete(skillOriginsTable)
+      .where(sqlEq(skillOriginsTable.skillId, skillId));
+    await this.db
+      .delete(skillVersionsTable)
+      .where(sqlEq(skillVersionsTable.skillId, skillId));
+    await this.db.delete(skillsTable).where(sqlEq(skillsTable.id, skillId));
+  }
+}

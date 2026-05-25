@@ -1,4 +1,4 @@
-import { LibraryIcon, LogOutIcon, UserCircleIcon } from "lucide-react";
+import { FileTextIcon, LogOutIcon, UserCircleIcon } from "lucide-react";
 import { matchPath, NavLink, useLocation } from "react-router";
 
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { signOut, useSession } from "@/shared/auth/client";
 
-const libraryActivePatterns = ["/library/*", "/skills/*"] as const;
+const managedSkillsActivePatterns = ["/skills/*"] as const;
 
 const matchesAnyPath = (pathname: string, patterns: readonly string[]) =>
   patterns.some((pattern) => matchPath(pattern, pathname));
@@ -28,7 +28,10 @@ const signOutAndRedirect = async () => {
 export const AppSidebar = () => {
   const { pathname } = useLocation();
   const session = useSession();
-  const isLibraryActive = matchesAnyPath(pathname, libraryActivePatterns);
+  const isManagedSkillsActive = matchesAnyPath(
+    pathname,
+    managedSkillsActivePatterns
+  );
   const userName = session.data?.user.name ?? "Account";
 
   return (
@@ -47,14 +50,14 @@ export const AppSidebar = () => {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={isLibraryActive}
+                  isActive={isManagedSkillsActive}
                   size="lg"
-                  tooltip="Library"
+                  tooltip="Managed Skills"
                   className="font-medium"
                 >
-                  <NavLink to="/library">
-                    <LibraryIcon />
-                    <span>Library</span>
+                  <NavLink to="/skills">
+                    <FileTextIcon />
+                    <span>Managed Skills</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

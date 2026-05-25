@@ -1,33 +1,46 @@
 CREATE TABLE `skills` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  `source_type` text NOT NULL,
-  `handle` text NOT NULL,
-  `location` text NOT NULL,
   `name` text NOT NULL,
-  `description` text NOT NULL,
-  `current_approved_version_id` integer NOT NULL,
-  `current_approved_version` text NOT NULL,
-  `trust_status` text NOT NULL,
+  `current_version_id` integer,
   `created_at` integer NOT NULL,
   `updated_at` integer NOT NULL
 );
 
-CREATE UNIQUE INDEX `skills_source_handle_unique` ON `skills` (`source_type`, `handle`);
-CREATE UNIQUE INDEX `skills_source_location_unique` ON `skills` (`source_type`, `location`);
-
 CREATE TABLE `skill_versions` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   `skill_id` integer NOT NULL,
-  `version` text NOT NULL,
-  `location` text NOT NULL,
-  `resolved_location` text NOT NULL,
-  `entry_path` text DEFAULT 'SKILL.md' NOT NULL,
-  `object_key` text NOT NULL,
-  `sha256` text NOT NULL,
-  `approved_at` integer NOT NULL,
-  `created_at` integer NOT NULL,
-  FOREIGN KEY (`skill_id`) REFERENCES `skills`(`id`) ON UPDATE no action ON DELETE no action
+  `version_number` integer NOT NULL,
+  `description` text NOT NULL,
+  `label` text,
+  `change_summary` text,
+  `created_at` integer NOT NULL
 );
 
 CREATE INDEX `skill_versions_skill_idx` ON `skill_versions` (`skill_id`);
-CREATE UNIQUE INDEX `skill_versions_skill_version_unique` ON `skill_versions` (`skill_id`, `version`);
+CREATE UNIQUE INDEX `skill_versions_skill_version_unique` ON `skill_versions` (`skill_id`, `version_number`);
+
+CREATE TABLE `skill_resources` (
+  `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  `skill_version_id` integer NOT NULL,
+  `path` text NOT NULL,
+  `sha256` text NOT NULL,
+  `media_type` text NOT NULL,
+  `size` integer NOT NULL,
+  `created_at` integer NOT NULL
+);
+
+CREATE INDEX `skill_resources_sha_idx` ON `skill_resources` (`sha256`);
+CREATE INDEX `skill_resources_version_idx` ON `skill_resources` (`skill_version_id`);
+CREATE UNIQUE INDEX `skill_resources_version_path_unique` ON `skill_resources` (`skill_version_id`, `path`);
+
+CREATE TABLE `skill_origins` (
+  `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  `skill_id` integer NOT NULL,
+  `kind` text NOT NULL,
+  `url` text NOT NULL,
+  `metadata` text,
+  `created_at` integer NOT NULL,
+  `updated_at` integer NOT NULL
+);
+
+CREATE INDEX `skill_origins_skill_idx` ON `skill_origins` (`skill_id`);

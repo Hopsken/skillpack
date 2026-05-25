@@ -11,4 +11,7 @@ export default defineConfig({
     ".agents/skills/**",
     ".claude/skills/**",
   ],
+  rules: {
+    "sort-keys": ["error", "asc", { allowLineSeparatedGroups: true }],
+  },
 });

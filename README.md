@@ -69,6 +69,9 @@ pnpm db:migrate:local
 pnpm db:migrate:remote
 ```
 
+The current development migration resets Managed Skill tables to the Skill ID
+model and drops old skill rows. Auth tables are not reset.
+
 Seed local development data while `pnpm dev` is running. The skills API is protected, so pass a session cookie from a local browser login:
 
 ```bash
@@ -86,12 +89,16 @@ pnpm deploy
 ```text
 GET  /api/health
 GET  /api/v1/skills
-GET    /api/v1/skills/:sourceType/*locator
-GET    /api/v1/skills/:sourceType/*locator?version=
-GET    /api/v1/skills/:sourceType/*locator/resources?version=&path=
-GET    /api/v1/skills/:sourceType/*locator/resources/raw?version=&path=
-POST   /api/v1/skills
-DELETE /api/v1/skills/:sourceType/*locator
+GET  /api/v1/skills/:skillId
+GET  /api/v1/skills/:skillId?version=
+GET  /api/v1/skills/:skillId/versions
+GET  /api/v1/skills/:skillId/resources?version=&path=
+GET  /api/v1/skills/:skillId/resources/raw?version=&path=
+POST /api/v1/skills
+POST /api/v1/skills/fork
+PATCH /api/v1/skills/:skillId
+POST /api/v1/skills/:skillId/versions/:versionNumber/restore
+DELETE /api/v1/skills/:skillId
 ```
 
 Create a skill:
@@ -102,7 +109,7 @@ curl -X POST http://localhost:5173/api/v1/skills \
   -d '{
     "name": "api-skill-demo",
     "description": "Demo API-backed skill",
-    "version": "0.1.0",
+    "versionLabel": "first draft",
     "content": "# Demo Skill\n\nUse this skill when validating API-backed skills.",
     "resources": [
       {
@@ -119,8 +126,8 @@ curl -X POST http://localhost:5173/api/v1/skills \
   }'
 ```
 
-Created Skillpack-managed skills resolve to locations like:
+Created Skillpack-managed skills are addressed by Skill ID:
 
 ```text
-skill://skillpack/api-skill-demo
+/api/v1/skills/1
 ```

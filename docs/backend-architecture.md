@@ -48,7 +48,7 @@ Examples of module-sized capabilities:
 - Collection, packaging, or export workflows
 - External source integrations
 
-Shared low-level utilities belong in `server/lib`. Database table definitions belong in `server/db/schema.ts`. Shared API contracts belong in `shared/schemas/*`.
+Shared low-level utilities belong in `server/lib`. Database table definitions belong in `server/db/schema.ts`. Shared API contracts belong in `shared/contract/*`.
 
 ## Layer Responsibilities
 
@@ -164,7 +164,7 @@ if (error instanceof EntityNotFoundError) {
 - Storage DTOs
 - Source DTOs
 
-Public API contracts belong in `shared/schemas/*`.
+Public API contracts belong in `shared/contract/*`.
 
 ## Dependency Rules
 
@@ -265,7 +265,7 @@ New object storage rule
   server/modules/<module>/storage.ts
 
 New response field
-  shared/schemas/*.ts
+  shared/contract/*.ts
   server/modules/<module>/presenter.ts
 
 New external source integration

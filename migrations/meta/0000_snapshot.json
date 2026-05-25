@@ -1,9 +1,74 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "32f2360b-415d-4e51-91e6-e8aa87b57400",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "7a335aeb-166b-40ac-b7ed-6f7bab96d74c",
+  "prevId": "32f2360b-415d-4e51-91e6-e8aa87b57400",
   "tables": {
+    "skill_origins": {
+      "name": "skill_origins",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "skill_id": {
+          "name": "skill_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "skill_origins_skill_idx": {
+          "name": "skill_origins_skill_idx",
+          "columns": ["skill_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "skill_resources": {
       "name": "skill_resources",
       "columns": {
@@ -23,13 +88,6 @@
         },
         "media_type": {
           "name": "media_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "object_key": {
-          "name": "object_key",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -65,6 +123,11 @@
         }
       },
       "indexes": {
+        "skill_resources_sha_idx": {
+          "name": "skill_resources_sha_idx",
+          "columns": ["sha256"],
+          "isUnique": false
+        },
         "skill_resources_version_idx": {
           "name": "skill_resources_version_idx",
           "columns": ["skill_version_id"],
@@ -76,17 +139,7 @@
           "isUnique": true
         }
       },
-      "foreignKeys": {
-        "skill_resources_skill_version_id_skill_versions_id_fk": {
-          "name": "skill_resources_skill_version_id_skill_versions_id_fk",
-          "tableFrom": "skill_resources",
-          "tableTo": "skill_versions",
-          "columnsFrom": ["skill_version_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -94,11 +147,11 @@
     "skill_versions": {
       "name": "skill_versions",
       "columns": {
-        "approved_at": {
-          "name": "approved_at",
-          "type": "integer",
+        "change_summary": {
+          "name": "change_summary",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "created_at": {
@@ -108,13 +161,12 @@
           "notNull": true,
           "autoincrement": false
         },
-        "entry_path": {
-          "name": "entry_path",
+        "description": {
+          "name": "description",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "'SKILL.md'"
+          "autoincrement": false
         },
         "id": {
           "name": "id",
@@ -123,32 +175,11 @@
           "notNull": true,
           "autoincrement": true
         },
-        "location": {
-          "name": "location",
+        "label": {
+          "name": "label",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "object_key": {
-          "name": "object_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "resolved_location": {
-          "name": "resolved_location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "sha256": {
-          "name": "sha256",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "skill_id": {
@@ -158,9 +189,9 @@
           "notNull": true,
           "autoincrement": false
         },
-        "version": {
-          "name": "version",
-          "type": "text",
+        "version_number": {
+          "name": "version_number",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -174,21 +205,11 @@
         },
         "skill_versions_skill_version_unique": {
           "name": "skill_versions_skill_version_unique",
-          "columns": ["skill_id", "version"],
+          "columns": ["skill_id", "version_number"],
           "isUnique": true
         }
       },
-      "foreignKeys": {
-        "skill_versions_skill_id_skills_id_fk": {
-          "name": "skill_versions_skill_id_skills_id_fk",
-          "tableFrom": "skill_versions",
-          "tableTo": "skills",
-          "columnsFrom": ["skill_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -203,32 +224,11 @@
           "notNull": true,
           "autoincrement": false
         },
-        "current_approved_version": {
-          "name": "current_approved_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "current_approved_version_id": {
-          "name": "current_approved_version_id",
+        "current_version_id": {
+          "name": "current_version_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "handle": {
-          "name": "handle",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "id": {
@@ -238,29 +238,8 @@
           "notNull": true,
           "autoincrement": true
         },
-        "location": {
-          "name": "location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
         "name": {
           "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "source_type": {
-          "name": "source_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "trust_status": {
-          "name": "trust_status",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -274,18 +253,7 @@
           "autoincrement": false
         }
       },
-      "indexes": {
-        "skills_source_handle_unique": {
-          "name": "skills_source_handle_unique",
-          "columns": ["source_type", "handle"],
-          "isUnique": true
-        },
-        "skills_source_location_unique": {
-          "name": "skills_source_location_unique",
-          "columns": ["source_type", "location"],
-          "isUnique": true
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},

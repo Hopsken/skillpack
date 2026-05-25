@@ -3,30 +3,29 @@ import { apiError } from "@server/lib/http";
 import type { AppBindings } from "@server/types";
 import {
   createSkillSchema,
-  skillResourcePathSchema,
-} from "@shared/schemas/skills";
+  forkSkillSchema,
+  patchSkillSchema,
+  restoreVersionSchema,
+} from "@shared/contract/skills/requests";
 import { Hono } from "hono";
 import type { Context } from "hono";
 
-import { SkillModuleError, skillErrors } from "./errors";
-import { parseSkillLocationInput } from "./location";
 import {
-  presentCreatedSkill,
+  skillIdSchema,
+  skillResourcePathSchema,
+  skillVersionNumberSchema,
+} from "./domain";
+import { SkillModuleError, skillErrors } from "./errors";
+import {
+  presentPatchedSkill,
+  presentRestoredSkill,
   presentSkill,
   presentSkillFile,
   presentSkillList,
+  presentSkillSummary,
   presentSkillVersions,
 } from "./presenter";
-import {
-  createSkillpackSkill,
-  deleteSkill,
-  listSkillVersionsForSkill,
-  listSkills,
-  readSkillResource,
-  readSkillTextFile,
-  resolveSkill,
-} from "./service";
-import type { ReadSkillFileInput } from "./types";
+import type { ReadSkillFileInput, ReadSkillFileResult } from "./types";
 
 const skillErrorStatus = {
   "duplicate-resource-path": 400,
@@ -45,6 +44,34 @@ const skillErrorStatus = {
 
 type SkillContext = Context<AppBindings>;
 
+const parseSkillId = (value: string | undefined) => {
+  const result = skillIdSchema.safeParse(value);
+
+  if (!result.success) {
+    throw skillErrors.invalidSkillLocator();
+  }
+
+  return result.data;
+};
+
+const parseRequiredVersion = (value: string | undefined) => {
+  const result = skillVersionNumberSchema.safeParse(value);
+
+  if (!result.success) {
+    throw skillErrors.skillVersionNotFound();
+  }
+
+  return result.data;
+};
+
+const parseVersion = (value: string | undefined) => {
+  if (!value) {
+    return;
+  }
+
+  return parseRequiredVersion(value);
+};
+
 const parseFilePath = (path: string | undefined) => {
   const pathResult = skillResourcePathSchema.safeParse(path);
 
@@ -55,48 +82,21 @@ const parseFilePath = (path: string | undefined) => {
   return pathResult.data;
 };
 
-const getRequestedSkillFileInput = (
-  c: SkillContext,
-  sourceType: string,
-  locator: string
-): ReadSkillFileInput => ({
-  location: parseSkillLocationInput(sourceType, locator),
+const getRequestedSkillFileInput = (c: SkillContext): ReadSkillFileInput => ({
   path: parseFilePath(c.req.query("path")),
-  version: c.req.query("version"),
+  skillId: parseSkillId(c.req.param("skillId")),
+  version: parseVersion(c.req.query("version")),
 });
 
-const readRequestedSkillFile = (
-  c: SkillContext,
-  sourceType: string,
-  locator: string
-) =>
-  readSkillResource(
-    c.var.db,
-    c.env.BUCKET,
-    getRequestedSkillFileInput(c, sourceType, locator)
-  );
-
-const readRequestedSkillTextFile = (
-  c: SkillContext,
-  sourceType: string,
-  locator: string
-) =>
-  readSkillTextFile(
-    c.var.db,
-    c.env.BUCKET,
-    getRequestedSkillFileInput(c, sourceType, locator)
-  );
-
-const getRawFileHeaders = (
-  result: Awaited<ReturnType<typeof readSkillResource>>
-) =>
+const getRawFileHeaders = (result: ReadSkillFileResult) =>
   new Headers({
     "content-length": String(result.object.size),
     "content-type": result.resource.mediaType,
     "x-skill-resource-sha256": result.resource.sha256,
+    "x-skill-version": String(result.version.versionNumber),
   });
 
-const handleSkillError = (c: SkillContext, error: unknown) => {
+const handleSkillRouteError = (error: Error, c: SkillContext) => {
   if (error instanceof SkillModuleError) {
     return c.json(apiError(error.message), skillErrorStatus[error.code]);
   }
@@ -104,89 +104,69 @@ const handleSkillError = (c: SkillContext, error: unknown) => {
   throw error;
 };
 
-const parseTail = (tail: string) => {
-  const parts = tail.split("/").filter(Boolean);
-
-  if (parts.length === 0) {
-    throw skillErrors.invalidSkillLocator();
-  }
-
-  return parts;
-};
-
-const handleSourceQualifiedRequest = async (c: SkillContext) => {
-  try {
-    const sourceType = c.req.param("sourceType") ?? "";
-    const parts = parseTail(c.req.param("locator") ?? "");
-    const locator = parts[0] ?? "";
-    const location = parseSkillLocationInput(sourceType, locator);
-
-    if (parts.length === 1 && c.req.method === "GET") {
-      const result = await resolveSkill(
-        c.var.db,
-        c.env.BUCKET,
-        location,
-        c.req.query("version")
-      );
-      return c.json(presentSkill(result));
-    }
-
-    if (parts.length === 1 && c.req.method === "DELETE") {
-      await deleteSkill(c.var.db, c.env.BUCKET, location);
-      return c.body(null, 204);
-    }
-
-    if (
-      parts.length === 2 &&
-      parts[1] === "versions" &&
-      c.req.method === "GET"
-    ) {
-      const result = await listSkillVersionsForSkill(c.var.db, location);
-      return c.json(presentSkillVersions(result.skill, result.versions));
-    }
-
-    if (
-      parts.length === 2 &&
-      parts[1] === "resources" &&
-      c.req.method === "GET"
-    ) {
-      const result = await readRequestedSkillTextFile(c, sourceType, locator);
-      return c.json(presentSkillFile(result));
-    }
-
-    if (
-      parts.length === 3 &&
-      parts[1] === "resources" &&
-      parts[2] === "raw" &&
-      c.req.method === "GET"
-    ) {
-      const result = await readRequestedSkillFile(c, sourceType, locator);
-      return new Response(result.object.body, {
-        headers: getRawFileHeaders(result),
-      });
-    }
-
-    return c.json(apiError("Skill route not found"), 404);
-  } catch (error) {
-    return handleSkillError(c, error);
-  }
-};
-
 export const skillsRoute = new Hono<AppBindings>()
+  .onError(handleSkillRouteError)
   .get("/", async (c) => {
-    const skills = await listSkills(c.var.db);
+    const skills = await c.var.skillService.listSkills();
     return c.json(presentSkillList(skills));
   })
   .post("/", zValidator("json", createSkillSchema), async (c) => {
-    try {
-      const result = await createSkillpackSkill(
-        c.var.db,
-        c.env.BUCKET,
+    const result = await c.var.skillService.createSkill(c.req.valid("json"));
+    return c.json(presentSkillSummary(result), 201);
+  })
+  .post("/fork", zValidator("json", forkSkillSchema), async (c) => {
+    const result = await c.var.skillService.forkSkill(c.req.valid("json"));
+    return c.json(presentSkillSummary(result), 201);
+  })
+  .get("/:skillId", async (c) => {
+    const result = await c.var.skillService.resolveSkill(
+      parseSkillId(c.req.param("skillId")),
+      parseVersion(c.req.query("version"))
+    );
+    return c.json(presentSkill(result));
+  })
+  .patch("/:skillId", zValidator("json", patchSkillSchema), async (c) => {
+    const result = await c.var.skillService.patchSkill(
+      parseSkillId(c.req.param("skillId")),
+      c.req.valid("json")
+    );
+    return c.json(presentPatchedSkill(result));
+  })
+  .delete("/:skillId", async (c) => {
+    await c.var.skillService.deleteSkill(parseSkillId(c.req.param("skillId")));
+    return c.body(null, 204);
+  })
+  .get("/:skillId/versions", async (c) => {
+    const result = await c.var.skillService.listSkillVersionsForSkill(
+      parseSkillId(c.req.param("skillId"))
+    );
+    return c.json(
+      presentSkillVersions(result.skill, result.currentVersion, result.versions)
+    );
+  })
+  .post(
+    "/:skillId/versions/:versionNumber/restore",
+    zValidator("json", restoreVersionSchema),
+    async (c) => {
+      const result = await c.var.skillService.restoreSkillVersion(
+        parseSkillId(c.req.param("skillId")),
+        parseRequiredVersion(c.req.param("versionNumber")),
         c.req.valid("json")
       );
-      return c.json(presentCreatedSkill(result), 201);
-    } catch (error) {
-      return handleSkillError(c, error);
+      return c.json(presentRestoredSkill(result));
     }
+  )
+  .get("/:skillId/resources", async (c) => {
+    const result = await c.var.skillService.readSkillTextFile(
+      getRequestedSkillFileInput(c)
+    );
+    return c.json(presentSkillFile(result));
   })
-  .all("/:sourceType/:locator{.+}", handleSourceQualifiedRequest);
+  .get("/:skillId/resources/raw", async (c) => {
+    const result = await c.var.skillService.readSkillResource(
+      getRequestedSkillFileInput(c)
+    );
+    return new Response(result.object.body, {
+      headers: getRawFileHeaders(result),
+    });
+  });

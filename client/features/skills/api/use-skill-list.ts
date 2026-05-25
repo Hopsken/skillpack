@@ -1,4 +1,4 @@
-import type { SkillListItem } from "@shared/schemas/skills";
+import type { SkillListItem } from "@shared/contract/skills/responses";
 import { useQuery } from "@tanstack/react-query";
 
 import { getApiErrorMessage } from "@/shared/api/client";

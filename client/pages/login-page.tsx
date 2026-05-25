@@ -4,7 +4,7 @@ import { Navigate, useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { signInWithOidc, useSession } from "@/shared/auth/client";
 
-const defaultCallbackURL = "/library";
+const defaultCallbackURL = "/skills";
 
 const getCallbackURL = (redirect: string | null) => {
   if (redirect?.startsWith("/") && !redirect.startsWith("//")) {

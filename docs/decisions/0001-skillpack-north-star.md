@@ -25,7 +25,7 @@ That direction conflicts with the product stance Skillpack now needs:
 The existing code still reflects the older model in several places:
 
 - `server/db/schema.ts` stores `skills.source_type`, `skills.handle`, `skills.location`, `skills.current_approved_version`, and string versions.
-- `shared/schemas/skills.ts` exposes `source`, `handle`, and string `version` fields.
+- the old shared skill contract exposed `source`, `handle`, and string `version` fields.
 - `server/modules/skills/location.ts` parses source-qualified requests and builds `skill://skillpack/{handle}` locators.
 - `server/modules/skills/route.ts` serves `/api/v1/skills/:sourceType/:locator`.
 - `server/modules/skills/storage.ts` stores objects under `skills/skillpack/{handle}/{version}/...`.
@@ -184,7 +184,7 @@ This ADR does not design:
 
 Affected files:
 
-- `shared/schemas/skills.ts`
+- `shared/contract/skills/*`
 
 Required changes:
 

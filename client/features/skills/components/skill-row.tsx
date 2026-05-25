@@ -1,4 +1,4 @@
-import type { SkillListItem } from "@shared/schemas/skills";
+import type { SkillListItem } from "@shared/contract/skills/responses";
 import { Link } from "react-router";
 
 interface SkillRowProps {
@@ -8,7 +8,7 @@ interface SkillRowProps {
 export const SkillRow = ({ skill }: SkillRowProps) => (
   <article className="border-b border-border last:border-b-0 hover:bg-muted/40">
     <Link
-      to={`/skills/${skill.source.type}/${skill.handle}`}
+      to={`/skills/${skill.id}`}
       className="flex items-start justify-between gap-4 px-6 py-3"
     >
       <div className="min-w-0 flex-1">
@@ -20,7 +20,7 @@ export const SkillRow = ({ skill }: SkillRowProps) => (
         </p>
       </div>
       <div className="shrink-0 text-xs text-muted-foreground">
-        {skill.source.type} / v{skill.version}
+        ID {skill.id} / v{skill.currentVersion}
       </div>
     </Link>
   </article>

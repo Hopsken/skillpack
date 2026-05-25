@@ -18,9 +18,24 @@ const loadLatestSkillPage = async () => {
   return { default: module.LatestSkillPage };
 };
 
-const loadLibraryPage = async () => {
-  const module = await import("@/pages/library-page");
-  return { default: module.LibraryPage };
+const loadCreateSkillPage = async () => {
+  const module = await import("@/pages/create-skill-page");
+  return { default: module.CreateSkillPage };
+};
+
+const loadEditSkillPage = async () => {
+  const module = await import("@/pages/edit-skill-page");
+  return { default: module.EditSkillPage };
+};
+
+const loadForkSkillPage = async () => {
+  const module = await import("@/pages/fork-skill-page");
+  return { default: module.ForkSkillPage };
+};
+
+const loadManagedSkillsPage = async () => {
+  const module = await import("@/pages/managed-skills-page");
+  return { default: module.ManagedSkillsPage };
 };
 
 const loadLoginPage = async () => {
@@ -28,9 +43,12 @@ const loadLoginPage = async () => {
   return { default: module.LoginPage };
 };
 
+const CreateSkillPage = lazy(loadCreateSkillPage);
+const EditSkillPage = lazy(loadEditSkillPage);
+const ForkSkillPage = lazy(loadForkSkillPage);
 const LatestSkillPage = lazy(loadLatestSkillPage);
-const LibraryPage = lazy(loadLibraryPage);
 const LoginPage = lazy(loadLoginPage);
+const ManagedSkillsPage = lazy(loadManagedSkillsPage);
 
 const getLoginPath = (pathname: string, search: string) => {
   const redirect = `${pathname}${search}`;
@@ -65,9 +83,12 @@ export const App = () => (
     <Routes>
       <Route path="login" element={<LoginPage />} />
       <Route element={<ProtectedLayout />}>
-        <Route index element={<Navigate to="/library" replace />} />
-        <Route path="library" element={<LibraryPage />} />
-        <Route path="skills/skillpack/:handle" element={<LatestSkillPage />} />
+        <Route index element={<Navigate to="/skills" replace />} />
+        <Route path="skills" element={<ManagedSkillsPage />} />
+        <Route path="skills/new" element={<CreateSkillPage />} />
+        <Route path="skills/fork" element={<ForkSkillPage />} />
+        <Route path="skills/:skillId" element={<LatestSkillPage />} />
+        <Route path="skills/:skillId/edit" element={<EditSkillPage />} />
       </Route>
     </Routes>
   </Suspense>
