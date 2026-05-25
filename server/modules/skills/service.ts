@@ -125,23 +125,16 @@ export class SkillService {
       input.content,
       input.resources
     );
-    const version = await this.createVersionSnapshot(
+    await this.createVersionSnapshot(
       {
         changeSummary: input.changeSummary,
         description: input.description,
         label: input.versionLabel,
         resources,
         skillId: skill.id,
-        versionNumber: 1,
       },
       now
     );
-
-    await this.repository.updateSkillCurrentVersion({
-      currentVersionId: version.id,
-      skillId: skill.id,
-      updatedAt: now,
-    });
 
     return this.resolveSkill(skill.id);
   }
@@ -159,8 +152,6 @@ export class SkillService {
       input
     );
     const now = new Date();
-    const versionNumber =
-      (await this.repository.findLatestVersionNumber(skill.id)) + 1;
     const nextDescription = input.description ?? version.description;
     const nextName = input.name ?? skill.name;
     const nextVersion = await this.createVersionSnapshot(
@@ -168,22 +159,15 @@ export class SkillService {
         changeSummary: input.changeSummary,
         description: nextDescription,
         label: input.versionLabel,
+        name: nextName,
         resources,
         skillId: skill.id,
-        versionNumber,
       },
       now
     );
 
-    await this.repository.updateSkillCurrentVersion({
-      currentVersionId: nextVersion.id,
-      name: nextName,
-      skillId: skill.id,
-      updatedAt: now,
-    });
-
     return {
-      currentVersion: versionNumber,
+      currentVersion: nextVersion.versionNumber,
       description: nextDescription,
       id: skill.id,
       name: nextName,
@@ -203,8 +187,6 @@ export class SkillService {
       version.id
     );
     const now = new Date();
-    const nextVersionNumber =
-      (await this.repository.findLatestVersionNumber(skill.id)) + 1;
     const nextVersion = await this.createVersionSnapshot(
       {
         changeSummary: input.changeSummary,
@@ -212,19 +194,12 @@ export class SkillService {
         label: input.versionLabel,
         resources: ResourceManifest.restoreSnapshot(sourceResources),
         skillId: skill.id,
-        versionNumber: nextVersionNumber,
       },
       now
     );
 
-    await this.repository.updateSkillCurrentVersion({
-      currentVersionId: nextVersion.id,
-      skillId: skill.id,
-      updatedAt: now,
-    });
-
     return {
-      currentVersion: nextVersionNumber,
+      currentVersion: nextVersion.versionNumber,
       id: skill.id,
       restoredFromVersion: versionNumber,
     };
@@ -330,33 +305,27 @@ export class SkillService {
     return { origin, skill, version };
   }
 
-  private async createVersionSnapshot(
+  private createVersionSnapshot(
     input: {
       changeSummary?: string;
       description: string;
       label?: string;
+      name?: string;
       resources: StoredResourceObject[];
       skillId: number;
-      versionNumber: number;
     },
     now: Date
   ) {
-    const version = await this.repository.insertSkillVersion(
+    return this.repository.commitSkillVersion(
       {
         changeSummary: input.changeSummary,
         description: input.description,
         label: input.label,
+        name: input.name,
+        resources: input.resources,
         skillId: input.skillId,
-        versionNumber: input.versionNumber,
       },
       now
     );
-
-    await this.repository.insertSkillResources(
-      version.id,
-      input.resources,
-      now
-    );
-    return version;
   }
 }

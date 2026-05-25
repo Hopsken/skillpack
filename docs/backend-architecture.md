@@ -114,6 +114,12 @@ Rules:
 - Repositories must not validate HTTP requests.
 - Repositories must not depend on Hono context.
 
+Managed Skill Version commits are a repository concern. The service prepares a
+complete Resource Manifest snapshot first, then the repository commits the
+version row, resource rows, and `skills.current_version_id` pointer with D1
+`batch()` and SQL subqueries. Do not use Drizzle `transaction()` for this path;
+D1 rejects the SQL `BEGIN`/`SAVEPOINT` statements emitted by that adapter.
+
 ### `storage.ts`
 
 `storage.ts` handles object/blob storage only:

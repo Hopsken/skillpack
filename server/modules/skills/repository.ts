@@ -5,9 +5,15 @@ import {
   skillVersionsTable,
 } from "@server/db/schema";
 import type { Database } from "@server/types";
-import { eq as sqlEq, inArray } from "drizzle-orm";
+import { eq as sqlEq, inArray, sql } from "drizzle-orm";
 
+import { skillErrors } from "./errors";
 import type { StoredResourceObject } from "./types";
+
+const isUniqueConstraintError = (error: unknown) =>
+  error instanceof Error &&
+  error.message.includes("UNIQUE constraint failed") &&
+  error.message.includes("skill_versions");
 
 export class SkillRepository {
   private readonly db: Database;
@@ -63,16 +69,6 @@ export class SkillRepository {
     });
   }
 
-  async findLatestVersionNumber(skillId: number) {
-    const version = await this.db.query.skillVersionsTable.findFirst({
-      columns: { versionNumber: true },
-      orderBy: (versions, { desc }) => [desc(versions.versionNumber)],
-      where: (versions, { eq }) => eq(versions.skillId, skillId),
-    });
-
-    return version?.versionNumber ?? 0;
-  }
-
   findSkillOrigin(skillId: number) {
     return this.db.query.skillOriginsTable.findFirst({
       where: (origins, { eq }) => eq(origins.skillId, skillId),
@@ -120,70 +116,84 @@ export class SkillRepository {
     return skill;
   }
 
-  updateSkillCurrentVersion(input: {
-    currentVersionId: number;
-    name?: string;
-    skillId: number;
-    updatedAt: Date;
-  }) {
-    return this.db
-      .update(skillsTable)
-      .set({
-        currentVersionId: input.currentVersionId,
-        name: input.name,
-        updatedAt: input.updatedAt,
-      })
-      .where(sqlEq(skillsTable.id, input.skillId));
-  }
-
-  async insertSkillVersion(
+  async commitSkillVersion(
     input: {
       changeSummary?: string;
       description: string;
       label?: string;
+      name?: string;
+      resources: StoredResourceObject[];
       skillId: number;
-      versionNumber: number;
     },
     now: Date
   ) {
-    const [version] = await this.db
-      .insert(skillVersionsTable)
-      .values({
-        changeSummary: input.changeSummary ?? null,
-        createdAt: now,
-        description: input.description,
-        label: input.label ?? null,
-        skillId: input.skillId,
-        versionNumber: input.versionNumber,
-      })
-      .returning();
+    // D1 batch statements are submitted together, so later statements cannot
+    // await the inserted version id in JS. Keep the version/resource/current
+    // pointer commit atomic by resolving the just-inserted version inside SQL.
+    const committedVersionId = sql<number>`(
+      select ${skillVersionsTable.id}
+      from ${skillVersionsTable}
+      where ${skillVersionsTable.skillId} = ${input.skillId}
+        and ${skillVersionsTable.versionNumber} = (
+          select max(${skillVersionsTable.versionNumber})
+          from ${skillVersionsTable}
+          where ${skillVersionsTable.skillId} = ${input.skillId}
+        )
+      limit 1
+    )`;
+    const skillUpdate = {
+      currentVersionId: committedVersionId,
+      updatedAt: now,
+      ...(input.name ? { name: input.name } : {}),
+    };
 
-    if (!version) {
-      throw new Error("Skill version was not created");
+    try {
+      const [versionRows] = await this.db.batch([
+        this.db
+          .insert(skillVersionsTable)
+          .values({
+            changeSummary: input.changeSummary ?? null,
+            createdAt: now,
+            description: input.description,
+            label: input.label ?? null,
+            skillId: input.skillId,
+            versionNumber: sql<number>`(
+              select coalesce(max(${skillVersionsTable.versionNumber}), 0) + 1
+              from ${skillVersionsTable}
+              where ${skillVersionsTable.skillId} = ${input.skillId}
+            )`,
+          })
+          .returning(),
+        this.db.insert(skillResourcesTable).values(
+          input.resources.map((resource) => ({
+            createdAt: now,
+            mediaType: resource.mediaType,
+            path: resource.path,
+            sha256: resource.sha256,
+            size: resource.size,
+            skillVersionId: committedVersionId,
+          }))
+        ),
+        this.db
+          .update(skillsTable)
+          .set(skillUpdate)
+          .where(sqlEq(skillsTable.id, input.skillId)),
+      ]);
+
+      const [version] = versionRows;
+
+      if (!version) {
+        throw new Error("Skill version was not created");
+      }
+
+      return version;
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw skillErrors.duplicateSkillVersion();
+      }
+
+      throw error;
     }
-
-    return version;
-  }
-
-  insertSkillResources(
-    skillVersionId: number,
-    resources: StoredResourceObject[],
-    now: Date
-  ) {
-    if (resources.length === 0) {
-      return;
-    }
-
-    return this.db.insert(skillResourcesTable).values(
-      resources.map((resource) => ({
-        createdAt: now,
-        mediaType: resource.mediaType,
-        path: resource.path,
-        sha256: resource.sha256,
-        size: resource.size,
-        skillVersionId,
-      }))
-    );
   }
 
   insertSkillOrigin(
