@@ -17,4 +17,4 @@ Architecture Decision Records capture important architecture decisions, their co
 
 ## ADRs
 
-- [ADR-0001: Define Skillpack as a Skill Aggregator and Delivery Layer](0001-skillpack-north-star.md) — proposed
+- [ADR-0001: Define Skillpack as a Skills Management Platform](0001-skillpack-north-star.md) — proposed

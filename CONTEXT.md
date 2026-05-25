@@ -1,88 +1,91 @@
 # Skillpack Context
 
-Skillpack is a product context for aggregating skills from multiple sources, normalizing them as Skill Entries, governing consumability through Skill Trust, and delivering them to agent runtimes.
+Skillpack is a product context for managing skills as platform-owned copies, organizing them into user-curated skill collections, and delivering them to agent runtimes.
 
 ## Language
 
 **Skillpack**:
-A skill aggregator and delivery layer for agents. Its core pipeline is Skill Source → Skill Entry → Skill Trust → Skill Delivery.
-_Avoid_: Skill CMS, GitHub importer, native registry
+A Skills Management Platform for agents. Its core pipeline is Skill Origin → Forked or Authored Managed Skill → Skill Trust → Skill Set → Skill Delivery.
+_Avoid_: Aggregator, delivery layer, GitHub importer, native registry
 
 **Skill**:
 A reusable instruction package intended for agent consumption. A skill may include a `SKILL.md` file plus optional resources such as scripts, references, and assets.
 _Avoid_: Prompt snippet, plugin, tool
 
-**Skill Source**:
-An origin that provides skills to Skillpack, such as Skillpack-managed content, GitHub, npm, or another registry. User-authored, agent-created, and API-created skills are all Skillpack-managed when Skillpack stores and owns their content lifecycle.
-_Avoid_: Import backend, upstream repo, native source
+**Skill Origin**:
+The provenance of a Managed Skill before it entered Skillpack, such as GitHub, npm, another registry, user authoring, agent creation, or API creation. Origins are metadata attached to Managed Skills and never form the skill's primary identity.
+_Avoid_: Skill Source, source type, import backend, upstream identity, native source
 
-**Skill Entry**:
-A skill record in Skillpack's library that users can understand and agents can consume. All Skill Sources normalize into the same Skill Entry model; provenance, content ownership, revision semantics, and sync behavior vary by source.
-_Avoid_: Raw source file, database row
+**Managed Skill**:
+A platform-owned skill record in Skillpack's library that users can understand and agents can consume. Forked, user-authored, agent-created, and API-created skills all become Managed Skills once Skillpack stores and owns their content lifecycle.
+_Avoid_: Skill Entry, imported skill, raw source file, database row
 
-**Skill Entry Name**:
-The human-readable name used for display and discovery. Multiple Skill Entries may share the same Skill Entry Name across source namespaces. Skillpack-authored Skill Entries are business-constrained to unique names.
-_Avoid_: Global primary identity
+**Fork**:
+A workflow that creates a Managed Skill copy from a Skill Origin or another Managed Skill. Forking expresses user ownership and responsibility for reviewing, curating, and maintaining the resulting Managed Skill.
+_Avoid_: Import, sync, mirror
+
+**Origin Comparison**:
+A lightweight review workflow that compares a Managed Skill with the current content available from its Skill Origin. In the MVP, GitHub-origin comparisons use the repository's default branch and produce a simple diff for user review.
+_Avoid_: Sync, pull, merge, version-control history
+
+**Skill ID**:
+The Skillpack-owned primary identity for a Managed Skill. All system operations and Skill Locations address Managed Skills by Skill ID.
+_Avoid_: Handle, source identity, Skill Name as identity
+
+**Skill Name**:
+The human-readable name used for display and discovery. Multiple Managed Skills may share the same Skill Name, even for the same user.
+_Avoid_: Handle, unique name, primary identity
 
 **Skill Location**:
-An agent-facing private `skill://` locator that names a Skill Entry in a source-qualified form. Agents and harnesses resolve Skill Locations through Skillpack APIs, MCP tools, or extension tools to obtain `SKILL.md`, resources, and access metadata; the URI itself is not a fetchable content URL.
-_Avoid_: Database ID, raw URL, direct download URL
-
-**Skill Location Namespace**:
-The first segment of a Skill Location, identifying the Skill Source type that owns the rest of the URI shape. GitHub locations use `skill://github/{owner}/{repo}/{skillName}`; Skillpack-authored locations use `skill://skillpack/{handle}`, where the handle usually equals the Skill Entry Name.
-_Avoid_: Global namespace table
+An agent-facing private `skill://skillpack/{skillId}` locator derived from Skill ID. Agents and harnesses resolve Skill Locations through Skillpack APIs, MCP tools, or extension tools to obtain `SKILL.md`, resources, and access metadata; the URI itself is not a fetchable content URL.
+_Avoid_: Source-qualified locator, GitHub locator, handle locator, raw URL, direct download URL
 
 **Skill Location Pin**:
-An optional qualifier on a Skill Location that binds resolution to a source ref, immutable revision, or version. Bare Skill Locations resolve to the current approved Skill Entry revision or version; GitHub locations use `ref` for branch or tag names and `rev` for immutable commit revisions; Skillpack-managed locations may pin by version.
-_Avoid_: Default locator, source identity
+An optional qualifier on a Skill Location that binds resolution to a Managed Skill Version number. Bare Skill Locations resolve to the current version.
+_Avoid_: Source ref, source identity, user-authored version name, current pointer to historical version
 
-**Ref**:
-A source-owned movable pointer such as a GitHub branch or tag. Resolving a Ref must produce an immutable Revision in Skillpack responses.
-_Avoid_: Revision, version
-
-**Revision**:
-An immutable source content identity such as a Git commit SHA. Revisions are used when reproducibility matters.
-_Avoid_: Ref, display version
-
-**Version**:
-A Skillpack-managed Skill Entry's named content version. Bare Skillpack Skill Locations resolve to the current version; `version` pins resolution to a specific Skillpack-managed version.
-_Avoid_: Git ref, Git revision
+**Managed Skill Version**:
+A Skillpack-owned complete content snapshot for a Managed Skill, identified by a system-generated version number. A new version is created by durable actions such as create, save, restore, or accepting an Origin Comparison; users may optionally add labels to important versions.
+_Avoid_: Semver requirement, every keystroke as version, incremental patch, current R2 deduplication, Git ref, Git revision
 
 **Resolved Skill**:
-The concrete content view produced by resolving a Skill Location at a point in time. A Resolved Skill includes `content` for the `SKILL.md` body, a resource manifest, resolved identity, source provenance, and access metadata.
-_Avoid_: Skill Entry, raw file
+The concrete content view produced by resolving a Skill Location at a point in time. A Resolved Skill includes `content` for the `SKILL.md` body, a resource manifest, resolved Skill ID, provenance, and access metadata.
+_Avoid_: Managed Skill, raw file
 
 **Resource Manifest**:
-The list of resources attached to a Resolved Skill, including paths and metadata needed to request each resource through Skillpack. Resource content is fetched separately from the default resolve response.
-_Avoid_: Resource content bundle
+The list of resources attached to a Managed Skill Version, including paths and metadata needed to request each resource through Skillpack. Resource content is fetched separately from the default resolve response.
+_Avoid_: Cross-version resource state, resource content bundle
 
 **Skill Trust**:
-The curation and safety state Skillpack maintains for a Skill Entry, including provenance, review status, approved revision or version, and risk metadata. Skill Trust acts as a safety buffer between source updates and agent consumption; bare Skill Locations resolve to the current approved revision or version. Pinned Skill Location behavior is governed by user-configurable delivery policy.
-_Avoid_: Popularity score, source metadata only
+The curation and safety metadata Skillpack maintains for a Managed Skill, including provenance, review signals, current version, and risk metadata. User review is a product workflow that guides responsible skill use.
+_Avoid_: Popularity score, source metadata only, approval-only state machine
 
 **Delivery Policy**:
-A user-configurable policy that controls how Skillpack resolves Skill Locations for agent consumption, including whether explicit pins may resolve content outside the current approved revision or version.
-_Avoid_: Hard-coded system rule
+A user-configurable policy that controls how Skillpack resolves Skill Locations for agent consumption, including how explicit version pins are handled.
+_Avoid_: Backend approval gate, hard-coded system rule
 
 **Skill Library**:
-A discovery-oriented view over Skill Entries, Skill Trust state, and organization metadata such as categories or tags. The Skill Library helps users and agents find skills but is not a Skill Source or delivery contract.
+A discovery-oriented view over Managed Skills, Skill Trust state, and organization metadata such as categories or tags. The Skill Library helps users and agents find skills.
 _Avoid_: Database table, raw registry, delivery interface
 
 **Skill Set**:
-A business grouping of Skill Entries for a purpose such as an agent profile, project, category, or package. Skill Sets help organize delivery but do not replace Skill Entry as the primary object.
-_Avoid_: Primary skill object, runtime contract
+A user-curated collection of Managed Skills intended for an agent, project, workflow, or runtime context. Skill Sets express the complete skills collection a user wants to make available for a given use.
+_Avoid_: Primary skill object, loose tag, raw folder
 
 **Skill Delivery**:
-The agent-facing act of making Skill Entries available to an agent runtime through Skillpack-mediated resolution interfaces such as APIs, MCP tools, or extension tools. Delivery may use Skill Sets as an organizing concept.
+The agent-facing act of making Managed Skills available to an agent runtime through Skillpack-mediated resolution interfaces such as APIs, MCP tools, or extension tools. Delivery may use Skill Sets as an organizing concept.
 _Avoid_: Download, deploy, export, package
 
 ## Example Dialogue
 
 Developer: Should GitHub import copy every file into Skillpack?
-Domain expert: Import adds GitHub as a Skill Source and makes selected skills visible in the Skill Library. Durable copies are a separate delivery or preservation concern.
+Domain expert: Call that workflow Fork. Fork creates a Managed Skill copy in Skillpack and records GitHub as the Skill Origin.
+
+Developer: Should a GitHub fork keep syncing with upstream?
+Domain expert: Use Origin Comparison for a simple diff against the current GitHub default branch, then create a new Managed Skill Version after user review.
 
 Developer: Is a user-authored skill a native skill?
-Domain expert: Call it a Skillpack-managed skill. User-authored, agent-created, and API-created skills are all Skillpack-managed when Skillpack stores and owns their content lifecycle.
+Domain expert: Call it a Managed Skill. User-authored, forked, agent-created, and API-created skills all become Managed Skills when Skillpack stores and owns their content lifecycle.
 
 Developer: Is MCP the main product?
-Domain expert: MCP is one possible Skill Delivery interface. Skillpack remains the aggregator and delivery layer across multiple agent-facing interfaces.
+Domain expert: MCP is one possible Skill Delivery interface. Skillpack remains the Skills Management Platform across multiple agent-facing interfaces.
