@@ -53,7 +53,7 @@ An optional qualifier on a Skill Location that binds resolution to a Managed Ski
 _Avoid_: Source ref, source identity, user-authored version name, current pointer to historical version
 
 **Managed Skill Version**:
-A Skillpack-owned complete content snapshot for a Managed Skill, identified by a system-generated version number. A new version is created by durable actions such as create, save, restore, or accepting an Origin Comparison; users may optionally add labels to important versions.
+A Skillpack-owned complete content snapshot for a Managed Skill, identified by a system-generated version number. A Managed Skill Version contains the canonical `SKILL.md` content plus its Resource Manifest; a new version is created by durable actions such as create, save, restore, or accepting an Origin Comparison.
 _Avoid_: Semver requirement, every keystroke as version, incremental patch, current R2 deduplication, Git ref, Git revision
 
 **Resolved Skill**:
@@ -61,8 +61,12 @@ The concrete content view produced by resolving a Skill Location at a point in t
 _Avoid_: Managed Skill, raw file
 
 **Resource Manifest**:
-The list of resources attached to a Managed Skill Version, including paths and metadata needed to request each resource through Skillpack. Resource content is fetched separately from the default resolve response.
-_Avoid_: Cross-version resource state, resource content bundle
+The complete list of non-`SKILL.md` resources attached to a Managed Skill Version, including paths and metadata needed to request each resource through Skillpack. A Resource Manifest has no independent product identity or version line; its identity comes from the owning Managed Skill Version.
+_Avoid_: Cross-version resource state, resource content bundle, resource patch as storage model, SKILL.md manifest item, independent resource version
+
+**Resource Path**:
+A safe relative path for a Resource Manifest item, resolved from the directory containing `SKILL.md` and following agent skills conventions. A Resource Path may include `/` for nested files, is unique within one Resource Manifest, and is not an origin repository path.
+_Avoid_: Absolute path, origin repo path, display label, cross-version resource identity
 
 **Skill Trust**:
 The curation and safety metadata Skillpack maintains for a Managed Skill, including provenance, review signals, current version, and risk metadata. User review is a product workflow that guides responsible skill use.

@@ -7,6 +7,7 @@ import { createDb } from "./db/client";
 import { apiError } from "./lib/http";
 import { OriginService } from "./modules/origins/service";
 import { SkillRepository } from "./modules/skills/repository";
+import { ResourceManifest } from "./modules/skills/resource-manifest";
 import { SkillService } from "./modules/skills/service";
 import { SkillStorage } from "./modules/skills/storage";
 import { apiRoutes } from "./routes";
@@ -19,6 +20,7 @@ const setRequestServices = async (c: Context<AppBindings>, next: Next) => {
   const originService = new OriginService();
   const skillRepository = new SkillRepository(db);
   const skillStorage = new SkillStorage(c.env.BUCKET);
+  const resourceManifest = new ResourceManifest(skillStorage);
 
   c.set("db", db);
   c.set("originService", originService);
@@ -26,7 +28,7 @@ const setRequestServices = async (c: Context<AppBindings>, next: Next) => {
   c.set("skillStorage", skillStorage);
   c.set(
     "skillService",
-    new SkillService(skillRepository, skillStorage, originService)
+    new SkillService(skillRepository, resourceManifest, originService)
   );
   await next();
 };

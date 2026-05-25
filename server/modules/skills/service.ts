@@ -3,8 +3,7 @@ import type { OriginSkillDefinition } from "@server/modules/origins/types";
 
 import { skillErrors } from "./errors";
 import type { SkillRepository } from "./repository";
-import { markdownMediaType, skillContentPath } from "./storage";
-import type { SkillStorage } from "./storage";
+import { ResourceManifest } from "./resource-manifest";
 import type {
   CreateSkillServiceInput,
   ForkSkillServiceInput,
@@ -17,51 +16,24 @@ import type {
   ResolvedSkillResult,
   RestoreSkillVersionResult,
   RestoreVersionServiceInput,
-  SkillResourceRow,
   StoredResourceObject,
-  TextResourceInput,
 } from "./types";
-
-const validateResourcePaths = (resources: TextResourceInput[]) => {
-  const resourcePaths = new Set(resources.map((resource) => resource.path));
-
-  if (resourcePaths.size !== resources.length) {
-    throw skillErrors.duplicateResourcePath();
-  }
-
-  if (resourcePaths.has(skillContentPath)) {
-    throw skillErrors.reservedResourcePath();
-  }
-};
-
-const toStoredResource = (
-  resource: SkillResourceRow
-): StoredResourceObject => ({
-  mediaType: resource.mediaType,
-  path: resource.path,
-  sha256: resource.sha256,
-  size: resource.size,
-});
-
-const toStoredResources = (
-  resources: SkillResourceRow[]
-): StoredResourceObject[] => resources.map(toStoredResource);
 
 export class SkillService {
   private readonly repository: SkillRepository;
 
   private readonly originService: OriginService;
 
-  private readonly storage: SkillStorage;
+  private readonly resourceManifest: ResourceManifest;
 
   constructor(
     repository: SkillRepository,
-    storage: SkillStorage,
+    resourceManifest: ResourceManifest,
     originService: OriginService
   ) {
     this.repository = repository;
     this.originService = originService;
-    this.storage = storage;
+    this.resourceManifest = resourceManifest;
   }
 
   listSkills() {
@@ -102,14 +74,12 @@ export class SkillService {
     const resources = await this.repository.listResourcesByVersionId(
       version.id
     );
-    const content = await this.readContentResource(resources);
+    const manifest = await this.resourceManifest.resolveSnapshot(resources);
 
     return {
-      content,
+      content: manifest.content,
       origin,
-      resources: resources.filter(
-        (resource) => resource.path !== skillContentPath
-      ),
+      resources: manifest.resources,
       skill,
       version,
     };
@@ -131,11 +101,7 @@ export class SkillService {
       throw skillErrors.skillFileNotFound();
     }
 
-    const object = await this.storage.getSkillObject(resource.sha256);
-
-    if (!object) {
-      throw skillErrors.skillObjectNotFound();
-    }
+    const object = await this.resourceManifest.getResourceObject(resource);
 
     return { object, resource, version };
   }
@@ -155,7 +121,7 @@ export class SkillService {
   async createSkill(input: CreateSkillServiceInput) {
     const now = new Date();
     const skill = await this.repository.insertSkill(input.name, now);
-    const resources = await this.storeResourceSnapshot(
+    const resources = await this.resourceManifest.createSnapshot(
       input.content,
       input.resources
     );
@@ -188,7 +154,10 @@ export class SkillService {
     const currentResources = await this.repository.listResourcesByVersionId(
       version.id
     );
-    const resources = await this.applyResourcePatch(currentResources, input);
+    const resources = await this.resourceManifest.patchSnapshot(
+      currentResources,
+      input
+    );
     const now = new Date();
     const versionNumber =
       (await this.repository.findLatestVersionNumber(skill.id)) + 1;
@@ -241,7 +210,7 @@ export class SkillService {
         changeSummary: input.changeSummary,
         description: version.description,
         label: input.versionLabel,
-        resources: toStoredResources(sourceResources),
+        resources: ResourceManifest.restoreSnapshot(sourceResources),
         skillId: skill.id,
         versionNumber: nextVersionNumber,
       },
@@ -361,27 +330,6 @@ export class SkillService {
     return { origin, skill, version };
   }
 
-  private async storeResourceSnapshot(
-    content: string,
-    resources: TextResourceInput[]
-  ) {
-    validateResourcePaths(resources);
-
-    const storedResources: StoredResourceObject[] = [
-      await this.storage.putTextResource({
-        content,
-        mediaType: markdownMediaType,
-        path: skillContentPath,
-      }),
-    ];
-
-    for (const resource of resources) {
-      storedResources.push(await this.storage.putTextResource(resource));
-    }
-
-    return storedResources;
-  }
-
   private async createVersionSnapshot(
     input: {
       changeSummary?: string;
@@ -410,68 +358,5 @@ export class SkillService {
       now
     );
     return version;
-  }
-
-  private async readContentResource(resources: SkillResourceRow[]) {
-    const contentResource = resources.find(
-      (resource) => resource.path === skillContentPath
-    );
-
-    if (!contentResource) {
-      throw skillErrors.skillFileNotFound();
-    }
-
-    const object = await this.storage.getSkillObject(contentResource.sha256);
-
-    if (!object) {
-      throw skillErrors.skillObjectNotFound();
-    }
-
-    return object.text();
-  }
-
-  private async applyResourcePatch(
-    currentResources: SkillResourceRow[],
-    input: PatchSkillServiceInput
-  ) {
-    const nextResources = new Map<string, StoredResourceObject>();
-
-    for (const resource of currentResources) {
-      nextResources.set(resource.path, toStoredResource(resource));
-    }
-
-    if (input.deleteResourcePaths.includes(skillContentPath)) {
-      throw skillErrors.reservedResourcePath();
-    }
-
-    for (const path of input.deleteResourcePaths) {
-      nextResources.delete(path);
-    }
-
-    if (input.content) {
-      nextResources.set(
-        skillContentPath,
-        await this.storage.putTextResource({
-          content: input.content,
-          mediaType: markdownMediaType,
-          path: skillContentPath,
-        })
-      );
-    }
-
-    validateResourcePaths(input.upsertResources);
-
-    for (const resource of input.upsertResources) {
-      nextResources.set(
-        resource.path,
-        await this.storage.putTextResource(resource)
-      );
-    }
-
-    if (!nextResources.has(skillContentPath)) {
-      throw skillErrors.skillFileNotFound();
-    }
-
-    return [...nextResources.values()];
   }
 }
