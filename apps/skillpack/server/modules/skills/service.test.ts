@@ -253,6 +253,32 @@ describe("SkillService version commit handoff", () => {
     );
   });
 
+  it("rejects patches that do not change SKILL.md or resources", async () => {
+    const { repository, resourceManifest, service } = createService();
+    const currentSkill = skillRow();
+    const currentVersion = versionRow();
+
+    repository.findSkillById.mockResolvedValue(currentSkill);
+    repository.findLatestSkillVersion.mockResolvedValue(currentVersion);
+    repository.findSkillOrigin.mockResolvedValue(originRow());
+    repository.listResourcesByVersionId.mockResolvedValue([resourceRow()]);
+    resourceManifest.getResourceObject.mockResolvedValue(
+      objectWithText(skillFileContent)
+    );
+
+    await expect(
+      service.patchSkill(currentSkill.id, {
+        changeSummary: "Retitle release",
+        deleteResourcePaths: [],
+        upsertResources: [],
+        versionLabel: "label-only",
+      })
+    ).rejects.toMatchObject({ code: "empty-skill-patch" });
+
+    expect(resourceManifest.storeSkillFile).not.toHaveBeenCalled();
+    expect(repository.commitSkillVersion).not.toHaveBeenCalled();
+  });
+
   it("restores by committing historical canonical SKILL.md and resources as a new version", async () => {
     const { repository, service } = createService();
     const currentSkill = skillRow();

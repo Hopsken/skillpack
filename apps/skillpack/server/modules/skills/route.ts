@@ -32,6 +32,7 @@ const skillErrorStatus = {
   "duplicate-resource-path": 400,
   "duplicate-skill-name": 409,
   "duplicate-skill-version": 409,
+  "empty-skill-patch": 400,
   "invalid-file-path": 400,
   "invalid-skill-locator": 400,
   "reserved-resource-path": 400,

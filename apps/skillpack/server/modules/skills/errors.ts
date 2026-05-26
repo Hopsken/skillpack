@@ -2,6 +2,7 @@ export type SkillErrorCode =
   | "duplicate-resource-path"
   | "duplicate-skill-name"
   | "duplicate-skill-version"
+  | "empty-skill-patch"
   | "invalid-file-path"
   | "invalid-skill-locator"
   | "reserved-resource-path"
@@ -33,6 +34,11 @@ export const skillErrors = {
     new SkillModuleError(
       "duplicate-skill-version",
       "Skill version already exists"
+    ),
+  emptySkillPatch: () =>
+    new SkillModuleError(
+      "empty-skill-patch",
+      "PATCH must change SKILL.md content or resources"
     ),
   invalidFilePath: () =>
     new SkillModuleError("invalid-file-path", "Valid file path is required"),

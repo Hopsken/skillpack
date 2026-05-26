@@ -1,6 +1,7 @@
 import { skillContentPath } from "@server/constants";
 import type { OriginService } from "@server/modules/origins/service";
 import type { OriginSkillDefinition } from "@server/modules/origins/types";
+import type { SkillFileMetadata } from "@server/shared/skill-file";
 import { parseSkillFile, serializeSkillFile } from "@server/shared/skill-file";
 
 import { skillErrors } from "./errors";
@@ -37,6 +38,30 @@ const patchValue = <T>(
   key: string,
   current: T
 ) => (Object.hasOwn(input, key) ? (input[key] as T) : current);
+
+const metadataEquals = (
+  left: Record<string, string> | null | undefined,
+  right: Record<string, string> | null | undefined
+) => {
+  const leftEntries = Object.entries(left ?? {});
+  const rightEntries = Object.entries(right ?? {});
+
+  return (
+    leftEntries.length === rightEntries.length &&
+    leftEntries.every(([key, value]) => right?.[key] === value)
+  );
+};
+
+const skillFileMetadataEquals = (
+  left: SkillFileMetadata,
+  right: SkillFileMetadata
+) =>
+  left.allowedTools === right.allowedTools &&
+  left.compatibility === right.compatibility &&
+  left.description === right.description &&
+  left.license === right.license &&
+  metadataEquals(left.metadata, right.metadata) &&
+  left.name === right.name;
 
 export class SkillService {
   private readonly repository: SkillRepository;
@@ -185,9 +210,21 @@ export class SkillService {
       metadata: patchValue(input, "metadata", currentSkillFile.metadata),
       name: input.name ?? currentSkillFile.name,
     };
+    const nextBody = input.content ?? currentSkillFile.body;
+    const hasResourceChanges =
+      input.deleteResourcePaths.length > 0 || input.upsertResources.length > 0;
+
+    if (
+      !hasResourceChanges &&
+      nextBody === currentSkillFile.body &&
+      skillFileMetadataEquals(nextMetadata, currentSkillFile)
+    ) {
+      throw skillErrors.emptySkillPatch();
+    }
+
     const skillFileContent = serializeSkillFile(
       nextMetadata,
-      input.content ?? currentSkillFile.body,
+      nextBody,
       currentSkillFile.frontmatter
     );
     const skillFile =

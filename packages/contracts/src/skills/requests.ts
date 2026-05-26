@@ -32,19 +32,33 @@ export const createSkillSchema = z.object({
   versionLabel: optionalSkillVersionLabelSchema,
 });
 
-export const patchSkillSchema = z.object({
-  allowedTools: optionalSkillAllowedToolsSchema.nullable(),
-  changeSummary: optionalSkillChangeSummarySchema,
-  compatibility: optionalSkillCompatibilitySchema.nullable(),
-  content: z.string().min(1).optional(),
-  deleteResourcePaths: z.array(safeRelativePathSchema).default([]),
-  description: skillDescriptionSchema.optional(),
-  license: optionalSkillLicenseSchema.nullable(),
-  metadata: skillMetadataSchema.nullable().optional(),
-  name: skillNameSchema.optional(),
-  upsertResources: z.array(createSkillResourceSchema).default([]),
-  versionLabel: optionalSkillVersionLabelSchema,
-});
+export const patchSkillSchema = z
+  .object({
+    allowedTools: optionalSkillAllowedToolsSchema.nullable(),
+    changeSummary: optionalSkillChangeSummarySchema,
+    compatibility: optionalSkillCompatibilitySchema.nullable(),
+    content: z.string().min(1).optional(),
+    deleteResourcePaths: z.array(safeRelativePathSchema).default([]),
+    description: skillDescriptionSchema.optional(),
+    license: optionalSkillLicenseSchema.nullable(),
+    metadata: skillMetadataSchema.nullable().optional(),
+    name: skillNameSchema.optional(),
+    upsertResources: z.array(createSkillResourceSchema).default([]),
+    versionLabel: optionalSkillVersionLabelSchema,
+  })
+  .refine(
+    (input) =>
+      input.allowedTools !== undefined ||
+      input.compatibility !== undefined ||
+      input.content !== undefined ||
+      input.deleteResourcePaths.length > 0 ||
+      input.description !== undefined ||
+      input.license !== undefined ||
+      input.metadata !== undefined ||
+      input.name !== undefined ||
+      input.upsertResources.length > 0,
+    "PATCH must change SKILL.md content or resources"
+  );
 
 export const restoreVersionSchema = z.object({
   changeSummary: optionalSkillChangeSummarySchema,
