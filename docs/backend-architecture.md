@@ -54,7 +54,7 @@ Examples of module-sized capabilities:
 - Collection, packaging, or export workflows
 - Skill Origin discovery and definition retrieval
 
-Shared low-level utilities belong in `server/lib`. Database table definitions belong in `server/db/schema.ts`. Shared API contracts belong in `shared/contract/*`.
+Shared low-level utilities belong in `server/lib`. Reusable server-only parsing or domain helpers belong in `server/shared` or the owning module. Database table definitions belong in `server/db/schema.ts`. Public API contracts shared by the frontend and backend belong in `shared/contract/*`.
 
 ## Layer Responsibilities
 

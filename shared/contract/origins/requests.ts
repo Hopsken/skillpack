@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const skillNameSchema = z.string().min(1).max(80);
+import { skillNameSchema } from "../primitives";
 
 export const githubOriginSchema = z.object({
   branch: z.string().min(1).max(160).optional(),

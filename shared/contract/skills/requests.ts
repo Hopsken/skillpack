@@ -1,57 +1,48 @@
 import { z } from "zod";
 
 import { originSelectionSchema, skillOriginSchema } from "../origins/requests";
-
-const skillNameSchema = z.string().min(1).max(80);
-const skillDescriptionSchema = z.string().min(1).max(500);
-const skillVersionLabelSchema = z.string().min(1).max(80).optional();
-const skillChangeSummarySchema = z.string().min(1).max(500).optional();
-
-const isSafeRelativePath = (path: string) =>
-  !path.startsWith("/") &&
-  !path.includes("\\") &&
-  path.split("/").every((part) => part && part !== "." && part !== "..");
-
-const skillResourcePathSchema = z
-  .string()
-  .min(1)
-  .max(240)
-  .refine(isSafeRelativePath, "Path must be a safe relative path");
+import {
+  optionalSkillChangeSummarySchema,
+  optionalSkillVersionLabelSchema,
+  safeRelativePathSchema,
+  skillDescriptionSchema,
+  skillNameSchema,
+} from "../primitives";
 
 const createSkillResourceSchema = z.object({
   content: z.string(),
   mediaType: z.string().min(1).optional(),
-  path: skillResourcePathSchema,
+  path: safeRelativePathSchema,
 });
 
 export const createSkillSchema = z.object({
-  changeSummary: skillChangeSummarySchema,
+  changeSummary: optionalSkillChangeSummarySchema,
   content: z.string().min(1),
   description: skillDescriptionSchema,
   name: skillNameSchema,
   resources: z.array(createSkillResourceSchema).default([]),
-  versionLabel: skillVersionLabelSchema,
+  versionLabel: optionalSkillVersionLabelSchema,
 });
 
 export const patchSkillSchema = z.object({
-  changeSummary: skillChangeSummarySchema,
+  changeSummary: optionalSkillChangeSummarySchema,
   content: z.string().min(1).optional(),
-  deleteResourcePaths: z.array(skillResourcePathSchema).default([]),
+  deleteResourcePaths: z.array(safeRelativePathSchema).default([]),
   description: skillDescriptionSchema.optional(),
   name: skillNameSchema.optional(),
   upsertResources: z.array(createSkillResourceSchema).default([]),
-  versionLabel: skillVersionLabelSchema,
+  versionLabel: optionalSkillVersionLabelSchema,
 });
 
 export const restoreVersionSchema = z.object({
-  changeSummary: skillChangeSummarySchema,
-  versionLabel: skillVersionLabelSchema,
+  changeSummary: optionalSkillChangeSummarySchema,
+  versionLabel: optionalSkillVersionLabelSchema,
 });
 
 export const forkSkillSchema = z.object({
   origin: skillOriginSchema,
   selections: z.array(originSelectionSchema).min(1),
-  versionLabel: skillVersionLabelSchema,
+  versionLabel: optionalSkillVersionLabelSchema,
 });
 
 export type CreateSkillInput = z.infer<typeof createSkillSchema>;

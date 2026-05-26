@@ -1,12 +1,11 @@
 import { z } from "zod";
 
+import { skillDescriptionSchema, skillNameSchema } from "../primitives";
 import { originSelectionSchema, skillOriginSchema } from "./requests";
-
-const skillDescriptionSchema = z.string().min(1).max(500);
 
 export const originSkillCandidateSchema = z.object({
   description: skillDescriptionSchema.optional(),
-  name: z.string().min(1).max(80),
+  name: skillNameSchema,
   path: z.string().min(1).max(500).optional(),
   selection: originSelectionSchema,
 });

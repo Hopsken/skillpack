@@ -1,6 +1,7 @@
 import { skillContentPath } from "@server/constants";
 import { parseFrontmatter } from "@server/shared/frontmatter";
 import type { SkillOriginInput } from "@shared/contract/origins/requests";
+import { safeRelativePathSchema } from "@shared/contract/primitives";
 import ky from "ky";
 
 import { originErrors } from "../errors";
@@ -136,11 +137,6 @@ const parseGitHubRepoUrl = (repoUrl: string) => {
   return { owner, repo };
 };
 
-const isSafeRelativePath = (path: string) =>
-  !path.startsWith("/") &&
-  !path.includes("\\") &&
-  path.split("/").every((part) => part && part !== "." && part !== "..");
-
 const getDirectoryPrefix = (skillPath: string) => {
   const index = skillPath.lastIndexOf("/");
   return index === -1 ? "" : `${skillPath.slice(0, index)}/`;
@@ -177,7 +173,7 @@ const assertTextResourcePath = (path: string) => {
 };
 
 const assertSafeResourcePath = (path: string) => {
-  if (!isSafeRelativePath(path)) {
+  if (!safeRelativePathSchema.safeParse(path).success) {
     throw originErrors.definitionFailed(`Unsafe resource path: ${path}`);
   }
 };
@@ -233,7 +229,7 @@ const discoverSkillFiles = (snapshot: GitHubOriginSnapshot) => {
   const byName = new Map<string, GitHubSkillFile>();
 
   for (const path of skillPaths) {
-    if (!isSafeRelativePath(path)) {
+    if (!safeRelativePathSchema.safeParse(path).success) {
       continue;
     }
 

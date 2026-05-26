@@ -1,23 +1,13 @@
 import { z } from "zod";
 
 import { originSelectionSchema } from "../origins/requests";
-
-const skillIdSchema = z.coerce.number().int().positive();
-const skillVersionNumberSchema = z.coerce.number().int().positive();
-
-const skillNameSchema = z.string().min(1).max(80);
-const skillDescriptionSchema = z.string().min(1).max(500);
-
-const isSafeRelativePath = (path: string) =>
-  !path.startsWith("/") &&
-  !path.includes("\\") &&
-  path.split("/").every((part) => part && part !== "." && part !== "..");
-
-const skillResourcePathSchema = z
-  .string()
-  .min(1)
-  .max(240)
-  .refine(isSafeRelativePath, "Path must be a safe relative path");
+import {
+  safeRelativePathSchema,
+  skillDescriptionSchema,
+  skillIdSchema,
+  skillNameSchema,
+  skillVersionNumberSchema,
+} from "../primitives";
 
 const skillOriginSummarySchema = z.object({
   kind: z.literal("github"),
@@ -27,7 +17,7 @@ const skillOriginSummarySchema = z.object({
 
 export const resourceManifestItemSchema = z.object({
   mediaType: z.string().min(1),
-  path: skillResourcePathSchema,
+  path: safeRelativePathSchema,
   sha256: z.string().min(1),
   size: z.number().int().nonnegative(),
 });
@@ -77,7 +67,7 @@ export const skillVersionListResponseSchema = z.object({
 export const skillResourceResponseSchema = z.object({
   content: z.string(),
   mediaType: z.string().min(1),
-  path: skillResourcePathSchema,
+  path: safeRelativePathSchema,
   sha256: z.string().min(1),
   size: z.number().int().nonnegative(),
   version: skillVersionNumberSchema,

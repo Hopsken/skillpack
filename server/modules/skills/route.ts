@@ -2,6 +2,11 @@ import { zValidator } from "@hono/zod-validator";
 import { apiError } from "@server/lib/http";
 import type { AppBindings } from "@server/types";
 import {
+  safeRelativePathSchema,
+  skillIdSchema,
+  skillVersionNumberSchema,
+} from "@shared/contract/primitives";
+import {
   createSkillSchema,
   forkSkillSchema,
   patchSkillSchema,
@@ -10,11 +15,6 @@ import {
 import { Hono } from "hono";
 import type { Context } from "hono";
 
-import {
-  skillIdSchema,
-  skillResourcePathSchema,
-  skillVersionNumberSchema,
-} from "./domain";
 import { SkillModuleError, skillErrors } from "./errors";
 import {
   presentPatchedSkill,
@@ -73,7 +73,7 @@ const parseVersion = (value: string | undefined) => {
 };
 
 const parseFilePath = (path: string | undefined) => {
-  const pathResult = skillResourcePathSchema.safeParse(path);
+  const pathResult = safeRelativePathSchema.safeParse(path);
 
   if (!pathResult.success) {
     throw skillErrors.invalidFilePath();
