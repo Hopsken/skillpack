@@ -28,7 +28,7 @@ export const LatestSkillPage = () => {
   const version = versionParam ? Number(versionParam) : undefined;
   const latestSkill = useLatestSkill(skillId);
   const versionedSkill = useSkillDetail(skillId, version);
-  const { versions, status: versionsStatus } = useSkillVersions(skillId);
+  const skillVersions = useSkillVersions(skillId);
   const restoreVersion = useRestoreSkillVersion(skillId);
   const skill = version ? versionedSkill.skill : latestSkill.skill;
 
@@ -57,12 +57,16 @@ export const LatestSkillPage = () => {
       version: versionNumber,
     });
   };
+  const versionCount = skillVersions.versions?.versions.length ?? 0;
+  const versionsStatus = skillVersions.isLoading
+    ? "Loading versions..."
+    : `${versionCount} versions loaded`;
 
   return (
     <SkillDetailView
       skill={skill}
       skillId={skillId}
-      versions={versions?.versions ?? []}
+      versions={skillVersions.versions?.versions ?? []}
       versionsStatus={versionsStatus}
       activeTab={activeTab}
       onTabChange={setActiveTab}

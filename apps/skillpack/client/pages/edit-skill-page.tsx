@@ -10,10 +10,25 @@ import {
   usePatchSkill,
 } from "@/features/skills";
 
+const getSkillLoadStatus = (
+  skill: { name: string; version: number } | undefined,
+  isLoading: boolean
+) => {
+  if (isLoading) {
+    return "Loading skill...";
+  }
+
+  if (skill) {
+    return `Loaded ${skill.name} v${skill.version}`;
+  }
+
+  return "Skill unavailable";
+};
+
 export const EditSkillPage = () => {
   const { skillId: skillIdParam } = useParams();
   const skillId = skillIdParam ? Number(skillIdParam) : undefined;
-  const { skill, status } = useLatestSkill(skillId);
+  const { isLoading, skill } = useLatestSkill(skillId);
   const patchSkill = usePatchSkill(skillId);
   const navigate = useNavigate();
 
@@ -30,7 +45,7 @@ export const EditSkillPage = () => {
     <SkillFormView
       mode="edit"
       skill={skill}
-      status={status}
+      status={getSkillLoadStatus(skill, isLoading)}
       onSubmit={submit}
     />
   );

@@ -1,5 +1,6 @@
 import type {
   DiscoverSkillsInput,
+  SkillOriginInput,
   ReadSkillDefinitionsInput,
 } from "@skillpack/contracts/origins/requests";
 import {
@@ -45,6 +46,9 @@ export const skillDetailQueryKey = (
   version?: number
 ) => ["skills", "detail", skillId, version] as const;
 
+export const skillDetailQueryPrefix = (skillId: number | undefined) =>
+  ["skills", "detail", skillId] as const;
+
 export const latestSkillQueryKey = (skillId: number | undefined) =>
   ["skills", "latest", skillId] as const;
 
@@ -56,6 +60,17 @@ export const skillFileQueryKey = (
   version: number | undefined,
   path: string | undefined
 ) => ["skills", "file", skillId, version, path] as const;
+
+export const skillFileQueryPrefix = (skillId: number | undefined) =>
+  ["skills", "file", skillId] as const;
+
+export const originDiscoveryQueryKey = (originKey: string | undefined) =>
+  ["origins", "discover", originKey] as const;
+
+export const originDefinitionQueryKey = (
+  originKey: string | undefined,
+  skillName: string | undefined
+) => ["origins", "definitions", originKey, skillName] as const;
 
 export const fetchSkillList = async (): Promise<SkillListResponse> => {
   const data = await api.get("skills").json();
@@ -113,6 +128,9 @@ export const discoverSkills = async (
   const data = await api.post("origins/discover", { json: input }).json();
   return discoverSkillsResponseSchema.parse(data);
 };
+
+export const discoverOriginSkills = (origin: SkillOriginInput) =>
+  discoverSkills({ origin });
 
 export const readSkillDefinitions = async (
   input: ReadSkillDefinitionsInput

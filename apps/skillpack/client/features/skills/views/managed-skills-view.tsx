@@ -11,12 +11,14 @@ import { SkillRow } from "../components/skill-row";
 interface ManagedSkillsViewProps {
   skills: SkillListItem[];
   status: string;
+  onFork: () => void;
   onRefresh: () => Promise<void>;
 }
 
 export const ManagedSkillsView = ({
   skills,
   status,
+  onFork,
   onRefresh,
 }: ManagedSkillsViewProps) => (
   <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
@@ -26,11 +28,9 @@ export const ManagedSkillsView = ({
         <span>Library</span>
       </div>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/skills/fork">
-            <GitForkIcon />
-            Fork
-          </Link>
+        <Button variant="outline" size="sm" onClick={onFork}>
+          <GitForkIcon />
+          Fork
         </Button>
         <Button size="sm" asChild>
           <Link to="/skills/new">

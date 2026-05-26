@@ -5,8 +5,6 @@ import type {
 } from "@skillpack/contracts/skills/responses";
 import { useQuery } from "@tanstack/react-query";
 
-import { getApiErrorMessage } from "@/shared/api/client";
-
 import {
   fetchLatestSkill,
   fetchSkillDetail,
@@ -19,25 +17,25 @@ import {
 } from "./queries";
 
 interface SkillDetailState {
+  isLoading: boolean;
   skill: ResolvedSkill | undefined;
-  status: string;
   refresh: () => Promise<void>;
 }
 
 interface LatestSkillState {
+  isLoading: boolean;
   skill: ResolvedSkill | undefined;
-  status: string;
   refresh: () => Promise<void>;
 }
 
 interface SkillVersionsState {
+  isLoading: boolean;
   versions: SkillVersionListResponse | undefined;
-  status: string;
 }
 
 interface SkillFileState {
   file: SkillResourceResponse | undefined;
-  status: string;
+  isLoading: boolean;
 }
 
 export const useLatestSkill = (
@@ -49,20 +47,11 @@ export const useLatestSkill = (
     queryKey: latestSkillQueryKey(skillId),
   });
 
-  const status = query.isLoading
-    ? "Loading skill..."
-    : getApiErrorMessage(
-        query.error,
-        query.data
-          ? `Loaded ${query.data.name} v${query.data.version}`
-          : "Skill loaded"
-      );
-
   const refresh = async (): Promise<void> => {
     await query.refetch();
   };
 
-  return { refresh, skill: query.data, status };
+  return { isLoading: query.isLoading, refresh, skill: query.data };
 };
 
 export const useSkillDetail = (
@@ -75,20 +64,11 @@ export const useSkillDetail = (
     queryKey: skillDetailQueryKey(skillId, version),
   });
 
-  const status = query.isLoading
-    ? "Loading skill..."
-    : getApiErrorMessage(
-        query.error,
-        query.data
-          ? `Loaded ${query.data.name} v${query.data.version}`
-          : "Skill loaded"
-      );
-
   const refresh = async (): Promise<void> => {
     await query.refetch();
   };
 
-  return { refresh, skill: query.data, status };
+  return { isLoading: query.isLoading, refresh, skill: query.data };
 };
 
 export const useSkillVersions = (
@@ -100,12 +80,7 @@ export const useSkillVersions = (
     queryKey: skillVersionsQueryKey(skillId),
   });
 
-  const versionCount = query.data?.versions.length ?? 0;
-  const status = query.isLoading
-    ? "Loading versions..."
-    : getApiErrorMessage(query.error, `${versionCount} versions loaded`);
-
-  return { status, versions: query.data };
+  return { isLoading: query.isLoading, versions: query.data };
 };
 
 export const useSkillFile = (
@@ -119,16 +94,5 @@ export const useSkillFile = (
     queryKey: skillFileQueryKey(skillId, version, path),
   });
 
-  if (!path) {
-    return { file: query.data, status: "Select a resource" };
-  }
-
-  const status = query.isLoading
-    ? "Loading resource..."
-    : getApiErrorMessage(
-        query.error,
-        query.data ? `Loaded ${query.data.path}` : "Resource loaded"
-      );
-
-  return { file: query.data, status };
+  return { file: query.data, isLoading: query.isLoading };
 };

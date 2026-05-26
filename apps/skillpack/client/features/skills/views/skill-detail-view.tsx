@@ -89,6 +89,21 @@ const getRawResourceUrl = (
   return `/api/v1/skills/${skillId}/resources/raw?${searchParams}`;
 };
 
+const getResourceContentStatus = (
+  file: { path: string } | undefined,
+  isLoading: boolean
+) => {
+  if (isLoading) {
+    return "Loading resource...";
+  }
+
+  if (file) {
+    return `Loaded ${file.path}`;
+  }
+
+  return "Resource unavailable";
+};
+
 const SkillMarkdownPanel = ({
   skill,
 }: {
@@ -111,7 +126,7 @@ const ResourcesPanel = ({
   );
   const shouldFetchFile =
     selectedResource && getSkillResourceKind(selectedResource) !== "image";
-  const { file, status: fileStatus } = useSkillFile(
+  const skillFile = useSkillFile(
     skill?.id,
     skill?.version,
     shouldFetchFile ? selectedResource.path : undefined
@@ -121,7 +136,9 @@ const ResourcesPanel = ({
     skill?.version,
     selectedResource?.path
   );
-  const viewerStatus = selectedResource ? fileStatus : fileContentStatus;
+  const viewerStatus = selectedResource
+    ? getResourceContentStatus(skillFile.file, skillFile.isLoading)
+    : fileContentStatus;
 
   return (
     <section className="grid h-full min-h-0 grid-cols-[minmax(10rem,16rem)_1fr]">
@@ -165,7 +182,7 @@ const ResourcesPanel = ({
           }
         >
           <ResourceViewer
-            file={file}
+            file={skillFile.file}
             rawUrl={rawUrl}
             resource={selectedResource}
             status={viewerStatus}

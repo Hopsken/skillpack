@@ -1,3 +1,4 @@
+export { Badge, badgeVariants } from "./badge";
 export { Button, buttonVariants } from "./button";
 export {
   Card,
@@ -36,6 +37,18 @@ export {
   useSidebar,
 } from "./sidebar";
 export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+  DialogTrigger,
+} from "./dialog";
+export {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -43,6 +56,7 @@ export {
   SheetTitle,
   SheetTrigger,
 } from "./sheet";
+export { Toaster } from "./sonner";
 export {
   Tooltip,
   TooltipContent,

@@ -1,13 +1,11 @@
 import type { SkillListItem } from "@skillpack/contracts/skills/responses";
 import { useQuery } from "@tanstack/react-query";
 
-import { getApiErrorMessage } from "@/shared/api/client";
-
 import { fetchSkillList, skillListQueryKey } from "./queries";
 
 export interface SkillListState {
+  isLoading: boolean;
   skills: SkillListItem[];
-  status: string;
   refresh: () => Promise<void>;
 }
 
@@ -18,13 +16,10 @@ export const useSkillList = (): SkillListState => {
   });
 
   const skills = query.data?.skills ?? [];
-  const status = query.isLoading
-    ? "Loading skills..."
-    : getApiErrorMessage(query.error, `${skills.length} skills loaded`);
 
   const refresh = async (): Promise<void> => {
     await query.refetch();
   };
 
-  return { refresh, skills, status };
+  return { isLoading: query.isLoading, refresh, skills };
 };

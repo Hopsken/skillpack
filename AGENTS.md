@@ -68,6 +68,8 @@ After creating D1, update `apps/skillpack/wrangler.jsonc` with the production `d
 
 - Keep client and server code separated inside `apps/skillpack/client/` and `apps/skillpack/server/`.
 - Root commands are Turbo/pnpm orchestrators. Run app-local commands through root scripts or `pnpm --filter @skillpack/app <script>`.
+- Use only root `pnpm check` and `pnpm fix` for Ultracite/Oxlint/Oxfmt. Do not add or run package-level `check`/`fix` scripts; Turborepo recommends root tasks for Oxc tools.
+- Keep Vitest package-local for Turborepo caching: packages with tests should own `test: vitest run`, while root `pnpm test` runs `turbo test`. Do not replace this with a root Vitest Projects setup unless the repo explicitly chooses merged coverage over per-package caching.
 - Use `apps/skillpack/tsconfig.client.json` and `apps/skillpack/tsconfig.server.json`; each workspace package owns its own `typecheck` script.
 - Must read `docs/backend-architecture.md` before adding or reorganizing backend files.
 - Backend code follows module-first architecture under `apps/skillpack/server/modules/<module>/` with lightweight `route/service/repository/storage/presenter` layers.
@@ -148,8 +150,8 @@ This project uses **Ultracite**, a zero-config preset that enforces strict code 
 
 ## Quick Reference
 
-- **Format code**: `pnpm dlx ultracite fix`
-- **Check for issues**: `pnpm dlx ultracite check`
+- **Format code**: `pnpm fix`
+- **Check for issues**: `pnpm check`
 - **Diagnose setup**: `pnpm dlx ultracite doctor`
 
 Oxlint + Oxfmt (the underlying engine) provides robust linting and formatting. Most issues are automatically fixable.
@@ -267,4 +269,4 @@ Oxlint + Oxfmt's linter will catch most issues automatically. Focus your attenti
 
 ---
 
-Most formatting and common issues are automatically fixed by Oxlint + Oxfmt. Run `pnpm dlx ultracite fix` before committing to ensure compliance.
+Most formatting and common issues are automatically fixed by Oxlint + Oxfmt. Run root `pnpm fix` before committing to ensure compliance.

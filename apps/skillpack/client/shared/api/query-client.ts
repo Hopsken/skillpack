@@ -1,4 +1,11 @@
-import { QueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+
+import { getApiErrorMessage } from "./client";
+
+const notifyQueryError = async (error: unknown) => {
+  toast.error(await getApiErrorMessage(error));
+};
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -6,4 +13,14 @@ export const queryClient = new QueryClient({
       retry: false,
     },
   },
+  mutationCache: new MutationCache({
+    onError: (error) => {
+      void notifyQueryError(error);
+    },
+  }),
+  queryCache: new QueryCache({
+    onError: (error) => {
+      void notifyQueryError(error);
+    },
+  }),
 });

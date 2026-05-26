@@ -1,8 +1,4 @@
 import type {
-  DiscoverSkillsInput,
-  ReadSkillDefinitionsInput,
-} from "@skillpack/contracts/origins/requests";
-import type {
   CreateSkillInput,
   ForkSkillInput,
   PatchSkillInput,
@@ -12,12 +8,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
   createManagedSkill,
-  discoverSkills,
   forkManagedSkill,
+  latestSkillQueryKey,
   patchManagedSkill,
-  readSkillDefinitions,
   restoreManagedSkillVersion,
-  skillDetailQueryKey,
+  skillDetailQueryPrefix,
+  skillFileQueryPrefix,
   skillListQueryKey,
   skillVersionsQueryKey,
 } from "./queries";
@@ -28,7 +24,13 @@ const invalidateSkillQueries = async (
 ) => {
   await queryClient.invalidateQueries({ queryKey: skillListQueryKey });
   await queryClient.invalidateQueries({
-    queryKey: skillDetailQueryKey(skillId),
+    queryKey: latestSkillQueryKey(skillId),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: skillDetailQueryPrefix(skillId),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: skillFileQueryPrefix(skillId),
   });
   await queryClient.invalidateQueries({
     queryKey: skillVersionsQueryKey(skillId),
@@ -96,14 +98,3 @@ export const useForkSkill = () => {
     },
   });
 };
-
-export const useDiscoverSkills = () =>
-  useMutation({
-    mutationFn: (input: DiscoverSkillsInput) => discoverSkills(input),
-  });
-
-export const useReadSkillDefinitions = () =>
-  useMutation({
-    mutationFn: (input: ReadSkillDefinitionsInput) =>
-      readSkillDefinitions(input),
-  });

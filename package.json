@@ -15,6 +15,7 @@
     "prepare": "husky",
     "preview": "pnpm --filter @skillpack/app preview",
     "test": "turbo test",
+    "test:watch": "turbo test:watch",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {

@@ -1,12 +1,8 @@
-import type {
-  DiscoverSkillsInput,
-  ReadSkillDefinitionsInput,
-} from "@skillpack/contracts/origins/requests";
+import type { SkillOriginInput } from "@skillpack/contracts/origins/requests";
 import type {
   DiscoverSkillsResponse,
   OriginSkillCandidate,
   OriginSkillDefinitionPreview,
-  ReadSkillDefinitionsResponse,
 } from "@skillpack/contracts/origins/responses";
 import type { ForkSkillInput } from "@skillpack/contracts/skills/requests";
 import type { ForkSkillResponse } from "@skillpack/contracts/skills/responses";
@@ -16,7 +12,6 @@ import {
   CircleAlertIcon,
   FileTextIcon,
   GitForkIcon,
-  SearchIcon,
 } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
@@ -24,15 +19,14 @@ import type { FormEvent } from "react";
 import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
+import { useOriginSkillDefinition } from "../api/use-origin-skill-definition";
+
 interface SkillForkViewProps {
+  discovery: DiscoverSkillsResponse | undefined;
+  origin: SkillOriginInput;
   status: string;
-  onDiscover: (input: DiscoverSkillsInput) => Promise<DiscoverSkillsResponse>;
-  onReadDefinitions: (
-    input: ReadSkillDefinitionsInput
-  ) => Promise<ReadSkillDefinitionsResponse>;
   onSubmit: (input: ForkSkillInput) => Promise<ForkSkillResponse>;
 }
 
@@ -57,11 +51,6 @@ const getForkSummary = (response: ForkSkillResponse) => {
 
   return `Forked ${forked.length}, failed ${failed}`;
 };
-
-const getFormOrigin = (repoUrl: string): ForkOrigin => ({
-  kind: "github",
-  repoUrl,
-});
 
 const getPinnedOrigin = (
   discovery: DiscoverSkillsResponse | undefined
@@ -115,19 +104,55 @@ const getResultBadge = (
   );
 };
 
+const getPreviewStatus = ({
+  activeCandidate,
+  discovery,
+  error,
+  isLoading,
+  result,
+  status,
+}: {
+  activeCandidate: OriginSkillCandidate | undefined;
+  discovery: DiscoverSkillsResponse | undefined;
+  error: Error | null;
+  isLoading: boolean;
+  result: ReturnType<typeof useOriginSkillDefinition>["result"];
+  status: string;
+}) => {
+  if (!activeCandidate) {
+    return discovery ? "Select a skill to preview." : status;
+  }
+
+  if (isLoading) {
+    return "Loading preview...";
+  }
+
+  if (result?.status === "resolved") {
+    return "Select a file";
+  }
+
+  if (result?.status === "failed") {
+    return result.error;
+  }
+
+  return error?.message ?? "Preview failed";
+};
+
 const DefinitionFileList = ({
   definition,
+  emptyStatus,
   selectedPath,
   onSelectPath,
 }: {
   definition: OriginSkillDefinitionPreview | undefined;
+  emptyStatus: string;
   selectedPath: string | undefined;
   onSelectPath: (path: string) => void;
 }) => {
   if (!definition) {
     return (
       <p className="border-r border-border px-4 py-3 text-muted-foreground text-sm">
-        Select a skill to preview its files.
+        {emptyStatus}
       </p>
     );
   }
@@ -180,6 +205,7 @@ const DefinitionPreview = ({
     <section className="grid min-h-0 flex-1 grid-cols-[minmax(10rem,16rem)_1fr]">
       <DefinitionFileList
         definition={definition}
+        emptyStatus={previewStatus}
         selectedPath={selectedPath}
         onSelectPath={setSelectedPath}
       />
@@ -208,19 +234,13 @@ const DefinitionPreview = ({
 };
 
 export const SkillForkView = ({
+  discovery,
+  origin,
   status,
-  onDiscover,
-  onReadDefinitions,
   onSubmit,
 }: SkillForkViewProps) => {
-  const [repoUrl, setRepoUrl] = useState("");
-  const [discovery, setDiscovery] = useState<DiscoverSkillsResponse>();
   const [activeSkillName, setActiveSkillName] = useState<string>();
   const [selectedSkillNames, setSelectedSkillNames] = useState<string[]>([]);
-  const [discoverStatus, setDiscoverStatus] = useState(status);
-  const [previewStatus, setPreviewStatus] = useState("Discover skills first.");
-  const [previewDefinition, setPreviewDefinition] =
-    useState<OriginSkillDefinitionPreview>();
   const [submitStatus, setSubmitStatus] = useState("No skills selected");
   const [forkResponse, setForkResponse] = useState<ForkSkillResponse>();
 
@@ -229,9 +249,25 @@ export const SkillForkView = ({
   );
   const pinnedOrigin = useMemo(() => getPinnedOrigin(discovery), [discovery]);
   const forkOrigin = useMemo(
-    () => pinnedOrigin ?? getFormOrigin(repoUrl),
-    [pinnedOrigin, repoUrl]
+    () => pinnedOrigin ?? origin,
+    [origin, pinnedOrigin]
   );
+  const definitionPreview = useOriginSkillDefinition(
+    forkOrigin,
+    activeCandidate?.selection
+  );
+  const previewDefinition =
+    definitionPreview.result?.status === "resolved"
+      ? definitionPreview.result.definition
+      : undefined;
+  const previewStatus = getPreviewStatus({
+    activeCandidate,
+    discovery,
+    error: definitionPreview.error,
+    isLoading: definitionPreview.isLoading,
+    result: definitionPreview.result,
+    status,
+  });
   const forkResultBySkillName = useMemo(() => {
     const results = new Map<string, ForkSkillResponse["results"][number]>();
 
@@ -243,82 +279,12 @@ export const SkillForkView = ({
   }, [forkResponse]);
 
   useEffect(() => {
-    if (!(discovery && activeCandidate)) {
-      setPreviewDefinition(undefined);
-      setPreviewStatus(discovery ? "Select a skill to preview." : status);
-      return;
-    }
-
-    let isMounted = true;
-
-    const readDefinition = async () => {
-      setPreviewDefinition(undefined);
-      setPreviewStatus("Loading preview...");
-
-      try {
-        const response = await onReadDefinitions({
-          origin: forkOrigin,
-          selections: [activeCandidate.selection],
-        });
-        const result = response.results.at(0);
-
-        if (!isMounted) {
-          return;
-        }
-
-        if (result?.status === "resolved") {
-          setPreviewDefinition(result.definition);
-          setPreviewStatus("Select a file");
-          return;
-        }
-
-        setPreviewStatus(result?.error ?? "Preview failed");
-      } catch (error) {
-        if (isMounted) {
-          setPreviewStatus(
-            error instanceof Error ? error.message : "Preview failed"
-          );
-        }
-      }
-    };
-
-    void readDefinition();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [activeCandidate, discovery, forkOrigin, onReadDefinitions, status]);
-
-  const discover = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setDiscoverStatus("Discovering...");
-    setSubmitStatus("No skills selected");
+    const firstSkillName = discovery?.candidates.at(0)?.selection.skillName;
+    setActiveSkillName(firstSkillName);
+    setSelectedSkillNames([]);
     setForkResponse(undefined);
-    setPreviewDefinition(undefined);
-
-    try {
-      const result = await onDiscover({
-        origin: { kind: "github", repoUrl },
-      });
-      const firstSkillName = result.candidates.at(0)?.selection.skillName;
-
-      setDiscovery(result);
-      setActiveSkillName(firstSkillName);
-      setSelectedSkillNames([]);
-      setDiscoverStatus(`Found ${result.candidates.length} skills`);
-      setPreviewStatus(
-        firstSkillName ? "Loading preview..." : "No skills found."
-      );
-    } catch (error) {
-      setDiscovery(undefined);
-      setActiveSkillName(undefined);
-      setSelectedSkillNames([]);
-      setDiscoverStatus(
-        error instanceof Error ? error.message : "Discovery failed"
-      );
-      setPreviewStatus("Discover skills first.");
-    }
-  };
+    setSubmitStatus("No skills selected");
+  }, [discovery]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -366,33 +332,6 @@ export const SkillForkView = ({
           </h1>
         </div>
       </header>
-
-      <form
-        onSubmit={discover}
-        className="flex h-16 shrink-0 items-center gap-3 border-b border-border px-6"
-      >
-        <label
-          htmlFor="fork-repository-url"
-          className="shrink-0 text-sm font-medium"
-        >
-          Repository URL
-        </label>
-        <Input
-          id="fork-repository-url"
-          value={repoUrl}
-          onChange={(event) => setRepoUrl(event.target.value)}
-          placeholder="https://github.com/example/agent-skills"
-          required
-          className="max-w-xl"
-        />
-        <Button type="submit" className="shrink-0">
-          <SearchIcon />
-          Discover
-        </Button>
-        <p className="min-w-0 truncate text-muted-foreground text-sm">
-          {discoverStatus}
-        </p>
-      </form>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(18rem,24rem)_1fr]">
         <aside className="min-h-0 border-r border-border">
@@ -465,7 +404,7 @@ export const SkillForkView = ({
               })
             ) : (
               <p className="px-4 py-3 text-muted-foreground text-sm">
-                Discover a GitHub repository to review skills.
+                {status}
               </p>
             )}
           </OverlayScrollbarsComponent>

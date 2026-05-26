@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 
+import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/shared/api/query-client";
 
 import { App } from "./app";
@@ -21,6 +22,7 @@ createRoot(rootElement).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <App />
+        <Toaster />
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>
