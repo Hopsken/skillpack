@@ -1,12 +1,12 @@
 # Frontend Structure Guidelines
 
-This document defines where frontend files should live under `client/`. The goal is to keep module responsibilities and boundaries clear, so developers can quickly find the relevant files without rethinking the structure each time.
+This document defines where frontend files should live under `apps/skillpack/client/`. The goal is to keep module responsibilities and boundaries clear, so developers can quickly find the relevant files without rethinking the structure each time.
 
 ## UI Framework
 
 The frontend uses **Tailwind CSS v4** for styling and **shadcn/ui** components installed into `components/ui/`. No MUI or Emotion.
 
-- shadcn components live in `client/components/ui/` and are re-exported from `client/components/ui/index.ts`.
+- shadcn components live in `apps/skillpack/client/components/ui/` and are re-exported from `apps/skillpack/client/components/ui/index.ts`.
 - Use Tailwind utility classes for layout and one-off styling. Use shadcn component variants before custom styles.
 - Use semantic color tokens (`bg-background`, `text-muted-foreground`) — never raw `bg-blue-500`.
 - Charts use **Recharts** (not shadcn Charts).
@@ -14,7 +14,7 @@ The frontend uses **Tailwind CSS v4** for styling and **shadcn/ui** components i
 The preferred structure is:
 
 ```text
-client/
+apps/skillpack/client/
   app.tsx
   main.tsx
   styles.css

@@ -5,7 +5,7 @@ export default defineConfig({
   ...ultracite,
   ignorePatterns: [
     ...(ultracite.ignorePatterns ?? []),
-    "client/components/ui/**",
+    "apps/skillpack/client/components/ui/**",
     ".agents/skills/**",
     ".claude/skills/**",
     "dist/**",

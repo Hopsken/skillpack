@@ -5,14 +5,18 @@ A single Cloudflare Worker serving both:
 - Hono API under `/api/*`
 - Vite React SPA through Cloudflare static assets
 
-The stack uses Cloudflare Workers, D1, R2, Drizzle ORM, Hono, React, Vite, Tailwind CSS, shadcn-style UI components, TypeScript, pnpm, and Zod schemas.
+The stack uses Cloudflare Workers, D1, R2, Drizzle ORM, Hono, React, Vite, Tailwind CSS, shadcn-style UI components, TypeScript, Turborepo, pnpm, and Zod schemas.
 
 ## Project layout
 
 ```text
-client/   # Vite React SPA
-server/   # Cloudflare Worker, Hono app, routes, D1 schema
-shared/   # Zod schemas and shared TypeScript types
+apps/skillpack/              # Cloudflare Worker + Vite React SPA deployment unit
+  client/                    # Vite React SPA
+  server/                    # Hono app, Worker entrypoint, D1 schema
+  migrations/                # D1 migrations
+packages/core/               # shared Skillpack primitives and Zod value schemas
+packages/contracts/          # frontend/backend API request/response contracts
+packages/typescript-config/  # shared TypeScript configs
 ```
 
 ## Development
@@ -20,6 +24,9 @@ shared/   # Zod schemas and shared TypeScript types
 ```bash
 pnpm install
 pnpm dev
+pnpm typecheck
+pnpm test
+pnpm build
 ```
 
 ## Auth setup
@@ -29,7 +36,7 @@ Skillpack uses Better Auth with a generic OIDC provider. Provider endpoints are 
 For local development:
 
 ```bash
-cp .dev.vars.example .dev.vars
+cp apps/skillpack/.dev.vars.example apps/skillpack/.dev.vars
 ```
 
 Set `OIDC_CLIENT_ID` and `BETTER_AUTH_SECRET` in `.dev.vars`. Register this redirect URI with your OIDC provider:
@@ -41,8 +48,8 @@ http://localhost:5173/api/auth/oauth2/callback/oidc
 For deployed environments, set secrets with Wrangler:
 
 ```bash
-wrangler secret put BETTER_AUTH_SECRET
-wrangler secret put OIDC_CLIENT_ID
+pnpm --filter @skillpack/app exec wrangler secret put BETTER_AUTH_SECRET
+pnpm --filter @skillpack/app exec wrangler secret put OIDC_CLIENT_ID
 ```
 
 Register the deployed redirect URI with the same callback path:
@@ -56,11 +63,11 @@ https://<your-domain>/api/auth/oauth2/callback/oidc
 Create resources:
 
 ```bash
-wrangler d1 create skillpack
-wrangler r2 bucket create skillpack-objects
+pnpm --filter @skillpack/app exec wrangler d1 create skillpack
+pnpm --filter @skillpack/app exec wrangler r2 bucket create skillpack-objects
 ```
 
-Update `wrangler.jsonc` with the generated D1 `database_id`.
+Update `apps/skillpack/wrangler.jsonc` with the generated D1 `database_id`.
 
 Apply migrations:
 

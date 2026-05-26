@@ -1,0 +1,11 @@
+{
+  "name": "@skillpack/typescript-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base.json": "./base.json",
+    "./cloudflare-worker.json": "./cloudflare-worker.json",
+    "./react-vite.json": "./react-vite.json"
+  }
+}

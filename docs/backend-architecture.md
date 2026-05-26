@@ -1,13 +1,13 @@
 # Backend Architecture
 
-The backend uses a module-first architecture with lightweight internal layers. Hono owns the HTTP boundary. Business code lives in domain-oriented modules under `server/modules`.
+The backend uses a module-first architecture with lightweight internal layers. Hono owns the HTTP boundary. Business code lives in domain-oriented modules under `apps/skillpack/server/modules`.
 
 The goal is to make code placement predictable: when adding or changing backend behavior, there should be one obvious module and one obvious layer for the change.
 
 ## Directory Layout
 
 ```text
-server/
+apps/skillpack/server/
   app.ts
   worker.ts
   types.ts
@@ -54,7 +54,7 @@ Examples of module-sized capabilities:
 - Collection, packaging, or export workflows
 - Skill Origin discovery and definition retrieval
 
-Shared low-level utilities belong in `server/lib`. Reusable server-only parsing or domain helpers belong in `server/shared` or the owning module. Database table definitions belong in `server/db/schema.ts`. Public API contracts shared by the frontend and backend belong in `shared/contract/*`.
+Shared low-level utilities belong in `apps/skillpack/server/lib`. Reusable server-only parsing or domain helpers belong in `apps/skillpack/server/shared` or the owning module. Database table definitions belong in `apps/skillpack/server/db/schema.ts`. Public API contracts shared by the frontend and backend belong in `@skillpack/contracts/*`. Shared primitive value schemas belong in `@skillpack/core/primitives`.
 
 ## Layer Responsibilities
 
@@ -176,7 +176,7 @@ if (error instanceof EntityNotFoundError) {
 - Storage DTOs
 - Origin Adapter DTOs
 
-Public API contracts belong in `shared/contract/*`.
+Public API contracts belong in `@skillpack/contracts/*`.
 
 ## Dependency Rules
 
@@ -261,29 +261,29 @@ getObjectKey();
 
 ```text
 New API endpoint
-  server/modules/<module>/route.ts
+  apps/skillpack/server/modules/<module>/route.ts
 
 New business flow
-  server/modules/<module>/service.ts
+  apps/skillpack/server/modules/<module>/service.ts
 
 New DB table or field
-  server/db/schema.ts
-  migrations/*.sql
-  server/modules/<module>/repository.ts
+  apps/skillpack/server/db/schema.ts
+  apps/skillpack/migrations/*.sql
+  apps/skillpack/server/modules/<module>/repository.ts
 
 New object storage rule
-  server/modules/<module>/storage.ts
+  apps/skillpack/server/modules/<module>/storage.ts
 
 New response field
-  shared/contract/*.ts
-  server/modules/<module>/presenter.ts
+  packages/contracts/src/**/*.ts
+  apps/skillpack/server/modules/<module>/presenter.ts
 
 New Skill Origin adapter
-  server/modules/origins/adapters/<origin>.ts
-  server/modules/origins/service.ts
+  apps/skillpack/server/modules/origins/adapters/<origin>.ts
+  apps/skillpack/server/modules/origins/service.ts
 
 New packaging/building rule
-  server/modules/<module>/packager.ts
+  apps/skillpack/server/modules/<module>/packager.ts
 ```
 
 ## When to Split Code Out of Routes

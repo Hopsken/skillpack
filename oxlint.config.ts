@@ -7,7 +7,7 @@ import vitest from "ultracite/oxlint/vitest";
 export default defineConfig({
   extends: [core, react, remix, vitest],
   ignorePatterns: [
-    "client/components/ui/**",
+    "apps/skillpack/client/components/ui/**",
     ".agents/skills/**",
     ".claude/skills/**",
   ],

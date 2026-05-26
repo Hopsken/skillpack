@@ -7,28 +7,33 @@ Skillpack is a single Cloudflare Worker service that serves both:
 - Hono API routes under `/api/*`
 - Vite React SPA through Cloudflare static assets
 
-The stack is Cloudflare Workers, Hono, D1, Drizzle ORM, R2, React, Vite, Tailwind CSS, shadcn/ui-style components, TypeScript, pnpm, and Zod.
+The stack is Cloudflare Workers, Hono, D1, Drizzle ORM, R2, React, Vite, Tailwind CSS, shadcn/ui-style components, TypeScript, Turborepo, pnpm, and Zod.
 
 ## Project Layout
 
 ```text
-client/   # Vite React SPA
-server/   # Cloudflare Worker, Hono app, routes, D1 schema
-shared/   # frontend/backend API contracts only
+apps/skillpack/              # single Cloudflare Worker + SPA deployment unit
+  client/                    # Vite React SPA
+  server/                    # Cloudflare Worker, Hono app, routes, D1 schema
+  migrations/                # D1 migrations
+packages/core/               # Skillpack primitives and shared value schemas
+packages/contracts/          # frontend/backend API contracts only
+packages/typescript-config/  # shared TypeScript configs
 ```
 
 Key files:
 
 ```text
-server/app.ts                 # Hono app composition
-server/worker.ts              # Worker entrypoint
-server/modules/skills/route.ts # Skills API routes
-server/modules/skills/service.ts # Skills business flows
-server/db/schema.ts           # Drizzle D1 schema
-shared/contract/skills/*      # Zod request/response contracts
-client/app.tsx                # SPA entry UI
-wrangler.jsonc                # Cloudflare Worker, D1, R2, assets config
-vite.config.ts                # Vite + Cloudflare plugin config
+apps/skillpack/server/app.ts                 # Hono app composition
+apps/skillpack/server/worker.ts              # Worker entrypoint
+apps/skillpack/server/modules/skills/route.ts # Skills API routes
+apps/skillpack/server/modules/skills/service.ts # Skills business flows
+apps/skillpack/server/db/schema.ts           # Drizzle D1 schema
+packages/contracts/src/skills/*              # Zod request/response contracts
+packages/core/src/primitives.ts              # shared primitive/value schemas
+apps/skillpack/client/app.tsx                # SPA entry UI
+apps/skillpack/wrangler.jsonc                # Cloudflare Worker, D1, R2, assets config
+apps/skillpack/vite.config.ts                # Vite + Cloudflare plugin config
 ```
 
 ## Commands
@@ -53,21 +58,22 @@ pnpm db:seed:local
 Cloudflare resource setup:
 
 ```bash
-wrangler d1 create skillpack
-wrangler r2 bucket create skillpack-objects
+pnpm --filter @skillpack/app exec wrangler d1 create skillpack
+pnpm --filter @skillpack/app exec wrangler r2 bucket create skillpack-objects
 ```
 
-After creating D1, update `wrangler.jsonc` with the production `database_id`.
+After creating D1, update `apps/skillpack/wrangler.jsonc` with the production `database_id`.
 
 ## Architecture Notes
 
-- Keep client and server code separated: `client/`, `server/`, and `shared/`.
-- Use `tsconfig.client.json` and `tsconfig.server.json`; root `tsconfig.json` only contains project references.
+- Keep client and server code separated inside `apps/skillpack/client/` and `apps/skillpack/server/`.
+- Root commands are Turbo/pnpm orchestrators. Run app-local commands through root scripts or `pnpm --filter @skillpack/app <script>`.
+- Use `apps/skillpack/tsconfig.client.json` and `apps/skillpack/tsconfig.server.json`; each workspace package owns its own `typecheck` script.
 - Must read `docs/backend-architecture.md` before adding or reorganizing backend files.
-- Backend code follows module-first architecture under `server/modules/<module>/` with lightweight `route/service/repository/storage/presenter` layers.
+- Backend code follows module-first architecture under `apps/skillpack/server/modules/<module>/` with lightweight `route/service/repository/storage/presenter` layers.
 - In server code, prefer the `@server/*` alias for cross-module or deep imports instead of long relative paths like `../../../`.
 - Keep Hono route files focused on HTTP concerns; move business logic to module services, D1 access to repositories, and R2 access to storage helpers.
-- Use shared Zod schemas from `shared/contract/*` only for frontend/backend request and response contracts. Keep domain schemas in the owning server module.
+- Use shared Zod schemas from `@skillpack/contracts/*` only for frontend/backend request and response contracts. Use `@skillpack/core/primitives` for shared primitive value schemas. Keep domain schemas in the owning server module.
 - In repositories, prefer Drizzle relational query API (`db.query.*`) for reads. Use insert/update/delete builders for writes.
 - Use Cloudflare bindings directly through `c.env`; avoid Cloudflare REST calls from inside the Worker.
 - Store skill content in R2 and store metadata/manifests in D1.
@@ -76,9 +82,9 @@ After creating D1, update `wrangler.jsonc` with the production `database_id`.
 
 Must read doc: `docs/frontend-structure.md` before adding or moving frontend files.
 
-Frontend source lives in `client/`. It is built with Vite (`vite.config.ts`), uses React Router.
+Frontend source lives in `apps/skillpack/client/`. It is built with Vite (`apps/skillpack/vite.config.ts`) and uses React Router.
 
-**Import convention**: prefer the `@/*` path alias (e.g., `@/domain/charts`) over relative paths for cross-layer imports. The alias is defined in `tsconfig.client.json`.
+**Import convention**: prefer the `@/*` path alias (e.g., `@/domain/charts`) over relative paths for cross-layer imports. The alias is defined in `apps/skillpack/tsconfig.client.json`.
 
 Before adding or moving frontend files, follow its `pages / features / domain / components / shared` structure.
 
@@ -95,22 +101,24 @@ State management rule: TanStack Query owns server state from APIs; Zustand owns 
 
 ## Data Model Notes
 
-- Skillpack-managed skills use `source_type = "skillpack"`.
-- Skillpack-managed handles are unique per source and usually equal the skill name.
-- Skill content is stored at `skills/skillpack/{handle}/{version}/SKILL.md` in R2.
-- `skill_versions` keeps version metadata, object keys, SHA-256 values, resolved locations, and approval timestamps.
+- Skillpack-managed skills are addressed by Skill ID.
+- Skill names are display metadata and may duplicate.
+- Skill content is stored at `skills/skillpack/{skillId}/{versionNumber}/SKILL.md` in R2.
+- `skill_versions` keeps version metadata, object keys, SHA-256 values, resolved locations, and version labels.
 
 ## API
 
 ```text
 GET  /api/health
 GET  /api/v1/skills
-GET  /api/v1/skills/skillpack/:handle
-GET  /api/v1/skills/skillpack/:handle?version=:version
-GET  /api/v1/skills/skillpack/:handle/resources?version=:version&path=:path
-GET  /api/v1/skills/skillpack/:handle/resources/raw?version=:version&path=:path
+GET  /api/v1/skills/:skillId
+GET  /api/v1/skills/:skillId?version=:version
+GET  /api/v1/skills/:skillId/resources?version=:version&path=:path
+GET  /api/v1/skills/:skillId/resources/raw?version=:version&path=:path
 POST /api/v1/skills
-DELETE /api/v1/skills/skillpack/:handle
+POST /api/v1/skills/fork
+PATCH /api/v1/skills/:skillId
+DELETE /api/v1/skills/:skillId
 ```
 
 Create a skill locally:
@@ -121,17 +129,17 @@ curl -X POST http://localhost:5173/api/v1/skills \
   -d '{
     "name": "api-skill-demo",
     "description": "Demo API-backed skill",
-    "version": "0.1.0",
+    "versionLabel": "first draft",
     "content": "# Demo Skill\n\nUse this skill when validating API-backed skills."
   }'
 ```
 
 ## Gotchas
 
-- `wrangler.jsonc` uses a production D1 `database_id`; local dev still uses Wrangler local state with the same `DB` binding.
+- `apps/skillpack/wrangler.jsonc` uses a production D1 `database_id`; local dev still uses Wrangler local state with the same `DB` binding.
 - `pnpm db:seed:local` seeds local D1 and R2 through the running dev API at `http://localhost:5173`.
-- `components.json` points shadcn/ui to `client/styles.css` and `@/components` aliases.
-- Build output is generated under `dist/` and should stay untracked.
+- `apps/skillpack/components.json` points shadcn/ui to `client/styles.css` and `@/components` aliases.
+- Build output is generated under `apps/skillpack/dist/` and should stay untracked.
 - `.DS_Store` should stay ignored and untracked.
 
 # Ultracite Code Standards

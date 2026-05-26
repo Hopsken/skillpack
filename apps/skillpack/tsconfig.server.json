@@ -1,0 +1,15 @@
+{
+  "extends": "@skillpack/typescript-config/cloudflare-worker.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@server/*": ["./server/*"]
+    }
+  },
+  "include": [
+    "server",
+    "worker-configuration.d.ts",
+    "drizzle.config.ts",
+    "vite.config.ts"
+  ]
+}

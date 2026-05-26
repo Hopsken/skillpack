@@ -1,0 +1,10 @@
+{
+  "extends": "@skillpack/typescript-config/react-vite.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./client/*"]
+    }
+  },
+  "include": ["client"]
+}
