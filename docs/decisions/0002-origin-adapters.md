@@ -68,6 +68,11 @@ Batch Fork uses partial success. One selected Skill failing to Fork does not pre
 
 - `SkillService.forkSkill` should stop containing GitHub-specific parsing, fetch, tree walking, and raw file logic.
 - GitHub logic should move into an Origin Adapter under `server/modules/origins/adapters`.
+- GitHub discovery should use one resolved repository tree and then apply Skillpack's GitHub skill path policy rather than walking the GitHub Contents API directory-by-directory.
+- GitHub discovery is intentionally cheap: it returns path-derived candidates and resolved origin metadata, but does not fetch every candidate `SKILL.md` for frontmatter descriptions.
+- GitHub candidate discovery uses this priority order: root `SKILL.md`, `skills/`, `skills/.curated/`, `skills/.experimental/`, `skills/.system/`, `.agents/skills/`, `.claude/skills/`, `.codex/skills/`, then a capped recursive fallback only when priority roots find nothing.
+- When path-derived candidate names duplicate, the first candidate in priority order wins. Managed Skill names can still duplicate because Fork reads the selected `SKILL.md` frontmatter and uses that name for the Managed Skill.
+- GitHub Fork remains text-only for now. Unsupported resource file types fail the selected Fork result instead of creating an incomplete Managed Skill.
 - `SkillService` may depend on the public `OriginService` because cross-module service dependencies are allowed.
 - `originsRoute` should be registered separately from `skillsRoute` and protected by the same authentication boundary.
 - Shared contracts need origin discovery request/response schemas and an origin-generic batch Fork schema.
