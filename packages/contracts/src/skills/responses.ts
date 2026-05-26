@@ -1,7 +1,11 @@
 import {
   safeRelativePathSchema,
+  skillAllowedToolsSchema,
+  skillCompatibilitySchema,
   skillDescriptionSchema,
   skillIdSchema,
+  skillLicenseSchema,
+  skillMetadataSchema,
   skillNameSchema,
   skillVersionNumberSchema,
 } from "@skillpack/core/primitives";
@@ -23,10 +27,14 @@ export const resourceManifestItemSchema = z.object({
 });
 
 export const skillListItemSchema = z.object({
+  allowedTools: skillAllowedToolsSchema.nullable(),
+  compatibility: skillCompatibilitySchema.nullable(),
   createdAt: z.string().datetime(),
   currentVersion: skillVersionNumberSchema,
   description: skillDescriptionSchema,
   id: skillIdSchema,
+  license: skillLicenseSchema.nullable(),
+  metadata: skillMetadataSchema.nullable(),
   name: skillNameSchema,
   origin: skillOriginSummarySchema.optional(),
   updatedAt: z.string().datetime(),
@@ -37,10 +45,14 @@ export const skillListResponseSchema = z.object({
 });
 
 export const resolvedSkillSchema = z.object({
+  allowedTools: skillAllowedToolsSchema.nullable(),
+  compatibility: skillCompatibilitySchema.nullable(),
   content: z.string(),
   createdAt: z.string().datetime(),
   description: skillDescriptionSchema,
   id: skillIdSchema,
+  license: skillLicenseSchema.nullable(),
+  metadata: skillMetadataSchema.nullable(),
   name: skillNameSchema,
   origin: skillOriginSummarySchema.optional(),
   resources: z.array(resourceManifestItemSchema),
@@ -50,10 +62,15 @@ export const resolvedSkillSchema = z.object({
 });
 
 export const skillVersionItemSchema = z.object({
+  allowedTools: skillAllowedToolsSchema.nullable(),
   changeSummary: z.string().nullable(),
+  compatibility: skillCompatibilitySchema.nullable(),
   createdAt: z.string().datetime(),
   description: skillDescriptionSchema,
   label: z.string().nullable(),
+  license: skillLicenseSchema.nullable(),
+  metadata: skillMetadataSchema.nullable(),
+  name: skillNameSchema,
   version: skillVersionNumberSchema,
 });
 
@@ -74,9 +91,13 @@ export const skillResourceResponseSchema = z.object({
 });
 
 export const skillPatchedResponseSchema = z.object({
+  allowedTools: skillAllowedToolsSchema.nullable(),
+  compatibility: skillCompatibilitySchema.nullable(),
   currentVersion: skillVersionNumberSchema,
   description: skillDescriptionSchema,
   id: skillIdSchema,
+  license: skillLicenseSchema.nullable(),
+  metadata: skillMetadataSchema.nullable(),
   name: skillNameSchema,
 });
 

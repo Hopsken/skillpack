@@ -1,7 +1,5 @@
 CREATE TABLE `skills` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  `name` text NOT NULL,
-  `current_version_id` integer,
   `created_at` integer NOT NULL,
   `updated_at` integer NOT NULL
 );
@@ -10,7 +8,12 @@ CREATE TABLE `skill_versions` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   `skill_id` integer NOT NULL,
   `version_number` integer NOT NULL,
+  `name` text NOT NULL,
   `description` text NOT NULL,
+  `license` text,
+  `compatibility` text,
+  `allowed_tools` text,
+  `metadata` text,
   `label` text,
   `change_summary` text,
   `created_at` integer NOT NULL
@@ -43,4 +46,4 @@ CREATE TABLE `skill_origins` (
   `updated_at` integer NOT NULL
 );
 
-CREATE INDEX `skill_origins_skill_idx` ON `skill_origins` (`skill_id`);
+CREATE UNIQUE INDEX `skill_origins_skill_unique` ON `skill_origins` (`skill_id`);

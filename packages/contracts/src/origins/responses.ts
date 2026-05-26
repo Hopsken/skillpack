@@ -1,6 +1,10 @@
 import {
   safeRelativePathSchema,
+  skillAllowedToolsSchema,
+  skillCompatibilitySchema,
   skillDescriptionSchema,
+  skillLicenseSchema,
+  skillMetadataSchema,
   skillNameSchema,
 } from "@skillpack/core/primitives";
 import { z } from "zod";
@@ -46,8 +50,12 @@ export const originDefinitionResourceSchema = z.object({
 });
 
 export const originSkillDefinitionSchema = z.object({
+  allowedTools: skillAllowedToolsSchema.nullable(),
+  compatibility: skillCompatibilitySchema.nullable(),
   content: z.string(),
   description: skillDescriptionSchema,
+  license: skillLicenseSchema.nullable(),
+  metadata: skillMetadataSchema.nullable(),
   name: skillNameSchema,
   resources: z.array(originDefinitionResourceSchema),
   selection: originSelectionSchema,

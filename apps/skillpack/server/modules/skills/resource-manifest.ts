@@ -9,7 +9,6 @@ import type {
 } from "./types";
 
 export interface ResolvedResourceManifest {
-  content: string;
   resources: SkillResourceRow[];
 }
 
@@ -42,24 +41,25 @@ export class ResourceManifest {
   }
 
   async createSnapshot(
-    content: string,
     resources: TextResourceInput[]
   ): Promise<StoredResourceObject[]> {
     validateResourcePaths(resources);
 
-    const storedResources = [
-      await this.storage.putTextResource({
-        content,
-        mediaType: markdownMediaType,
-        path: skillContentPath,
-      }),
-    ];
+    const storedResources = [];
 
     for (const resource of resources) {
       storedResources.push(await this.storage.putTextResource(resource));
     }
 
     return storedResources;
+  }
+
+  storeSkillFile(content: string): Promise<StoredResourceObject> {
+    return this.storage.putTextResource({
+      content,
+      mediaType: markdownMediaType,
+      path: skillContentPath,
+    });
   }
 
   async patchSnapshot(
@@ -80,17 +80,6 @@ export class ResourceManifest {
       nextResources.delete(path);
     }
 
-    if (input.content) {
-      nextResources.set(
-        skillContentPath,
-        await this.storage.putTextResource({
-          content: input.content,
-          mediaType: markdownMediaType,
-          path: skillContentPath,
-        })
-      );
-    }
-
     validateResourcePaths(input.upsertResources);
 
     for (const resource of input.upsertResources) {
@@ -100,46 +89,27 @@ export class ResourceManifest {
       );
     }
 
-    if (!nextResources.has(skillContentPath)) {
-      throw skillErrors.skillFileNotFound();
-    }
-
     return [...nextResources.values()];
   }
 
   static restoreSnapshot(
     resources: SkillResourceRow[]
   ): StoredResourceObject[] {
-    if (!resources.some((resource) => resource.path === skillContentPath)) {
-      throw skillErrors.skillFileNotFound();
-    }
-
     return resources.map(toStoredResource);
   }
 
-  async resolveSnapshot(
+  static resolveSnapshot(
     resources: SkillResourceRow[]
-  ): Promise<ResolvedResourceManifest> {
-    const contentResource = resources.find(
-      (resource) => resource.path === skillContentPath
-    );
-
-    if (!contentResource) {
-      throw skillErrors.skillFileNotFound();
-    }
-
-    const object = await this.getResourceObject(contentResource);
-
-    return {
-      content: await object.text(),
-      resources: resources.filter(
-        (resource) => resource.path !== skillContentPath
-      ),
-    };
+  ): ResolvedResourceManifest {
+    return { resources };
   }
 
-  async getResourceObject(resource: SkillResourceRow) {
-    const object = await this.storage.getSkillObject(resource.sha256);
+  getResourceObject(resource: SkillResourceRow) {
+    return this.getObjectBySha256(resource.sha256);
+  }
+
+  async getObjectBySha256(sha256: string) {
+    const object = await this.storage.getSkillObject(sha256);
 
     if (!object) {
       throw skillErrors.skillObjectNotFound();

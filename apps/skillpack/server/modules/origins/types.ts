@@ -23,8 +23,12 @@ export interface OriginProvenance {
 }
 
 export interface OriginSkillDefinition {
+  allowedTools?: string | null;
+  compatibility?: string | null;
   content: string;
   description: string;
+  license?: string | null;
+  metadata?: Record<string, string> | null;
   name: string;
   provenance: OriginProvenance;
   resources: OriginResourceDefinition[];

@@ -4,6 +4,7 @@ import {
   skillsTable,
   skillVersionsTable,
 } from "@server/db/schema";
+import type { SkillFileMetadata } from "@server/shared/skill-file";
 import type { Database } from "@server/types";
 import { eq as sqlEq, inArray, sql } from "drizzle-orm";
 
@@ -25,25 +26,23 @@ export class SkillRepository {
   async listSkills() {
     const rows = await this.db.query.skillsTable.findMany({
       orderBy: (skills, { desc }) => [desc(skills.updatedAt)],
-      where: (skills, { isNotNull }) => isNotNull(skills.currentVersionId),
       with: {
-        currentVersion: true,
         origins: true,
+        versions: {
+          limit: 1,
+          orderBy: (versions, { desc }) => [desc(versions.versionNumber)],
+        },
       },
     });
 
     return rows.flatMap((row) => {
-      if (!row.currentVersion) {
+      const [version] = row.versions;
+
+      if (!version) {
         return [];
       }
 
-      return [
-        {
-          origin: row.origins.at(0),
-          skill: row,
-          version: row.currentVersion,
-        },
-      ];
+      return [{ origin: row.origins.at(0), skill: row, version }];
     });
   }
 
@@ -53,9 +52,10 @@ export class SkillRepository {
     });
   }
 
-  findCurrentSkillVersion(currentVersionId: number) {
+  findLatestSkillVersion(skillId: number) {
     return this.db.query.skillVersionsTable.findFirst({
-      where: (versions, { eq }) => eq(versions.id, currentVersionId),
+      orderBy: (versions, { desc }) => [desc(versions.versionNumber)],
+      where: (versions, { eq }) => eq(versions.skillId, skillId),
     });
   }
 
@@ -99,12 +99,11 @@ export class SkillRepository {
     });
   }
 
-  async insertSkill(name: string, now: Date) {
+  async insertSkill(now: Date) {
     const [skill] = await this.db
       .insert(skillsTable)
       .values({
         createdAt: now,
-        name,
         updatedAt: now,
       })
       .returning();
@@ -118,18 +117,17 @@ export class SkillRepository {
 
   async commitSkillVersion(
     input: {
-      changeSummary?: string;
-      description: string;
+      changeSummary?: string | null;
       label?: string;
-      name?: string;
       resources: StoredResourceObject[];
+      skillFileMetadata: SkillFileMetadata;
       skillId: number;
     },
     now: Date
   ) {
     // D1 batch statements are submitted together, so later statements cannot
-    // await the inserted version id in JS. Keep the version/resource/current
-    // pointer commit atomic by resolving the just-inserted version inside SQL.
+    // await the inserted version id in JS. Resolve the just-inserted version
+    // inside SQL while keeping version/resources/skill update in one batch.
     const committedVersionId = sql<number>`(
       select ${skillVersionsTable.id}
       from ${skillVersionsTable}
@@ -141,44 +139,49 @@ export class SkillRepository {
         )
       limit 1
     )`;
-    const skillUpdate = {
-      currentVersionId: committedVersionId,
-      updatedAt: now,
-      ...(input.name ? { name: input.name } : {}),
-    };
+    const versionInsert = this.db
+      .insert(skillVersionsTable)
+      .values({
+        allowedTools: input.skillFileMetadata.allowedTools ?? null,
+        changeSummary: input.changeSummary ?? null,
+        compatibility: input.skillFileMetadata.compatibility ?? null,
+        createdAt: now,
+        description: input.skillFileMetadata.description,
+        label: input.label ?? null,
+        license: input.skillFileMetadata.license ?? null,
+        metadata: input.skillFileMetadata.metadata ?? null,
+        name: input.skillFileMetadata.name,
+        skillId: input.skillId,
+        versionNumber: sql<number>`(
+          select coalesce(max(${skillVersionsTable.versionNumber}), 0) + 1
+          from ${skillVersionsTable}
+          where ${skillVersionsTable.skillId} = ${input.skillId}
+        )`,
+      })
+      .returning();
+    const skillUpdate = this.db
+      .update(skillsTable)
+      .set({ updatedAt: now })
+      .where(sqlEq(skillsTable.id, input.skillId));
 
     try {
-      const [versionRows] = await this.db.batch([
-        this.db
-          .insert(skillVersionsTable)
-          .values({
-            changeSummary: input.changeSummary ?? null,
-            createdAt: now,
-            description: input.description,
-            label: input.label ?? null,
-            skillId: input.skillId,
-            versionNumber: sql<number>`(
-              select coalesce(max(${skillVersionsTable.versionNumber}), 0) + 1
-              from ${skillVersionsTable}
-              where ${skillVersionsTable.skillId} = ${input.skillId}
-            )`,
-          })
-          .returning(),
-        this.db.insert(skillResourcesTable).values(
-          input.resources.map((resource) => ({
-            createdAt: now,
-            mediaType: resource.mediaType,
-            path: resource.path,
-            sha256: resource.sha256,
-            size: resource.size,
-            skillVersionId: committedVersionId,
-          }))
-        ),
-        this.db
-          .update(skillsTable)
-          .set(skillUpdate)
-          .where(sqlEq(skillsTable.id, input.skillId)),
-      ]);
+      const [versionRows] =
+        input.resources.length > 0
+          ? await this.db.batch([
+              versionInsert,
+              this.db.insert(skillResourcesTable).values(
+                input.resources.map((resource) => ({
+                  createdAt: now,
+                  mediaType: resource.mediaType,
+                  path: resource.path,
+                  sha256: resource.sha256,
+                  size: resource.size,
+                  skillVersionId: committedVersionId,
+                }))
+              ),
+              skillUpdate,
+            ])
+          : await this.db.batch([versionInsert, skillUpdate]);
 
       const [version] = versionRows;
 
@@ -221,11 +224,6 @@ export class SkillRepository {
       where: (version, { eq }) => eq(version.skillId, skillId),
     });
     const versionIds = versions.map((version) => version.id);
-
-    await this.db
-      .update(skillsTable)
-      .set({ currentVersionId: null })
-      .where(sqlEq(skillsTable.id, skillId));
 
     if (versionIds.length > 0) {
       await this.db

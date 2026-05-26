@@ -35,11 +35,15 @@ const presentOrigin = (origin?: SkillOriginRow | null) => {
 export const presentSkillList = (skills: SkillWithCurrentVersion[]) =>
   skillListResponseSchema.parse({
     skills: skills.map(({ origin, skill, version }) => ({
+      allowedTools: version.allowedTools,
+      compatibility: version.compatibility,
       createdAt: skill.createdAt.toISOString(),
       currentVersion: version.versionNumber,
       description: version.description,
       id: skill.id,
-      name: skill.name,
+      license: version.license,
+      metadata: version.metadata,
+      name: version.name,
       origin: presentOrigin(origin),
       updatedAt: skill.updatedAt.toISOString(),
     })),
@@ -47,11 +51,15 @@ export const presentSkillList = (skills: SkillWithCurrentVersion[]) =>
 
 export const presentSkill = (result: ResolvedSkillResult) =>
   resolvedSkillSchema.parse({
+    allowedTools: result.version.allowedTools,
+    compatibility: result.version.compatibility,
     content: result.content,
     createdAt: result.skill.createdAt.toISOString(),
     description: result.version.description,
     id: result.skill.id,
-    name: result.skill.name,
+    license: result.version.license,
+    metadata: result.version.metadata,
+    name: result.version.name,
     origin: presentOrigin(result.origin),
     resources: result.resources.map((resource) => ({
       mediaType: resource.mediaType,
@@ -66,11 +74,15 @@ export const presentSkill = (result: ResolvedSkillResult) =>
 
 export const presentSkillSummary = (result: ResolvedSkillResult) =>
   skillListItemSchema.parse({
+    allowedTools: result.version.allowedTools,
+    compatibility: result.version.compatibility,
     createdAt: result.skill.createdAt.toISOString(),
     currentVersion: result.version.versionNumber,
     description: result.version.description,
     id: result.skill.id,
-    name: result.skill.name,
+    license: result.version.license,
+    metadata: result.version.metadata,
+    name: result.version.name,
     origin: presentOrigin(result.origin),
     updatedAt: result.skill.updatedAt.toISOString(),
   });
@@ -91,19 +103,24 @@ export const presentForkedSkills = (result: ForkSkillServiceResult) =>
   });
 
 export const presentSkillVersions = (
-  skill: { currentVersionId: number | null; id: number; name: string },
+  skill: { id: number },
   currentVersion: SkillVersionRow | undefined,
   versions: SkillVersionRow[]
 ) =>
   skillVersionListResponseSchema.parse({
     currentVersion: currentVersion?.versionNumber ?? 0,
     id: skill.id,
-    name: skill.name,
+    name: currentVersion?.name ?? "",
     versions: versions.map((version) => ({
+      allowedTools: version.allowedTools,
       changeSummary: version.changeSummary,
+      compatibility: version.compatibility,
       createdAt: version.createdAt.toISOString(),
       description: version.description,
       label: version.label,
+      license: version.license,
+      metadata: version.metadata,
+      name: version.name,
       version: version.versionNumber,
     })),
   });

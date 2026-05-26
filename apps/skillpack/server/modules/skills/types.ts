@@ -66,9 +66,13 @@ export interface TextResourceInput {
 }
 
 export interface PatchSkillResult {
+  allowedTools: string | null;
+  compatibility: string | null;
   currentVersion: number;
   description: string;
   id: number;
+  license: string | null;
+  metadata: Record<string, string> | null;
   name: string;
 }
 

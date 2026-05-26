@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { createDb } from "@server/db/client";
-import { skillResourcesTable, skillsTable } from "@server/db/schema";
+import { skillResourcesTable } from "@server/db/schema";
 import { eq } from "drizzle-orm";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -29,7 +29,7 @@ const resources = (suffix: string): StoredResourceObject[] => [
     mediaType: "text/markdown; charset=utf-8",
     path: "SKILL.md",
     sha256: `skill-${suffix}`,
-    size: 12,
+    size: 120,
   },
   {
     mediaType: "text/plain; charset=utf-8",
@@ -38,6 +38,29 @@ const resources = (suffix: string): StoredResourceObject[] => [
     size: 5,
   },
 ];
+
+const versionInput = (
+  skillId: number,
+  suffix: string,
+  input?: {
+    changeSummary?: string;
+    description?: string;
+    name?: string;
+    resources?: StoredResourceObject[];
+  }
+) => ({
+  changeSummary: input?.changeSummary,
+  resources: input?.resources ?? resources(suffix),
+  skillFileMetadata: {
+    allowedTools: "Read",
+    compatibility: "Requires git",
+    description: input?.description ?? "First version",
+    license: "Apache-2.0",
+    metadata: { author: "acme" },
+    name: input?.name ?? "demo",
+  },
+  skillId,
+});
 
 describe("SkillRepository.commitSkillVersion", () => {
   let mf: Miniflare;
@@ -65,77 +88,56 @@ describe("SkillRepository.commitSkillVersion", () => {
     await mf.dispose();
   });
 
-  it("commits the first version, resources, and current pointer atomically", async () => {
+  it("commits the first version, resource manifest, and skill metadata projection", async () => {
     const now = new Date("2026-05-25T12:00:00.000Z");
-    const skill = await repository.insertSkill("demo", now);
+    const skill = await repository.insertSkill(now);
 
     const version = await repository.commitSkillVersion(
-      {
-        description: "First version",
-        label: "initial",
-        resources: resources("v1"),
-        skillId: skill.id,
-      },
+      { ...versionInput(skill.id, "v1"), label: "initial" },
       now
     );
 
-    const [updatedSkill] = await db
-      .select()
-      .from(skillsTable)
-      .where(eq(skillsTable.id, skill.id));
     const committedResources = await repository.listResourcesByVersionId(
       version.id
     );
 
-    expect(version.versionNumber).toBe(1);
-    expect(updatedSkill?.currentVersionId).toBe(version.id);
+    expect(version).toMatchObject({
+      allowedTools: "Read",
+      description: "First version",
+      metadata: { author: "acme" },
+      name: "demo",
+      versionNumber: 1,
+    });
     expect(committedResources).toHaveLength(2);
     expect(
       committedResources.map((resource) => resource.skillVersionId)
     ).toStrictEqual([version.id, version.id]);
   });
 
-  it("allocates the next version number in D1 and can update the skill name", async () => {
+  it("allocates the next version number in D1 and derives latest version by max version number", async () => {
     const now = new Date("2026-05-25T12:00:00.000Z");
-    const skill = await repository.insertSkill("demo", now);
-    await repository.commitSkillVersion(
-      {
-        description: "First version",
-        resources: resources("v1"),
-        skillId: skill.id,
-      },
-      now
-    );
+    const skill = await repository.insertSkill(now);
+    await repository.commitSkillVersion(versionInput(skill.id, "v1"), now);
 
     const nextVersion = await repository.commitSkillVersion(
-      {
+      versionInput(skill.id, "v2", {
         description: "Second version",
-        name: "renamed demo",
-        resources: resources("v2"),
-        skillId: skill.id,
-      },
+        name: "renamed-demo",
+      }),
       new Date("2026-05-25T12:01:00.000Z")
     );
-
-    const [updatedSkill] = await db
-      .select()
-      .from(skillsTable)
-      .where(eq(skillsTable.id, skill.id));
+    const latestVersion = await repository.findLatestSkillVersion(skill.id);
 
     expect(nextVersion.versionNumber).toBe(2);
-    expect(updatedSkill?.currentVersionId).toBe(nextVersion.id);
-    expect(updatedSkill?.name).toBe("renamed demo");
+    expect(nextVersion.name).toBe("renamed-demo");
+    expect(latestVersion?.id).toBe(nextVersion.id);
   });
 
   it("commits restored resource rows as a new current version", async () => {
     const now = new Date("2026-05-25T12:00:00.000Z");
-    const skill = await repository.insertSkill("demo", now);
+    const skill = await repository.insertSkill(now);
     const firstVersion = await repository.commitSkillVersion(
-      {
-        description: "First version",
-        resources: resources("v1"),
-        skillId: skill.id,
-      },
+      versionInput(skill.id, "v1"),
       now
     );
     const sourceRows = await repository.listResourcesByVersionId(
@@ -149,12 +151,10 @@ describe("SkillRepository.commitSkillVersion", () => {
     }));
 
     const restoredVersion = await repository.commitSkillVersion(
-      {
+      versionInput(skill.id, "v1", {
         changeSummary: "Restore v1",
-        description: "First version",
         resources: restoredResources,
-        skillId: skill.id,
-      },
+      }),
       new Date("2026-05-25T12:02:00.000Z")
     );
 

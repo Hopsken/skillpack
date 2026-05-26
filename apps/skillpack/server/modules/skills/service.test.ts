@@ -15,22 +15,42 @@ import type {
 const createdAt = new Date("2026-05-25T12:00:00.000Z");
 const updatedAt = new Date("2026-05-25T12:01:00.000Z");
 
+const skillFileContent = `---
+name: demo
+description: Demo description
+license: Apache-2.0
+metadata:
+  author: acme
+allowed-tools: Read
+---
+
+# Demo
+`;
+
 const skillRow = (input?: Partial<SkillRow>): SkillRow => ({
   createdAt,
-  currentVersionId: input?.currentVersionId ?? 10,
   id: input?.id ?? 1,
-  name: input?.name ?? "demo",
   updatedAt,
 });
 
-const versionRow = (input?: Partial<SkillVersionRow>): SkillVersionRow => ({
-  changeSummary: input?.changeSummary ?? null,
+const baseVersionRow: SkillVersionRow = {
+  allowedTools: "Read",
+  changeSummary: null,
+  compatibility: null,
   createdAt,
-  description: input?.description ?? "Demo description",
-  id: input?.id ?? 10,
-  label: input?.label ?? null,
-  skillId: input?.skillId ?? 1,
-  versionNumber: input?.versionNumber ?? 1,
+  description: "Demo description",
+  id: 10,
+  label: null,
+  license: "Apache-2.0",
+  metadata: { author: "acme" },
+  name: "demo",
+  skillId: 1,
+  versionNumber: 1,
+};
+
+const versionRow = (input?: Partial<SkillVersionRow>): SkillVersionRow => ({
+  ...baseVersionRow,
+  ...input,
 });
 
 const resourceRow = (input?: Partial<SkillResourceRow>): SkillResourceRow => ({
@@ -39,7 +59,7 @@ const resourceRow = (input?: Partial<SkillResourceRow>): SkillResourceRow => ({
   mediaType: input?.mediaType ?? "text/markdown; charset=utf-8",
   path: input?.path ?? "SKILL.md",
   sha256: input?.sha256 ?? "skill-md",
-  size: input?.size ?? 12,
+  size: input?.size ?? 120,
   skillVersionId: input?.skillVersionId ?? 10,
 });
 
@@ -56,17 +76,22 @@ const originRow = (input?: Partial<SkillOriginRow>): SkillOriginRow => ({
 const storedResource = (
   input?: Partial<StoredResourceObject>
 ): StoredResourceObject => ({
-  mediaType: input?.mediaType ?? "text/markdown; charset=utf-8",
-  path: input?.path ?? "SKILL.md",
-  sha256: input?.sha256 ?? "skill-md",
+  mediaType: input?.mediaType ?? "text/plain; charset=utf-8",
+  path: input?.path ?? "references/notes.txt",
+  sha256: input?.sha256 ?? "notes",
   size: input?.size ?? 12,
 });
+
+const objectWithText = (text: string) =>
+  ({
+    size: text.length,
+    text: () => Promise.resolve(text),
+  }) as R2ObjectBody;
 
 const createService = () => {
   const repository = {
     commitSkillVersion: vi.fn<SkillRepository["commitSkillVersion"]>(),
-    findCurrentSkillVersion:
-      vi.fn<SkillRepository["findCurrentSkillVersion"]>(),
+    findLatestSkillVersion: vi.fn<SkillRepository["findLatestSkillVersion"]>(),
     findResourceByPath: vi.fn<SkillRepository["findResourceByPath"]>(),
     findSkillById: vi.fn<SkillRepository["findSkillById"]>(),
     findSkillOrigin: vi.fn<SkillRepository["findSkillOrigin"]>(),
@@ -78,15 +103,17 @@ const createService = () => {
   };
   const resourceManifest = {
     createSnapshot: vi.fn<ResourceManifest["createSnapshot"]>(),
+    getObjectBySha256: vi.fn<ResourceManifest["getObjectBySha256"]>(),
     getResourceObject: vi.fn<ResourceManifest["getResourceObject"]>(),
     patchSnapshot: vi.fn<ResourceManifest["patchSnapshot"]>(),
-    resolveSnapshot: vi.fn<ResourceManifest["resolveSnapshot"]>(),
+    storeSkillFile: vi.fn<ResourceManifest["storeSkillFile"]>(),
   };
   const originService = {
     readSkillDefinitions: vi.fn<OriginService["readSkillDefinitions"]>(),
   };
 
   return {
+    originService,
     repository,
     resourceManifest,
     service: new SkillService(
@@ -98,94 +125,148 @@ const createService = () => {
 };
 
 describe("SkillService version commit handoff", () => {
-  it("creates a Resource Manifest snapshot before committing a new skill version", async () => {
+  it("serializes canonical SKILL.md before committing the first version", async () => {
     const { repository, resourceManifest, service } = createService();
-    const skill = skillRow({ currentVersionId: null });
+    const skill = skillRow();
     const committedVersion = versionRow();
     const manifest = [storedResource()];
 
     repository.insertSkill.mockResolvedValue(skill);
+    resourceManifest.storeSkillFile.mockResolvedValue({
+      mediaType: "text/markdown; charset=utf-8",
+      path: "SKILL.md",
+      sha256: "skill-md",
+      size: 120,
+    });
     resourceManifest.createSnapshot.mockResolvedValue(manifest);
     repository.commitSkillVersion.mockResolvedValue(committedVersion);
-    repository.findSkillById.mockResolvedValue(
-      skillRow({ currentVersionId: committedVersion.id })
-    );
-    repository.findCurrentSkillVersion.mockResolvedValue(committedVersion);
+    repository.findSkillById.mockResolvedValue(skill);
+    repository.findLatestSkillVersion.mockResolvedValue(committedVersion);
     repository.findSkillOrigin.mockResolvedValue(originRow());
     repository.listResourcesByVersionId.mockResolvedValue([resourceRow()]);
-    resourceManifest.resolveSnapshot.mockResolvedValue({
-      content: "# Demo",
-      resources: [],
-    });
+    resourceManifest.getResourceObject.mockResolvedValue(
+      objectWithText(skillFileContent)
+    );
 
     await service.createSkill({
-      content: "# Demo",
+      allowedTools: "Read",
+      content: "# Demo\n",
       description: "Demo description",
+      license: "Apache-2.0",
+      metadata: { author: "acme" },
       name: "demo",
       resources: [],
     });
 
+    expect(resourceManifest.storeSkillFile).toHaveBeenCalledWith(
+      expect.stringContaining("allowed-tools: Read")
+    );
     expect(repository.commitSkillVersion).toHaveBeenCalledWith(
       expect.objectContaining({
-        description: "Demo description",
-        resources: manifest,
+        resources: [
+          expect.objectContaining({ path: "SKILL.md", sha256: "skill-md" }),
+          ...manifest,
+        ],
+        skillFileMetadata: expect.objectContaining({
+          description: "Demo description",
+          name: "demo",
+        }),
         skillId: skill.id,
       }),
       expect.any(Date)
     );
-    expect(
-      resourceManifest.createSnapshot.mock.invocationCallOrder[0]
-    ).toBeLessThan(repository.commitSkillVersion.mock.invocationCallOrder[0]);
   });
 
-  it("commits the complete patched Resource Manifest snapshot, not the patch input", async () => {
+  it("patches metadata/body through a new canonical SKILL.md and complete resource manifest", async () => {
     const { repository, resourceManifest, service } = createService();
     const currentSkill = skillRow();
     const currentVersion = versionRow();
-    const currentResources = [resourceRow()];
-    const nextResources = [
-      storedResource({ sha256: "next-skill-md" }),
-      storedResource({
+    const currentResources = [
+      resourceRow(),
+      resourceRow({
+        id: 101,
         mediaType: "text/plain; charset=utf-8",
         path: "references/notes.txt",
         sha256: "notes",
+        size: 12,
+      }),
+    ];
+    const nextResources = [
+      storedResource({
+        mediaType: "text/plain; charset=utf-8",
+        path: "references/notes.txt",
+        sha256: "notes-next",
       }),
     ];
 
     repository.findSkillById.mockResolvedValue(currentSkill);
-    repository.findCurrentSkillVersion.mockResolvedValue(currentVersion);
+    repository.findLatestSkillVersion.mockResolvedValue(currentVersion);
     repository.findSkillOrigin.mockResolvedValue(originRow());
     repository.listResourcesByVersionId.mockResolvedValue(currentResources);
+    resourceManifest.getResourceObject.mockResolvedValue(
+      objectWithText(skillFileContent)
+    );
+    resourceManifest.storeSkillFile.mockResolvedValue({
+      mediaType: "text/markdown; charset=utf-8",
+      path: "SKILL.md",
+      sha256: "next-skill-md",
+      size: 140,
+    });
     resourceManifest.patchSnapshot.mockResolvedValue(nextResources);
     repository.commitSkillVersion.mockResolvedValue(
-      versionRow({ id: 11, versionNumber: 2 })
+      versionRow({
+        description: "Next description",
+        id: 11,
+        versionNumber: 2,
+      })
     );
 
     await service.patchSkill(currentSkill.id, {
-      content: "# Next",
+      content: "# Next\n",
       deleteResourcePaths: [],
+      description: "Next description",
       upsertResources: [],
     });
 
+    expect(resourceManifest.storeSkillFile).toHaveBeenCalledWith(
+      expect.stringContaining("description: Next description")
+    );
     expect(resourceManifest.patchSnapshot).toHaveBeenCalledWith(
       currentResources,
-      expect.objectContaining({ content: "# Next" })
+      expect.objectContaining({ content: "# Next\n" })
     );
     expect(repository.commitSkillVersion).toHaveBeenCalledWith(
       expect.objectContaining({
-        resources: nextResources,
+        resources: [
+          expect.objectContaining({
+            path: "SKILL.md",
+            sha256: "next-skill-md",
+          }),
+          ...nextResources,
+        ],
+        skillFileMetadata: expect.objectContaining({
+          description: "Next description",
+        }),
         skillId: currentSkill.id,
       }),
       expect.any(Date)
     );
   });
 
-  it("restores by committing a new version from historical resource rows", async () => {
+  it("restores by committing historical canonical SKILL.md and resources as a new version", async () => {
     const { repository, service } = createService();
     const currentSkill = skillRow();
     const historicalVersion = versionRow({ id: 8, versionNumber: 1 });
     const historicalResources = [
       resourceRow({ id: 1, sha256: "old-skill-md", skillVersionId: 8 }),
+      resourceRow({
+        id: 2,
+        mediaType: "text/plain; charset=utf-8",
+        path: "references/notes.txt",
+        sha256: "old-notes",
+        size: 12,
+        skillVersionId: 8,
+      }),
     ];
 
     repository.findSkillById.mockResolvedValue(currentSkill);
@@ -207,6 +288,10 @@ describe("SkillService version commit handoff", () => {
           expect.objectContaining({
             path: "SKILL.md",
             sha256: "old-skill-md",
+          }),
+          expect.objectContaining({
+            path: "references/notes.txt",
+            sha256: "old-notes",
           }),
         ],
         skillId: currentSkill.id,

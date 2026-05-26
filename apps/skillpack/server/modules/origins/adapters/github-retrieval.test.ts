@@ -146,8 +146,12 @@ describe("GitHub Origin retrieval", () => {
 
     expect(result).toStrictEqual({
       definition: {
+        allowedTools: null,
+        compatibility: null,
         content: skillContent("frontmatter-name", "From frontmatter"),
         description: "From frontmatter",
+        license: null,
+        metadata: null,
         name: "frontmatter-name",
         provenance: {
           kind: "github",

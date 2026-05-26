@@ -22,14 +22,14 @@ That direction conflicts with the product stance Skillpack now needs:
 - Agent-facing locators should be stable Skillpack identities, not upstream URLs or source-qualified handles.
 - A user's intended output is a managed collection of skills for an agent, project, workflow, or runtime context.
 
-The existing code still reflects the older model in several places:
+The earlier code reflected the older model in several places:
 
-- `server/db/schema.ts` stores `skills.source_type`, `skills.handle`, `skills.location`, `skills.current_approved_version`, and string versions.
+- `server/db/schema.ts` stored `skills.source_type`, `skills.handle`, `skills.location`, `skills.current_approved_version`, and string versions.
 - the old shared skill contract exposed `source`, `handle`, and string `version` fields.
-- `server/modules/skills/location.ts` parses source-qualified requests and builds `skill://skillpack/{handle}` locators.
-- `server/modules/skills/route.ts` serves `/api/v1/skills/:sourceType/:locator`.
-- `server/modules/skills/storage.ts` stores objects under `skills/skillpack/{handle}/{version}/...`.
-- `client/` routes and API hooks navigate by `source.type` and `handle`.
+- `server/modules/skills/location.ts` parsed source-qualified requests and built `skill://skillpack/{handle}` locators.
+- `server/modules/skills/route.ts` served `/api/v1/skills/:sourceType/:locator`.
+- `server/modules/skills/storage.ts` stored objects under `skills/skillpack/{handle}/{version}/...`.
+- `client/` routes and API hooks navigated by `source.type` and `handle`.
 
 This ADR replaces the aggregator/source-qualified model with a managed-copy model.
 
@@ -92,7 +92,7 @@ A new version is created by durable actions such as:
 
 Every Managed Skill Version is a complete resource snapshot containing `SKILL.md` plus its resource manifest. Cross-version incremental patching and current R2 physical deduplication are out of scope.
 
-Restoring a previous version creates a new version from the historical content and sets that new version as current. The timeline remains linear.
+Restoring a previous version creates a new version from the historical content. The timeline remains linear, and the current version is the highest committed `version_number`.
 
 ### Skill Location
 
@@ -103,13 +103,13 @@ skill://skillpack/{skillId}
 skill://skillpack/{skillId}?version={versionNumber}
 ```
 
-Bare Skill Locations resolve to the current version. A `version` query parameter pins resolution to a specific Managed Skill Version number.
+Bare Skill Locations resolve to the latest committed version. A `version` query parameter pins resolution to a specific Managed Skill Version number.
 
 Skill Locations are not fetchable content URLs. Agents and harnesses resolve them through Skillpack APIs, MCP tools, extension tools, or future delivery interfaces.
 
 ### Skill Trust
 
-Skill Trust is curation and safety metadata maintained for a Managed Skill, including provenance, review signals, current version, and risk metadata.
+Skill Trust is curation and safety metadata maintained for a Managed Skill, including provenance, review signals, and risk metadata. A separate approved/published pointer can be added later if the product introduces review gates.
 
 User review is a product workflow that guides responsible skill use. The backend does not need a draft/approval state machine for the current pivot.
 
@@ -186,7 +186,7 @@ Affected files:
 
 - `shared/contract/skills/*`
 
-Required changes:
+Implemented changes:
 
 - Replace `handle` fields with `id` fields.
 - Remove `source` from primary skill responses or move provenance into a future origin response shape.
@@ -214,7 +214,7 @@ Required changes:
 - Remove `skills.source_type`.
 - Remove `skills.handle`.
 - Remove or stop persisting `skills.location`.
-- Replace `current_approved_version` with current version metadata aligned to the new vocabulary, such as `current_version_id`.
+- Remove `current_approved_version`; derive the current version from the highest committed `skill_versions.version_number`.
 - Change `skill_versions.version` from text to numeric `version_number`.
 - Add optional `skill_versions.label`.
 - Add origin/provenance storage separately, for example `skill_origins`, when implementing fork-from-GitHub.

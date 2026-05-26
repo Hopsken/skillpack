@@ -23,8 +23,12 @@ export const presentOriginDefinitions = (results: OriginDefinitionResult[]) =>
 
       return {
         definition: {
+          allowedTools: result.definition.allowedTools ?? null,
+          compatibility: result.definition.compatibility ?? null,
           content: result.definition.content,
           description: result.definition.description,
+          license: result.definition.license ?? null,
+          metadata: result.definition.metadata ?? null,
           name: result.definition.name,
           resources: [
             {

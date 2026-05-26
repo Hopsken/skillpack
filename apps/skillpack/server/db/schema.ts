@@ -9,9 +9,6 @@ import {
 
 export const skillsTable = sqliteTable("skills", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  name: text("name").notNull(),
-
-  currentVersionId: integer("current_version_id"),
 
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
@@ -24,9 +21,17 @@ export const skillVersionsTable = sqliteTable(
     skillId: integer("skill_id").notNull(),
     versionNumber: integer("version_number").notNull(),
 
+    allowedTools: text("allowed_tools"),
     changeSummary: text("change_summary"),
+    compatibility: text("compatibility"),
     description: text("description").notNull(),
     label: text("label"),
+    license: text("license"),
+    metadata: text("metadata", { mode: "json" }).$type<Record<
+      string,
+      string
+    > | null>(),
+    name: text("name").notNull(),
 
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
@@ -80,15 +85,13 @@ export const skillOriginsTable = sqliteTable(
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
   (table) => ({
-    skillOriginSkillIndex: index("skill_origins_skill_idx").on(table.skillId),
+    skillOriginSkillUnique: uniqueIndex("skill_origins_skill_unique").on(
+      table.skillId
+    ),
   })
 );
 
-export const skillsRelations = relations(skillsTable, ({ many, one }) => ({
-  currentVersion: one(skillVersionsTable, {
-    fields: [skillsTable.currentVersionId],
-    references: [skillVersionsTable.id],
-  }),
+export const skillsRelations = relations(skillsTable, ({ many }) => ({
   origins: many(skillOriginsTable),
   versions: many(skillVersionsTable),
 }));

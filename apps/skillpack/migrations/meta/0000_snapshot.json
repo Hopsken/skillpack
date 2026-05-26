@@ -1,25 +1,25 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "7a335aeb-166b-40ac-b7ed-6f7bab96d74c",
-  "prevId": "32f2360b-415d-4e51-91e6-e8aa87b57400",
+  "id": "35a56545-f95c-41f1-b377-19b95c4c82b6",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "skill_origins": {
       "name": "skill_origins",
       "columns": {
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
           "autoincrement": true
+        },
+        "skill_id": {
+          "name": "skill_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "kind": {
           "name": "kind",
@@ -35,8 +35,15 @@
           "notNull": false,
           "autoincrement": false
         },
-        "skill_id": {
-          "name": "skill_id",
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -48,20 +55,13 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
-        },
-        "url": {
-          "name": "url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
         }
       },
       "indexes": {
-        "skill_origins_skill_idx": {
-          "name": "skill_origins_skill_idx",
+        "skill_origins_skill_unique": {
+          "name": "skill_origins_skill_unique",
           "columns": ["skill_id"],
-          "isUnique": false
+          "isUnique": true
         }
       },
       "foreignKeys": {},
@@ -72,19 +72,19 @@
     "skill_resources": {
       "name": "skill_resources",
       "columns": {
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
           "autoincrement": true
+        },
+        "skill_version_id": {
+          "name": "skill_version_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "media_type": {
           "name": "media_type",
@@ -114,8 +114,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "skill_version_id": {
-          "name": "skill_version_id",
+        "created_at": {
+          "name": "created_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -147,40 +147,12 @@
     "skill_versions": {
       "name": "skill_versions",
       "columns": {
-        "change_summary": {
-          "name": "change_summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
           "autoincrement": true
-        },
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         },
         "skill_id": {
           "name": "skill_id",
@@ -191,6 +163,69 @@
         },
         "version_number": {
           "name": "version_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "allowed_tools": {
+          "name": "allowed_tools",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "change_summary": {
+          "name": "change_summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "compatibility": {
+          "name": "compatibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "license": {
+          "name": "license",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -217,20 +252,6 @@
     "skills": {
       "name": "skills",
       "columns": {
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "current_version_id": {
-          "name": "current_version_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "id": {
           "name": "id",
           "type": "integer",
@@ -238,9 +259,9 @@
           "notNull": true,
           "autoincrement": true
         },
-        "name": {
-          "name": "name",
-          "type": "text",
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false

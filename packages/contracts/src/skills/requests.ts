@@ -1,8 +1,12 @@
 import {
+  optionalSkillAllowedToolsSchema,
   optionalSkillChangeSummarySchema,
+  optionalSkillCompatibilitySchema,
+  optionalSkillLicenseSchema,
   optionalSkillVersionLabelSchema,
   safeRelativePathSchema,
   skillDescriptionSchema,
+  skillMetadataSchema,
   skillNameSchema,
 } from "@skillpack/core/primitives";
 import { z } from "zod";
@@ -16,19 +20,27 @@ const createSkillResourceSchema = z.object({
 });
 
 export const createSkillSchema = z.object({
+  allowedTools: optionalSkillAllowedToolsSchema.nullable(),
   changeSummary: optionalSkillChangeSummarySchema,
+  compatibility: optionalSkillCompatibilitySchema.nullable(),
   content: z.string().min(1),
   description: skillDescriptionSchema,
+  license: optionalSkillLicenseSchema.nullable(),
+  metadata: skillMetadataSchema.nullable().optional(),
   name: skillNameSchema,
   resources: z.array(createSkillResourceSchema).default([]),
   versionLabel: optionalSkillVersionLabelSchema,
 });
 
 export const patchSkillSchema = z.object({
+  allowedTools: optionalSkillAllowedToolsSchema.nullable(),
   changeSummary: optionalSkillChangeSummarySchema,
+  compatibility: optionalSkillCompatibilitySchema.nullable(),
   content: z.string().min(1).optional(),
   deleteResourcePaths: z.array(safeRelativePathSchema).default([]),
   description: skillDescriptionSchema.optional(),
+  license: optionalSkillLicenseSchema.nullable(),
+  metadata: skillMetadataSchema.nullable().optional(),
   name: skillNameSchema.optional(),
   upsertResources: z.array(createSkillResourceSchema).default([]),
   versionLabel: optionalSkillVersionLabelSchema,

@@ -1,5 +1,5 @@
 import { skillContentPath } from "@server/constants";
-import { parseFrontmatter } from "@server/shared/frontmatter";
+import { parseSkillFile } from "@server/shared/skill-file";
 import type { SkillOriginInput } from "@skillpack/contracts/origins/requests";
 import { safeRelativePathSchema } from "@skillpack/core/primitives";
 import ky from "ky";
@@ -248,18 +248,13 @@ const discoverSkillFiles = (snapshot: GitHubOriginSnapshot) => {
 };
 
 const parseSkillMetadata = (content: string) => {
-  const { data } = parseFrontmatter(content);
-  const name = typeof data.name === "string" ? data.name.trim() : "";
-  const description =
-    typeof data.description === "string" ? data.description.trim() : "";
-
-  if (!(name && description)) {
+  try {
+    return parseSkillFile(content);
+  } catch {
     throw originErrors.definitionFailed(
       "Skill frontmatter must include name and description"
     );
   }
-
-  return { description, name };
 };
 
 const findSkillFile = (
@@ -362,12 +357,16 @@ const readDefinition = async (
 ): Promise<OriginSkillDefinition> => {
   const skillFile = findSkillFile(snapshot, selection, skillFiles);
   const content = await readRawText(transport, snapshot, skillFile.path);
-  const { description, name } = parseSkillMetadata(content);
+  const metadata = parseSkillMetadata(content);
 
   return {
+    allowedTools: metadata.allowedTools,
+    compatibility: metadata.compatibility,
     content,
-    description,
-    name,
+    description: metadata.description,
+    license: metadata.license,
+    metadata: metadata.metadata,
+    name: metadata.name,
     provenance: {
       kind: "github",
       metadata: {

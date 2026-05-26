@@ -48,15 +48,45 @@ const buildResourcePayload = (
   ];
 };
 
+const formatMetadata = (metadata: Record<string, string> | null | undefined) =>
+  metadata ? JSON.stringify(metadata, null, 2) : "";
+
+const parseMetadata = (value: string) => {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = JSON.parse(trimmed) as unknown;
+
+  if (
+    !parsed ||
+    typeof parsed !== "object" ||
+    Array.isArray(parsed) ||
+    Object.values(parsed).some((item) => typeof item !== "string")
+  ) {
+    throw new Error("Metadata must be a JSON object with string values");
+  }
+
+  return parsed as Record<string, string>;
+};
+
 export const SkillFormView = ({
   mode,
   skill,
   status,
   onSubmit,
 }: SkillFormViewProps) => {
+  const [allowedTools, setAllowedTools] = useState(skill?.allowedTools ?? "");
+  const [compatibility, setCompatibility] = useState(
+    skill?.compatibility ?? ""
+  );
   const [name, setName] = useState(skill?.name ?? "");
   const [description, setDescription] = useState(skill?.description ?? "");
   const [content, setContent] = useState(skill?.content ?? "# New Skill\n");
+  const [license, setLicense] = useState(skill?.license ?? "");
+  const [metadata, setMetadata] = useState(formatMetadata(skill?.metadata));
   const [versionLabel, setVersionLabel] = useState("");
   const [changeSummary, setChangeSummary] = useState("");
   const [resourcePath, setResourcePath] = useState("");
@@ -78,9 +108,13 @@ export const SkillFormView = ({
     setSubmitStatus("Saving...");
 
     const sharedInput = {
+      allowedTools: allowedTools.trim() || null,
       changeSummary: changeSummary.trim() || undefined,
+      compatibility: compatibility.trim() || null,
       content,
       description,
+      license: license.trim() || null,
+      metadata: parseMetadata(metadata),
       name,
       versionLabel: versionLabel.trim() || undefined,
     };
@@ -135,7 +169,8 @@ export const SkillFormView = ({
         className="min-h-0 flex-1"
       >
         <form onSubmit={submit} className="mx-auto grid max-w-4xl gap-6 p-6">
-          <section className="grid gap-3">
+          <section className="grid gap-4 border-b border-border pb-6">
+            <h2 className="text-sm font-semibold">Frontmatter</h2>
             <label
               htmlFor="skill-name"
               className="grid gap-2 text-sm font-medium"
@@ -160,6 +195,58 @@ export const SkillFormView = ({
                 required
               />
             </label>
+            <div className="grid gap-3 md:grid-cols-3">
+              <label
+                htmlFor="skill-license"
+                className="grid gap-2 text-sm font-medium"
+              >
+                License
+                <Input
+                  id="skill-license"
+                  value={license}
+                  onChange={(event) => setLicense(event.target.value)}
+                />
+              </label>
+              <label
+                htmlFor="skill-compatibility"
+                className="grid gap-2 text-sm font-medium"
+              >
+                Compatibility
+                <Input
+                  id="skill-compatibility"
+                  value={compatibility}
+                  onChange={(event) => setCompatibility(event.target.value)}
+                />
+              </label>
+              <label
+                htmlFor="skill-allowed-tools"
+                className="grid gap-2 text-sm font-medium"
+              >
+                Allowed Tools
+                <Input
+                  id="skill-allowed-tools"
+                  value={allowedTools}
+                  onChange={(event) => setAllowedTools(event.target.value)}
+                />
+              </label>
+            </div>
+            <label
+              htmlFor="skill-metadata"
+              className="grid gap-2 text-sm font-medium"
+            >
+              Metadata
+              <textarea
+                id="skill-metadata"
+                aria-label="Metadata"
+                className={textAreaClassName}
+                value={metadata}
+                onChange={(event) => setMetadata(event.target.value)}
+                placeholder='{"author":"example-org"}'
+              />
+            </label>
+          </section>
+
+          <section className="grid gap-3 border-b border-border pb-6">
             <div className="grid gap-3 md:grid-cols-2">
               <label
                 htmlFor="skill-version-label"
@@ -188,9 +275,9 @@ export const SkillFormView = ({
 
           <label
             htmlFor="skill-content"
-            className="grid gap-2 text-sm font-medium"
+            className="grid gap-2 border-b border-border pb-6 text-sm font-medium"
           >
-            SKILL.md
+            Instructions
             <textarea
               id="skill-content"
               aria-label="SKILL.md"
