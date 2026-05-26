@@ -124,8 +124,12 @@ const ResourcesPanel = ({
   const viewerStatus = selectedResource ? fileStatus : fileContentStatus;
 
   return (
-    <section className="grid min-h-full grid-cols-[minmax(10rem,16rem)_1fr]">
-      <div className="border-r border-border">
+    <section className="grid h-full min-h-0 grid-cols-[minmax(10rem,16rem)_1fr]">
+      <OverlayScrollbarsComponent
+        defer
+        options={{ scrollbars: { autoHide: "leave", theme: "os-theme-dark" } }}
+        className="min-h-0 border-r border-border"
+      >
         {skill?.resources.length ? (
           skill.resources.map((resource) => (
             <button
@@ -147,8 +151,12 @@ const ResourcesPanel = ({
             No resources for this skill version.
           </p>
         )}
-      </div>
-      <div className="min-w-0">
+      </OverlayScrollbarsComponent>
+      <OverlayScrollbarsComponent
+        defer
+        options={{ scrollbars: { autoHide: "leave", theme: "os-theme-dark" } }}
+        className="min-h-0 min-w-0"
+      >
         <Suspense
           fallback={
             <p className="px-6 py-4 text-sm text-muted-foreground">
@@ -163,7 +171,7 @@ const ResourcesPanel = ({
             status={viewerStatus}
           />
         </Suspense>
-      </div>
+      </OverlayScrollbarsComponent>
     </section>
   );
 };
@@ -289,30 +297,35 @@ export const SkillDetailView = ({
         ))}
       </div>
 
-      <OverlayScrollbarsComponent
-        defer
-        options={{ scrollbars: { autoHide: "leave", theme: "os-theme-dark" } }}
-        className="min-h-0 flex-1"
-      >
-        {activeTab === "skill" && <SkillMarkdownPanel skill={skill} />}
-        {activeTab === "resources" && (
+      {activeTab === "resources" ? (
+        <div className="min-h-0 flex-1">
           <ResourcesPanel
             skill={skill}
             selectedPath={selectedResourcePath}
             fileContentStatus="Select a resource"
             onSelectPath={setSelectedResourcePath}
           />
-        )}
-        {activeTab === "versions" && (
-          <VersionsPanel
-            skill={skill}
-            skillId={skillId}
-            versions={versions}
-            versionsStatus={versionsStatus}
-            onRestoreVersion={onRestoreVersion}
-          />
-        )}
-      </OverlayScrollbarsComponent>
+        </div>
+      ) : (
+        <OverlayScrollbarsComponent
+          defer
+          options={{
+            scrollbars: { autoHide: "leave", theme: "os-theme-dark" },
+          }}
+          className="min-h-0 flex-1"
+        >
+          {activeTab === "skill" && <SkillMarkdownPanel skill={skill} />}
+          {activeTab === "versions" && (
+            <VersionsPanel
+              skill={skill}
+              skillId={skillId}
+              versions={versions}
+              versionsStatus={versionsStatus}
+              onRestoreVersion={onRestoreVersion}
+            />
+          )}
+        </OverlayScrollbarsComponent>
+      )}
     </main>
   );
 };

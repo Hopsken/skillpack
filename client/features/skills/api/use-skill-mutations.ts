@@ -1,4 +1,7 @@
-import type { DiscoverSkillsInput } from "@shared/contract/origins/requests";
+import type {
+  DiscoverSkillsInput,
+  ReadSkillDefinitionsInput,
+} from "@shared/contract/origins/requests";
 import type {
   CreateSkillInput,
   ForkSkillInput,
@@ -12,6 +15,7 @@ import {
   discoverSkills,
   forkManagedSkill,
   patchManagedSkill,
+  readSkillDefinitions,
   restoreManagedSkillVersion,
   skillDetailQueryKey,
   skillListQueryKey,
@@ -96,4 +100,10 @@ export const useForkSkill = () => {
 export const useDiscoverSkills = () =>
   useMutation({
     mutationFn: (input: DiscoverSkillsInput) => discoverSkills(input),
+  });
+
+export const useReadSkillDefinitions = () =>
+  useMutation({
+    mutationFn: (input: ReadSkillDefinitionsInput) =>
+      readSkillDefinitions(input),
   });

@@ -168,6 +168,24 @@ describe("GitHub Origin retrieval", () => {
     });
   });
 
+  it("reads selected definitions from a pinned revision", async () => {
+    const transport = createTransport([treeEntry("skills/demo/SKILL.md")], {
+      "skills/demo/SKILL.md": skillContent("demo"),
+    });
+    const retrieval = createGitHubRetrieval(transport);
+
+    await retrieval.readDefinitions(
+      { ...origin, branch: "main", rev: "pinned-sha" },
+      [{ skillName: "demo" }]
+    );
+
+    expect(transport.getCommit).toHaveBeenCalledWith(
+      "acme",
+      "skills",
+      "pinned-sha"
+    );
+  });
+
   it("fails a selected definition with missing frontmatter name or description", async () => {
     const transport = createTransport([treeEntry("skills/demo/SKILL.md")], {
       "skills/demo/SKILL.md": "# No frontmatter",

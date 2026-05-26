@@ -9,6 +9,7 @@ export {
   useDiscoverSkills,
   useForkSkill,
   usePatchSkill,
+  useReadSkillDefinitions,
   useRestoreSkillVersion,
 } from "./api/use-skill-mutations";
 export { useSkillList } from "./api/use-skill-list";

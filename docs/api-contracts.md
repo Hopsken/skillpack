@@ -33,6 +33,7 @@ type SkillOrigin =
       kind: "github";
       repoUrl: string;
       branch?: string;
+      rev?: string;
     }
   | {
       kind: "npm";
@@ -382,6 +383,57 @@ Behavior:
 - GitHub discovery resolves the requested branch, or the repository's default branch when `branch` is omitted.
 - GitHub discovery scans well-known skill roots in order: `skills`, `.agents/skills`, `.claude/skills`, then `.codex/skills`.
 - Does not create Managed Skills or origin provenance records.
+
+## Read Skill Definitions From Origin
+
+```http
+POST /api/v1/origins/definitions
+```
+
+Request:
+
+```ts
+type ReadSkillDefinitionsRequest = {
+  origin: SkillOrigin;
+  selections: OriginSelection[];
+};
+```
+
+Response:
+
+```ts
+type ReadSkillDefinitionsResponse = {
+  results: Array<
+    | {
+        status: "resolved";
+        definition: {
+          selection: OriginSelection;
+          name: string;
+          description: string;
+          content: string;
+          resources: Array<{
+            path: string;
+            content: string;
+            mediaType: string;
+            size: number;
+          }>;
+        };
+      }
+    | {
+        status: "failed";
+        selection: OriginSelection;
+        error: string;
+      }
+  >;
+};
+```
+
+Behavior:
+
+- Reads selected Skill definitions and resources from one Skill Origin.
+- Returns `SKILL.md` as the first resource so clients can preview the complete candidate before Fork.
+- Does not create Managed Skills or origin provenance records.
+- GitHub callers may pass a resolved `rev` from discovery to preview the same content that will later be Forked.
 
 ## Fork From Origin
 

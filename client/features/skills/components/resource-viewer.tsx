@@ -1,7 +1,3 @@
-import type {
-  ResourceManifestItem,
-  SkillResourceResponse,
-} from "@shared/contract/skills/responses";
 import DOMPurify from "dompurify";
 import { useEffect, useState } from "react";
 import { createHighlighterCore } from "shiki/core";
@@ -22,10 +18,23 @@ import {
 } from "../lib/resource-kind";
 import { MarkdownContent } from "./markdown-content";
 
+interface ResourceViewerFile {
+  content: string;
+  mediaType: string;
+  path: string;
+  size: number;
+}
+
+interface ResourceViewerResource {
+  mediaType: string;
+  path: string;
+  size: number;
+}
+
 interface ResourceViewerProps {
-  file: SkillResourceResponse | undefined;
+  file: ResourceViewerFile | undefined;
   rawUrl: string | undefined;
-  resource: ResourceManifestItem | undefined;
+  resource: ResourceViewerResource | undefined;
   status: string;
 }
 
@@ -35,10 +44,10 @@ interface CodeResourceProps {
 }
 
 interface ResourceBodyProps {
-  file: SkillResourceResponse | undefined;
+  file: ResourceViewerFile | undefined;
   kind: ReturnType<typeof getSkillResourceKind>;
   rawUrl: string | undefined;
-  resource: ResourceManifestItem;
+  resource: ResourceViewerResource;
   status: string;
 }
 
@@ -60,7 +69,7 @@ const supportedLanguages = new Set([
 const ResourceMeta = ({
   resource,
 }: {
-  resource: ResourceManifestItem | undefined;
+  resource: ResourceViewerResource | undefined;
 }) => {
   if (!resource) {
     return null;

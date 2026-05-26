@@ -1,4 +1,4 @@
-import { FileTextIcon, LogOutIcon, UserCircleIcon } from "lucide-react";
+import { LibraryIcon, LogOutIcon, UserCircleIcon } from "lucide-react";
 import { matchPath, NavLink, useLocation } from "react-router";
 
 import {
@@ -52,12 +52,12 @@ export const AppSidebar = () => {
                   asChild
                   isActive={isManagedSkillsActive}
                   size="lg"
-                  tooltip="Managed Skills"
+                  tooltip="Library"
                   className="font-medium"
                 >
                   <NavLink to="/skills">
-                    <FileTextIcon />
-                    <span>Managed Skills</span>
+                    <LibraryIcon />
+                    <span>Library</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>

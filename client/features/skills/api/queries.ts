@@ -1,6 +1,15 @@
-import type { DiscoverSkillsInput } from "@shared/contract/origins/requests";
-import { discoverSkillsResponseSchema } from "@shared/contract/origins/responses";
-import type { DiscoverSkillsResponse } from "@shared/contract/origins/responses";
+import type {
+  DiscoverSkillsInput,
+  ReadSkillDefinitionsInput,
+} from "@shared/contract/origins/requests";
+import {
+  discoverSkillsResponseSchema,
+  readSkillDefinitionsResponseSchema,
+} from "@shared/contract/origins/responses";
+import type {
+  DiscoverSkillsResponse,
+  ReadSkillDefinitionsResponse,
+} from "@shared/contract/origins/responses";
 import type {
   CreateSkillInput,
   ForkSkillInput,
@@ -103,6 +112,13 @@ export const discoverSkills = async (
 ): Promise<DiscoverSkillsResponse> => {
   const data = await api.post("origins/discover", { json: input }).json();
   return discoverSkillsResponseSchema.parse(data);
+};
+
+export const readSkillDefinitions = async (
+  input: ReadSkillDefinitionsInput
+): Promise<ReadSkillDefinitionsResponse> => {
+  const data = await api.post("origins/definitions", { json: input }).json();
+  return readSkillDefinitionsResponseSchema.parse(data);
 };
 
 export const patchManagedSkill = async (

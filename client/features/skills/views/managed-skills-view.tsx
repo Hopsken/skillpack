@@ -1,5 +1,5 @@
 import type { SkillListItem } from "@shared/contract/skills/responses";
-import { GitForkIcon, PlusIcon } from "lucide-react";
+import { GitForkIcon, LibraryIcon, PlusIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { Link } from "react-router";
 
@@ -22,8 +22,8 @@ export const ManagedSkillsView = ({
   <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
       <div className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-        <span className="text-muted-foreground">▥</span>
-        <span>Managed Skills</span>
+        <LibraryIcon className="size-4 text-muted-foreground" />
+        <span>Library</span>
       </div>
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" asChild>

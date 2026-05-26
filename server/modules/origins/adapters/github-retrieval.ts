@@ -334,7 +334,7 @@ const loadOriginSnapshot = async (
     const { owner, repo } = parseGitHubRepoUrl(origin.repoUrl);
     const repoInfo = await transport.getRepository(owner, repo);
     const branch = origin.branch ?? repoInfo.default_branch;
-    const commit = await transport.getCommit(owner, repo, branch);
+    const commit = await transport.getCommit(owner, repo, origin.rev ?? branch);
     const tree = await transport.getTree(owner, repo, commit.commit.tree.sha);
 
     return {
