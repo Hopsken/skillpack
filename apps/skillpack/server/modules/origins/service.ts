@@ -4,14 +4,26 @@ import type {
   SkillOriginInput,
 } from "@skillpack/contracts/origins/requests";
 
-import { githubOriginAdapter } from "./adapters/github";
+import { createGithubOriginAdapter } from "./adapters/github";
 import { originErrors } from "./errors";
 import type { OriginAdapter, OriginDefinitionResult } from "./types";
 
+interface OriginServiceOptions {
+  githubToken?: string;
+}
+
 export class OriginService {
-  private readonly adapters = new Map<SkillOriginInput["kind"], OriginAdapter>([
-    [githubOriginAdapter.kind, githubOriginAdapter as OriginAdapter],
-  ]);
+  private readonly adapters: Map<SkillOriginInput["kind"], OriginAdapter>;
+
+  constructor(options: OriginServiceOptions = {}) {
+    const githubOriginAdapter = createGithubOriginAdapter({
+      githubToken: options.githubToken,
+    });
+
+    this.adapters = new Map<SkillOriginInput["kind"], OriginAdapter>([
+      [githubOriginAdapter.kind, githubOriginAdapter as OriginAdapter],
+    ]);
+  }
 
   discoverSkills(input: DiscoverSkillsInput) {
     return this.getAdapter(input.origin.kind).discover(input.origin);

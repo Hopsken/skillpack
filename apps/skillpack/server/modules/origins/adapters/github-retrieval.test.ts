@@ -1,6 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createGitHubRetrieval } from "./github-retrieval";
+import {
+  createGitHubRetrieval,
+  createGitHubTransport,
+} from "./github-retrieval";
 import type { GitHubTransport, GitHubTreeEntry } from "./github-retrieval";
 
 const origin = {
@@ -51,7 +54,53 @@ const createTransport = (
   return transport;
 };
 
+const stubGitHubApiFetch = () => {
+  const requests: Request[] = [];
+
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((request: Request) => {
+      requests.push(request);
+      return Promise.resolve(
+        Response.json({
+          default_branch: "main",
+        })
+      );
+    })
+  );
+
+  return requests;
+};
+
 describe("GitHub Origin retrieval", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("sends a GitHub token on API requests when configured", async () => {
+    const requests = stubGitHubApiFetch();
+    const transport = createGitHubTransport({
+      githubToken: " github-token ",
+    });
+
+    await transport.getRepository("acme", "skills");
+
+    expect(requests).toHaveLength(1);
+    expect(requests.at(0)?.headers.get("authorization")).toBe(
+      "Bearer github-token"
+    );
+  });
+
+  it("omits authorization on API requests without a GitHub token", async () => {
+    const requests = stubGitHubApiFetch();
+    const transport = createGitHubTransport({ githubToken: " " });
+
+    await transport.getRepository("acme", "skills");
+
+    expect(requests).toHaveLength(1);
+    expect(requests.at(0)?.headers.has("authorization")).toBeFalsy();
+  });
+
   it("discovers candidates in Skillpack priority order without reading raw files", async () => {
     const transport = createTransport(
       [

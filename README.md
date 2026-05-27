@@ -45,11 +45,14 @@ Set `OIDC_CLIENT_ID` and `BETTER_AUTH_SECRET` in `.dev.vars`. Register this redi
 http://localhost:5173/api/auth/oauth2/callback/oidc
 ```
 
+Optionally set `GITHUB_TOKEN` in `.dev.vars` to raise GitHub API rate limits for GitHub-origin discovery and fork reads.
+
 For deployed environments, set secrets with Wrangler:
 
 ```bash
 pnpm --filter @skillpack/app exec wrangler secret put BETTER_AUTH_SECRET
 pnpm --filter @skillpack/app exec wrangler secret put OIDC_CLIENT_ID
+pnpm --filter @skillpack/app exec wrangler secret put GITHUB_TOKEN
 ```
 
 Register the deployed redirect URI with the same callback path:

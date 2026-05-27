@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { Context, Next } from "hono";
+import { env } from "hono/adapter";
 import { contextStorage } from "hono/context-storage";
 
 import { createAuth } from "./auth";
@@ -16,8 +17,11 @@ import type { AppBindings } from "./types";
 const getRequestOrigin = (url: string) => new URL(url).origin;
 
 const setRequestServices = async (c: Context<AppBindings>, next: Next) => {
+  const runtimeEnv = env<{ GITHUB_TOKEN?: string }, Context<AppBindings>>(c);
   const db = createDb(c.env.DB);
-  const originService = new OriginService();
+  const originService = new OriginService({
+    githubToken: runtimeEnv.GITHUB_TOKEN,
+  });
   const skillRepository = new SkillRepository(db);
   const skillStorage = new SkillStorage(c.env.BUCKET);
   const resourceManifest = new ResourceManifest(skillStorage);

@@ -68,34 +68,49 @@ export interface GitHubTransport {
   ): Promise<string>;
 }
 
-const githubApi = ky.create({
-  headers: {
+interface GitHubTransportOptions {
+  githubToken?: string;
+}
+
+const createGitHubApiHeaders = (githubToken?: string) => {
+  const token = githubToken?.trim();
+
+  return {
     accept: "application/vnd.github+json",
+    ...(token ? { authorization: `Bearer ${token}` } : {}),
     "user-agent": "skillpack",
-  },
-  prefix: "https://api.github.com",
-});
+  };
+};
 
-const githubRaw = ky.create({
-  headers: { "user-agent": "skillpack" },
-  prefix: "https://raw.githubusercontent.com",
-});
+export const createGitHubTransport = (
+  options: GitHubTransportOptions = {}
+): GitHubTransport => {
+  const githubApi = ky.create({
+    headers: createGitHubApiHeaders(options.githubToken),
+    prefix: "https://api.github.com",
+  });
 
-export const githubTransport: GitHubTransport = {
-  getCommit: (owner, repo, branch) =>
-    githubApi
-      .get(`repos/${owner}/${repo}/commits/${encodeURIComponent(branch)}`)
-      .json<GitHubCommit>(),
-  getRawText: (owner, repo, revision, path) =>
-    githubRaw.get(`${owner}/${repo}/${revision}/${path}`).text(),
-  getRepository: (owner, repo) =>
-    githubApi.get(`repos/${owner}/${repo}`).json<GitHubRepository>(),
-  getTree: (owner, repo, treeSha) =>
-    githubApi
-      .get(`repos/${owner}/${repo}/git/trees/${treeSha}`, {
-        searchParams: { recursive: "1" },
-      })
-      .json<GitHubTreeResponse>(),
+  const githubRaw = ky.create({
+    headers: { "user-agent": "skillpack" },
+    prefix: "https://raw.githubusercontent.com",
+  });
+
+  return {
+    getCommit: (owner, repo, branch) =>
+      githubApi
+        .get(`repos/${owner}/${repo}/commits/${encodeURIComponent(branch)}`)
+        .json<GitHubCommit>(),
+    getRawText: (owner, repo, revision, path) =>
+      githubRaw.get(`${owner}/${repo}/${revision}/${path}`).text(),
+    getRepository: (owner, repo) =>
+      githubApi.get(`repos/${owner}/${repo}`).json<GitHubRepository>(),
+    getTree: (owner, repo, treeSha) =>
+      githubApi
+        .get(`repos/${owner}/${repo}/git/trees/${treeSha}`, {
+          searchParams: { recursive: "1" },
+        })
+        .json<GitHubTreeResponse>(),
+  };
 };
 
 const priorityPrefixes = [
