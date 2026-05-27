@@ -4,11 +4,9 @@ import type {
 } from "@skillpack/contracts/skills/requests";
 import { Navigate, useNavigate, useParams } from "react-router";
 
-import {
-  SkillFormView,
-  useLatestSkill,
-  usePatchSkill,
-} from "@/features/skills";
+import { useLatestSkill } from "@/features/skills/api/use-skill-detail";
+import { usePatchSkill } from "@/features/skills/api/use-skill-mutations";
+import { SkillFormView } from "@/features/skills/views/skill-form-view";
 
 const getSkillLoadStatus = (
   skill: { name: string; version: number } | undefined,

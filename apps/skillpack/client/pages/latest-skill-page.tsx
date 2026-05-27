@@ -1,13 +1,13 @@
 import { Navigate, useParams, useSearchParams } from "react-router";
 
 import {
-  SkillDetailView,
-  useSkillDetail,
   useLatestSkill,
-  useRestoreSkillVersion,
+  useSkillDetail,
   useSkillVersions,
-} from "@/features/skills";
-import type { SkillDetailTab } from "@/features/skills";
+} from "@/features/skills/api/use-skill-detail";
+import { useRestoreSkillVersion } from "@/features/skills/api/use-skill-mutations";
+import type { SkillDetailTab } from "@/features/skills/views/skill-detail-view";
+import { SkillDetailView } from "@/features/skills/views/skill-detail-view";
 
 const skillDetailTabs = ["skill", "resources", "versions"] as const;
 const validTabs = new Set<string>(skillDetailTabs);

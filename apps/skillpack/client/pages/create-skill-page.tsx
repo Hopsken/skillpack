@@ -4,7 +4,8 @@ import type {
 } from "@skillpack/contracts/skills/requests";
 import { useNavigate } from "react-router";
 
-import { SkillFormView, useCreateSkill } from "@/features/skills";
+import { useCreateSkill } from "@/features/skills/api/use-skill-mutations";
+import { SkillFormView } from "@/features/skills/views/skill-form-view";
 
 export const CreateSkillPage = () => {
   const createSkill = useCreateSkill();

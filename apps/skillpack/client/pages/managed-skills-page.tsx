@@ -1,10 +1,8 @@
 import { useState } from "react";
 
-import {
-  ForkOriginDialog,
-  ManagedSkillsView,
-  useSkillList,
-} from "@/features/skills";
+import { useSkillList } from "@/features/skills/api/use-skill-list";
+import { ForkOriginDialog } from "@/features/skills/components/fork-origin-dialog";
+import { ManagedSkillsView } from "@/features/skills/views/managed-skills-view";
 
 export const ManagedSkillsPage = () => {
   const { isLoading, skills, refresh } = useSkillList();

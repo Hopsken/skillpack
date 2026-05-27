@@ -3,13 +3,11 @@ import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
-import {
-  ForkOriginDialog,
-  SkillForkView,
-  useForkSkill,
-  useOriginDiscovery,
-} from "@/features/skills";
+import { useOriginDiscovery } from "@/features/skills/api/use-origin-discovery";
+import { useForkSkill } from "@/features/skills/api/use-skill-mutations";
+import { ForkOriginDialog } from "@/features/skills/components/fork-origin-dialog";
 import { parseOriginSearchParams } from "@/features/skills/lib/origin-url";
+import { SkillForkView } from "@/features/skills/views/skill-fork-view";
 
 const getDiscoveryStatus = (skillCount: number, isLoading: boolean) => {
   if (isLoading) {
