@@ -43,12 +43,18 @@ const loadLoginPage = async () => {
   return { default: module.LoginPage };
 };
 
+const loadOAuthConsentPage = async () => {
+  const module = await import("@/pages/oauth-consent-page");
+  return { default: module.OAuthConsentPage };
+};
+
 const CreateSkillPage = lazy(loadCreateSkillPage);
 const EditSkillPage = lazy(loadEditSkillPage);
 const ForkSkillPage = lazy(loadForkSkillPage);
 const LatestSkillPage = lazy(loadLatestSkillPage);
 const LoginPage = lazy(loadLoginPage);
 const ManagedSkillsPage = lazy(loadManagedSkillsPage);
+const OAuthConsentPage = lazy(loadOAuthConsentPage);
 
 const getLoginPath = (pathname: string, search: string) => {
   const redirect = `${pathname}${search}`;
@@ -82,6 +88,7 @@ export const App = () => (
   <Suspense fallback={<RouteFallback />}>
     <Routes>
       <Route path="login" element={<LoginPage />} />
+      <Route path="oauth/consent" element={<OAuthConsentPage />} />
       <Route element={<ProtectedLayout />}>
         <Route index element={<Navigate to="/skills" replace />} />
         <Route path="skills" element={<ManagedSkillsPage />} />

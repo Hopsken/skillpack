@@ -1,74 +1,59 @@
 import { Hono } from "hono";
-import type { Context, Next } from "hono";
-import { env } from "hono/adapter";
+import type { Context } from "hono";
 import { contextStorage } from "hono/context-storage";
 
 import { createAuth } from "./auth";
-import type { AuthSession } from "./auth";
-import { createDb } from "./db/client";
-import { apiError } from "./lib/http";
-import { OriginService } from "./modules/origins/service";
-import { SkillRepository } from "./modules/skills/repository";
-import { ResourceManifest } from "./modules/skills/resource-manifest";
-import { SkillService } from "./modules/skills/service";
-import { SkillStorage } from "./modules/skills/storage";
+import {
+  createRequireSessionAuth,
+  createRequireSkillsAuth,
+} from "./middlewares/auth";
+import type { AuthMiddlewareOptions } from "./middlewares/auth";
+import { setRequestServices } from "./middlewares/request-services";
+import { getProtectedResourceMetadata, getRequestOrigin } from "./oauth";
 import { apiRoutes } from "./routes";
 import type { AppBindings } from "./types";
 
-const getRequestOrigin = (url: string) => new URL(url).origin;
-
-const setRequestServices = async (c: Context<AppBindings>, next: Next) => {
-  const runtimeEnv = env<{ GITHUB_TOKEN?: string }, Context<AppBindings>>(c);
-  const db = createDb(c.env.DB);
-  const originService = new OriginService({
-    githubToken: runtimeEnv.GITHUB_TOKEN,
-  });
-  const skillStorage = new SkillStorage(c.env.BUCKET);
-
-  c.set("db", db);
-  c.set("originService", originService);
-  c.set("skillStorage", skillStorage);
-  await next();
-};
-
-const requireAuth = async (c: Context<AppBindings>, next: Next) => {
+const authHandler = (c: Context<AppBindings>) => {
   const origin = getRequestOrigin(c.req.url);
-  let session: AuthSession | null;
-
-  try {
-    session = await createAuth(c.env, origin).api.getSession({
-      asResponse: false,
-      headers: c.req.raw.headers,
-    });
-  } catch {
-    return c.json(apiError("Unauthorized"), 401);
-  }
-
-  if (!session) {
-    return c.json(apiError("Unauthorized"), 401);
-  }
-
-  c.set("currentUser", { id: session.user.id });
-  const skillRepository = new SkillRepository(c.var.db, session.user.id);
-  const resourceManifest = new ResourceManifest(c.var.skillStorage);
-
-  c.set("skillRepository", skillRepository);
-  c.set(
-    "skillService",
-    new SkillService(skillRepository, resourceManifest, c.var.originService)
-  );
-  await next();
+  return createAuth(c.env, origin).handler(c.req.raw);
 };
 
-export const app = new Hono<AppBindings>()
-  .use(contextStorage())
-  .use(setRequestServices)
-  .on(["GET", "POST"], "/api/auth/*", (c) => {
-    const origin = getRequestOrigin(c.req.url);
-    return createAuth(c.env, origin).handler(c.req.raw);
-  })
-  .use("/api/v1/origins", requireAuth)
-  .use("/api/v1/origins/*", requireAuth)
-  .use("/api/v1/skills", requireAuth)
-  .use("/api/v1/skills/*", requireAuth)
-  .route("/", apiRoutes);
+const oauthAuthorizationServerMetadata = async (c: Context<AppBindings>) => {
+  const origin = getRequestOrigin(c.req.url);
+  const metadata = await createAuth(c.env, origin).api.getOAuthServerConfig({
+    headers: c.req.raw.headers,
+  });
+  return c.json(metadata);
+};
+
+const openIdConfigurationMetadata = async (c: Context<AppBindings>) => {
+  const origin = getRequestOrigin(c.req.url);
+  const metadata = await createAuth(c.env, origin).api.getOpenIdConfig({
+    headers: c.req.raw.headers,
+  });
+  return c.json(metadata);
+};
+
+const protectedResourceMetadata = async (c: Context<AppBindings>) => {
+  const origin = getRequestOrigin(c.req.url);
+  const metadata = await getProtectedResourceMetadata(c.env, origin);
+  return c.json(metadata);
+};
+
+export const createApp = (options: AuthMiddlewareOptions = {}) =>
+  new Hono<AppBindings>()
+    .use(contextStorage())
+    .use(setRequestServices)
+    .get(
+      "/.well-known/oauth-authorization-server",
+      oauthAuthorizationServerMetadata
+    )
+    .get("/.well-known/openid-configuration", openIdConfigurationMetadata)
+    .get("/.well-known/oauth-protected-resource", protectedResourceMetadata)
+    .on(["GET", "POST"], "/api/auth/*", authHandler)
+    .use("/api/v1/origins", createRequireSessionAuth())
+    .use("/api/v1/origins/*", createRequireSessionAuth())
+    .use("/api/v1/skills/*", createRequireSkillsAuth(options))
+    .route("/", apiRoutes);
+
+export const app = createApp();

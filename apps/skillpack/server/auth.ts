@@ -1,5 +1,13 @@
+import { oauthProvider } from "@better-auth/oauth-provider";
 import { betterAuth } from "better-auth";
-import { genericOAuth } from "better-auth/plugins";
+import { genericOAuth, jwt } from "better-auth/plugins";
+
+export const skillReadScope = "skills:read";
+export const skillpackOAuthScopes = [
+  "openid",
+  "offline_access",
+  skillReadScope,
+];
 
 const providerId = "oidc";
 const defaultScopes = ["openid", "email", "profile"];
@@ -37,6 +45,26 @@ export const createAuth = (env: Env, origin: string) => {
     baseURL,
     database: env.DB,
     plugins: [
+      jwt({
+        disableSettingJwtHeader: true,
+        jwt: { issuer: baseURL },
+      }),
+      oauthProvider({
+        allowDynamicClientRegistration: true,
+        allowPublicClientPrelogin: true,
+        allowUnauthenticatedClientRegistration: true,
+        clientRegistrationAllowedScopes: skillpackOAuthScopes,
+        clientRegistrationDefaultScopes: skillpackOAuthScopes,
+        consentPage: "/oauth/consent",
+        grantTypes: ["authorization_code", "refresh_token"],
+        loginPage: "/login",
+        scopes: skillpackOAuthScopes,
+        silenceWarnings: {
+          oauthAuthServerConfig: true,
+          openidConfig: true,
+        },
+        validAudiences: [baseURL],
+      }),
       genericOAuth({
         config: [
           {

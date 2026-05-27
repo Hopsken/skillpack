@@ -11,6 +11,7 @@ export {
 export { Input } from "./input";
 export { Separator } from "./separator";
 export { Skeleton } from "./skeleton";
+export { Spinner } from "./spinner";
 export {
   Sidebar,
   SidebarContent,

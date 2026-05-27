@@ -135,3 +135,145 @@ export const skillOriginsRelations = relations(
     }),
   })
 );
+
+export const jwksTable = sqliteTable("jwks", {
+  createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
+  expiresAt: integer("expiresAt", { mode: "timestamp_ms" }),
+  id: text("id").primaryKey().notNull(),
+  privateKey: text("privateKey").notNull(),
+  publicKey: text("publicKey").notNull(),
+});
+
+export const oauthClientTable = sqliteTable(
+  "oauthClient",
+  {
+    clientId: text("clientId").notNull(),
+    clientSecret: text("clientSecret"),
+    contacts: text("contacts", { mode: "json" }).$type<string[] | null>(),
+    createdAt: integer("createdAt", { mode: "timestamp_ms" }),
+    disabled: integer("disabled", { mode: "boolean" }),
+    enableEndSession: integer("enableEndSession", { mode: "boolean" }),
+    grantTypes: text("grantTypes", { mode: "json" }).$type<string[] | null>(),
+    icon: text("icon"),
+    id: text("id").primaryKey().notNull(),
+    metadata: text("metadata", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    name: text("name"),
+    policy: text("policy"),
+    postLogoutRedirectUris: text("postLogoutRedirectUris", {
+      mode: "json",
+    }).$type<string[] | null>(),
+    public: integer("public", { mode: "boolean" }),
+    redirectUris: text("redirectUris", { mode: "json" })
+      .$type<string[]>()
+      .notNull(),
+    referenceId: text("referenceId"),
+    requirePKCE: integer("requirePKCE", { mode: "boolean" }),
+    responseTypes: text("responseTypes", { mode: "json" }).$type<
+      string[] | null
+    >(),
+    scopes: text("scopes", { mode: "json" }).$type<string[] | null>(),
+    skipConsent: integer("skipConsent", { mode: "boolean" }),
+    softwareId: text("softwareId"),
+    softwareStatement: text("softwareStatement"),
+    softwareVersion: text("softwareVersion"),
+    subjectType: text("subjectType"),
+    tokenEndpointAuthMethod: text("tokenEndpointAuthMethod"),
+    tos: text("tos"),
+    type: text("type"),
+    updatedAt: integer("updatedAt", { mode: "timestamp_ms" }),
+    uri: text("uri"),
+    userId: text("userId"),
+  },
+  (table) => ({
+    oauthClientClientIdUnique: uniqueIndex("oauthClient_clientId_unique").on(
+      table.clientId
+    ),
+    oauthClientUserIdIndex: index("oauthClient_userId_idx").on(table.userId),
+  })
+);
+
+export const oauthRefreshTokenTable = sqliteTable(
+  "oauthRefreshToken",
+  {
+    authTime: integer("authTime", { mode: "timestamp_ms" }),
+    clientId: text("clientId").notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp_ms" }),
+    expiresAt: integer("expiresAt", { mode: "timestamp_ms" }),
+    id: text("id").primaryKey().notNull(),
+    referenceId: text("referenceId"),
+    revoked: integer("revoked", { mode: "timestamp_ms" }),
+    scopes: text("scopes", { mode: "json" }).$type<string[]>().notNull(),
+    sessionId: text("sessionId"),
+    token: text("token").notNull(),
+    userId: text("userId").notNull(),
+  },
+  (table) => ({
+    oauthRefreshTokenClientIdIndex: index("oauthRefreshToken_clientId_idx").on(
+      table.clientId
+    ),
+    oauthRefreshTokenSessionIdIndex: index(
+      "oauthRefreshToken_sessionId_idx"
+    ).on(table.sessionId),
+    oauthRefreshTokenTokenUnique: uniqueIndex(
+      "oauthRefreshToken_token_unique"
+    ).on(table.token),
+    oauthRefreshTokenUserIdIndex: index("oauthRefreshToken_userId_idx").on(
+      table.userId
+    ),
+  })
+);
+
+export const oauthAccessTokenTable = sqliteTable(
+  "oauthAccessToken",
+  {
+    clientId: text("clientId").notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp_ms" }),
+    expiresAt: integer("expiresAt", { mode: "timestamp_ms" }),
+    id: text("id").primaryKey().notNull(),
+    referenceId: text("referenceId"),
+    refreshId: text("refreshId"),
+    scopes: text("scopes", { mode: "json" }).$type<string[]>().notNull(),
+    sessionId: text("sessionId"),
+    token: text("token"),
+    userId: text("userId"),
+  },
+  (table) => ({
+    oauthAccessTokenClientIdIndex: index("oauthAccessToken_clientId_idx").on(
+      table.clientId
+    ),
+    oauthAccessTokenRefreshIdIndex: index("oauthAccessToken_refreshId_idx").on(
+      table.refreshId
+    ),
+    oauthAccessTokenSessionIdIndex: index("oauthAccessToken_sessionId_idx").on(
+      table.sessionId
+    ),
+    oauthAccessTokenTokenUnique: uniqueIndex(
+      "oauthAccessToken_token_unique"
+    ).on(table.token),
+    oauthAccessTokenUserIdIndex: index("oauthAccessToken_userId_idx").on(
+      table.userId
+    ),
+  })
+);
+
+export const oauthConsentTable = sqliteTable(
+  "oauthConsent",
+  {
+    clientId: text("clientId").notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp_ms" }),
+    id: text("id").primaryKey().notNull(),
+    referenceId: text("referenceId"),
+    scopes: text("scopes", { mode: "json" }).$type<string[]>().notNull(),
+    updatedAt: integer("updatedAt", { mode: "timestamp_ms" }),
+    userId: text("userId"),
+  },
+  (table) => ({
+    oauthConsentClientIdIndex: index("oauthConsent_clientId_idx").on(
+      table.clientId
+    ),
+    oauthConsentUserIdIndex: index("oauthConsent_userId_idx").on(table.userId),
+  })
+);
