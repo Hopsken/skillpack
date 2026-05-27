@@ -1,13 +1,16 @@
 import type { ForkSkillInput } from "@skillpack/contracts/skills/requests";
 import { useCallback, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
-import { useOriginDiscovery } from "@/features/skills/api/use-origin-discovery";
-import { useForkSkill } from "@/features/skills/api/use-skill-mutations";
-import { ForkOriginDialog } from "@/features/skills/components/fork-origin-dialog";
+import {
+  ForkOriginDialog,
+  SkillForkView,
+  useForkSkill,
+  useOriginDiscovery,
+  useSkillList,
+} from "@/features/skills";
 import { parseOriginSearchParams } from "@/features/skills/lib/origin-url";
-import { SkillForkView } from "@/features/skills/views/skill-fork-view";
 
 const getDiscoveryStatus = (skillCount: number, isLoading: boolean) => {
   if (isLoading) {
@@ -24,6 +27,8 @@ const getDiscoveryStatus = (skillCount: number, isLoading: boolean) => {
 export const ForkSkillPage = () => {
   const forkSkill = useForkSkill();
   const forkSkillAsync = forkSkill.mutateAsync;
+  const navigate = useNavigate();
+  const skillList = useSkillList();
   const [searchParams] = useSearchParams();
   const origin = useMemo(
     () => parseOriginSearchParams(searchParams),
@@ -33,11 +38,17 @@ export const ForkSkillPage = () => {
   const [forkDialogOpen, setForkDialogOpen] = useState(!origin);
 
   const submit = useCallback(
-    (input: ForkSkillInput) => forkSkillAsync(input),
+    async (input: ForkSkillInput) => {
+      await forkSkillAsync(input);
+    },
     [forkSkillAsync]
   );
 
   const discoveredSkillCount = discovery.discovery?.candidates.length ?? 0;
+  const existingSkillNames = useMemo(
+    () => skillList.skills.map((skill) => skill.name),
+    [skillList.skills]
+  );
   const discoveryStatus = getDiscoveryStatus(
     discoveredSkillCount,
     discovery.isLoading
@@ -48,7 +59,7 @@ export const ForkSkillPage = () => {
       <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
         <header className="flex h-16 shrink-0 items-center border-b border-border bg-background px-6">
           <h1 className="truncate text-lg font-semibold tracking-tight">
-            Fork From GitHub
+            Add from GitHub
           </h1>
         </header>
         <section className="flex flex-1 items-center justify-center px-6">
@@ -68,8 +79,10 @@ export const ForkSkillPage = () => {
     <>
       <SkillForkView
         discovery={discovery.discovery}
+        existingSkillNames={existingSkillNames}
         origin={origin}
         status={discoveryStatus}
+        onComplete={() => navigate("/skills")}
         onSubmit={submit}
       />
       <ForkOriginDialog

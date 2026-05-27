@@ -29,6 +29,7 @@ import {
 import type { ReadSkillFileInput, ReadSkillFileResult } from "./types";
 
 const skillErrorStatus = {
+  "duplicate-resolved-skill-name": 400,
   "duplicate-resource-path": 400,
   "duplicate-skill-name": 409,
   "duplicate-skill-version": 409,

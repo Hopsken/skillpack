@@ -7,12 +7,22 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
-export const skillsTable = sqliteTable("skills", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-
-  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
-});
+export const skillsTable = sqliteTable(
+  "skills",
+  {
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    ownerUserId: text("owner_user_id").notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => ({
+    skillOwnerNameUnique: uniqueIndex("skills_owner_name_unique").on(
+      table.ownerUserId,
+      table.name
+    ),
+  })
+);
 
 export const skillVersionsTable = sqliteTable(
   "skill_versions",
@@ -31,7 +41,6 @@ export const skillVersionsTable = sqliteTable(
       string,
       string
     > | null>(),
-    name: text("name").notNull(),
 
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   },
@@ -72,7 +81,7 @@ export const skillOriginsTable = sqliteTable(
   "skill_origins",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
-    skillId: integer("skill_id").notNull(),
+    skillVersionId: integer("skill_version_id").notNull(),
 
     kind: text("kind").notNull(),
     metadata: text("metadata", { mode: "json" }).$type<Record<
@@ -85,20 +94,20 @@ export const skillOriginsTable = sqliteTable(
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
   (table) => ({
-    skillOriginSkillUnique: uniqueIndex("skill_origins_skill_unique").on(
-      table.skillId
+    skillOriginVersionUnique: uniqueIndex("skill_origins_version_unique").on(
+      table.skillVersionId
     ),
   })
 );
 
 export const skillsRelations = relations(skillsTable, ({ many }) => ({
-  origins: many(skillOriginsTable),
   versions: many(skillVersionsTable),
 }));
 
 export const skillVersionsRelations = relations(
   skillVersionsTable,
   ({ many, one }) => ({
+    origins: many(skillOriginsTable),
     resources: many(skillResourcesTable),
     skill: one(skillsTable, {
       fields: [skillVersionsTable.skillId],
@@ -120,9 +129,9 @@ export const skillResourcesRelations = relations(
 export const skillOriginsRelations = relations(
   skillOriginsTable,
   ({ one }) => ({
-    skill: one(skillsTable, {
-      fields: [skillOriginsTable.skillId],
-      references: [skillsTable.id],
+    version: one(skillVersionsTable, {
+      fields: [skillOriginsTable.skillVersionId],
+      references: [skillVersionsTable.id],
     }),
   })
 );

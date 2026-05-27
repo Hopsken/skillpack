@@ -8,7 +8,7 @@ informed: Future Skillpack maintainers and coding agents
 
 # ADR-0001: Define Skillpack as a Skills Management Platform
 
-Skillpack is a Skills Management Platform for agents. It manages skills as platform-owned copies, organizes them into user-curated skill collections, and delivers resolved skill content to agent runtimes through Skillpack-mediated interfaces.
+Skillpack is a Skills Management Platform for agents. It manages user-owned skills as platform-owned copies, organizes them into user-curated skill collections, and delivers resolved skill content to agent runtimes through Skillpack-mediated interfaces.
 
 ## Context
 
@@ -21,6 +21,8 @@ That direction conflicts with the product stance Skillpack now needs:
 - GitHub and other external systems should provide provenance and comparison targets, not primary skill identity.
 - Agent-facing locators should be stable Skillpack identities, not upstream URLs or source-qualified handles.
 - A user's intended output is a managed collection of skills for an agent, project, workflow, or runtime context.
+- A user should only see and manage the skills in their own Library.
+- Skill names should be stable within a user's Library so Add to Library can update an existing Managed Skill when the same source name appears again.
 
 The earlier code reflected the older model in several places:
 
@@ -49,25 +51,27 @@ This model is the north star for future architecture and product decisions.
 
 A Managed Skill is the primary product object. It is a platform-owned skill record in Skillpack that users can understand and agents can consume.
 
-Forked, user-authored, agent-created, and API-created skills all become Managed Skills once Skillpack stores and owns their content lifecycle.
+Forked, user-authored, agent-created, and API-created skills all become Managed Skills once Skillpack stores and owns their content lifecycle for one user.
 
 ### Skill ID
 
 A Skill ID is the Skillpack-owned primary identity for a Managed Skill.
 
-All system operations and Skill Locations address Managed Skills by Skill ID. There is no separate handle concept. Skill Name is display and discovery metadata, and multiple Managed Skills may share the same name, even for the same user.
+All system operations and Skill Locations address Managed Skills by Skill ID. There is no separate handle concept. Skill Name is display and discovery metadata that is immutable and unique within one user's Library. Different users may use the same Skill Name.
 
 ### Skill Origin
 
-A Skill Origin is provenance metadata for a Managed Skill, such as GitHub, npm, another registry, user authoring, agent creation, or API creation.
+A Skill Origin is provenance metadata for a Managed Skill Version, such as GitHub, npm, another registry, user authoring, agent creation, or API creation.
 
-Origins never form the skill's primary identity. Fields such as `github`, repository URL, source path, or creation mode belong to origin/provenance records, not to the identity of the Managed Skill.
+Origins never form the skill's primary identity. Fields such as `github`, repository URL, source path, or creation mode belong to origin/provenance records, not to the identity of the Managed Skill. Provenance is attached to versions so an Add to Library update does not rewrite the source story for earlier versions.
 
 ### Fork
 
 Fork is the product workflow for bringing third-party content into Skillpack.
 
-Fork creates a Managed Skill copy from a Skill Origin or another Managed Skill. Skillpack does not model this as import, sync, mirror, or upstream tracking. The product stance is that users should review, curate, and maintain the skills they use with agents.
+Fork creates or updates a Managed Skill copy from a Skill Origin or another Managed Skill. Skillpack does not model this as import, sync, mirror, or upstream tracking. The product stance is that users should review, curate, and maintain the skills they use with agents.
+
+In user-facing UI, Fork is presented as Add to Library. If the selected source Skill Name is new in the user's Library, Add to Library creates a Managed Skill. If that Skill Name already exists in the user's Library, Add to Library updates the existing Managed Skill by committing a new Managed Skill Version.
 
 ### Origin Comparison
 
@@ -94,6 +98,8 @@ Every Managed Skill Version is a complete resource snapshot containing `SKILL.md
 
 Restoring a previous version creates a new version from the historical content. The timeline remains linear, and the current version is the highest committed `version_number`.
 
+Managed Skill Versions do not own Skill Name. The owning Managed Skill's immutable name is mirrored into generated and resolved `SKILL.md` frontmatter.
+
 ### Skill Location
 
 A Skill Location is an agent-facing private locator derived from Skill ID:
@@ -105,7 +111,7 @@ skill://skillpack/{skillId}?version={versionNumber}
 
 Bare Skill Locations resolve to the latest committed version. A `version` query parameter pins resolution to a specific Managed Skill Version number.
 
-Skill Locations are not fetchable content URLs. Agents and harnesses resolve them through Skillpack APIs, MCP tools, extension tools, or future delivery interfaces.
+Skill Locations are not fetchable content URLs. Agents and harnesses resolve them through Skillpack APIs, MCP tools, extension tools, or future delivery interfaces in an authorized user context. A user cannot resolve another user's Managed Skill by guessing its Skill ID.
 
 ### Skill Trust
 
@@ -115,7 +121,7 @@ User review is a product workflow that guides responsible skill use. The backend
 
 ### Skill Set
 
-A Skill Set is a user-curated collection of Managed Skills intended for an agent, project, workflow, or runtime context.
+A Skill Set is a user-curated collection of that user's Managed Skills intended for an agent, project, workflow, or runtime context.
 
 Skill Sets express the complete skills collection a user wants to make available for a given use. Skill Set design deserves its own follow-up design pass and is deferred from this ADR's implementation scope.
 
@@ -143,7 +149,19 @@ This approach was rejected because Skillpack is opinionated about user responsib
 
 This approach would make names or handles part of API paths and Skill Locations.
 
-This approach was rejected because names are display metadata and may duplicate. Skill IDs provide stable identity, simpler routing, and clearer future multi-user behavior.
+This approach was rejected because names are user-scoped display and discovery metadata, not route identity. Skill IDs provide stable system identity and simpler routing, while `(user, Skill Name)` uniqueness supports a predictable personal Library.
+
+### Allow duplicate names inside one user's Library
+
+This approach would keep Skill Name as weak display metadata.
+
+This approach was rejected because Add to Library needs a predictable target when the same source Skill Name is added again. Within one user Library, duplicate names make source updates, user selection, and future Skill Set composition ambiguous.
+
+### Attach provenance to the Managed Skill
+
+This approach would keep a single origin row for each Managed Skill.
+
+This approach was rejected because Add to Library may update an existing Managed Skill from a new source snapshot. Storing one skill-level origin would make older versions appear to have the latest provenance.
 
 ### Require user-authored semantic versions
 
@@ -154,14 +172,18 @@ This approach was rejected because Skillpack versions are managed content snapsh
 ## Consequences
 
 - `skills.source_type` must be removed from Managed Skill identity.
-- `skills.handle` must be removed. Skill Name remains non-unique display and discovery metadata.
+- `skills.handle` must be removed. Skill Name is immutable, user-scoped display and discovery metadata.
+- `skills.owner_user_id` and `skills.name` must enforce `(owner_user_id, name)` uniqueness.
+- `skill_versions.name` must be removed because versions do not own Skill Name.
 - `skills.location` is redundant because it is derived from Skill ID. It may be removed or generated by presenters.
-- GitHub and other external systems move into origin/provenance metadata.
-- Agent-facing locators use only `skill://skillpack/{skillId}` and optional `version` pins.
+- GitHub and other external systems move into version-level origin/provenance metadata.
+- Agent-facing locators use only `skill://skillpack/{skillId}` and optional `version` pins, resolved only in an authorized user context.
 - API routes should address skills by ID, for example `/api/v1/skills/{skillId}`.
+- API routes must scope Managed Skill reads and writes to the authenticated user. Cross-user access returns not found.
 - Versions should use system-generated incrementing numbers and optional labels.
 - Each version is a complete resource snapshot.
-- Restore creates a new version copied from historical content.
+- Restore creates a new version copied from historical content without changing Skill Name.
+- User-facing source actions should say Add to Library even when internal APIs and domain code still use Fork.
 - Origin Comparison is a diff-oriented review aid, not sync, merge, or upstream tracking.
 - Skill Set becomes a core product concept and needs a separate design pass.
 
@@ -170,7 +192,7 @@ This approach was rejected because Skillpack versions are managed content snapsh
 This ADR does not design:
 
 - Skill Set schema, APIs, delivery policy, or UX
-- Multi-user ownership and permission boundaries
+- Workspace, team, organization, and shared-library ownership
 - Full GitHub indexing, authentication, rate-limit handling, or repository traversal
 - Complex Git refs, branch tracking, merge semantics, or upstream history modeling
 - npm source support

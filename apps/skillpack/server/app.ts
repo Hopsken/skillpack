@@ -4,6 +4,7 @@ import { env } from "hono/adapter";
 import { contextStorage } from "hono/context-storage";
 
 import { createAuth } from "./auth";
+import type { AuthSession } from "./auth";
 import { createDb } from "./db/client";
 import { apiError } from "./lib/http";
 import { OriginService } from "./modules/origins/service";
@@ -22,24 +23,17 @@ const setRequestServices = async (c: Context<AppBindings>, next: Next) => {
   const originService = new OriginService({
     githubToken: runtimeEnv.GITHUB_TOKEN,
   });
-  const skillRepository = new SkillRepository(db);
   const skillStorage = new SkillStorage(c.env.BUCKET);
-  const resourceManifest = new ResourceManifest(skillStorage);
 
   c.set("db", db);
   c.set("originService", originService);
-  c.set("skillRepository", skillRepository);
   c.set("skillStorage", skillStorage);
-  c.set(
-    "skillService",
-    new SkillService(skillRepository, resourceManifest, originService)
-  );
   await next();
 };
 
 const requireAuth = async (c: Context<AppBindings>, next: Next) => {
   const origin = getRequestOrigin(c.req.url);
-  let session: unknown | null;
+  let session: AuthSession | null;
 
   try {
     session = await createAuth(c.env, origin).api.getSession({
@@ -54,6 +48,15 @@ const requireAuth = async (c: Context<AppBindings>, next: Next) => {
     return c.json(apiError("Unauthorized"), 401);
   }
 
+  c.set("currentUser", { id: session.user.id });
+  const skillRepository = new SkillRepository(c.var.db, session.user.id);
+  const resourceManifest = new ResourceManifest(c.var.skillStorage);
+
+  c.set("skillRepository", skillRepository);
+  c.set(
+    "skillService",
+    new SkillService(skillRepository, resourceManifest, c.var.originService)
+  );
   await next();
 };
 

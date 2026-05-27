@@ -42,10 +42,10 @@ export const patchSkillSchema = z
     description: skillDescriptionSchema.optional(),
     license: optionalSkillLicenseSchema.nullable(),
     metadata: skillMetadataSchema.nullable().optional(),
-    name: skillNameSchema.optional(),
     upsertResources: z.array(createSkillResourceSchema).default([]),
     versionLabel: optionalSkillVersionLabelSchema,
   })
+  .strict()
   .refine(
     (input) =>
       input.allowedTools !== undefined ||
@@ -55,7 +55,6 @@ export const patchSkillSchema = z
       input.description !== undefined ||
       input.license !== undefined ||
       input.metadata !== undefined ||
-      input.name !== undefined ||
       input.upsertResources.length > 0,
     "PATCH must change SKILL.md content or resources"
   );
@@ -65,11 +64,27 @@ export const restoreVersionSchema = z.object({
   versionLabel: optionalSkillVersionLabelSchema,
 });
 
-export const forkSkillSchema = z.object({
-  origin: skillOriginSchema,
-  selections: z.array(originSelectionSchema).min(1),
-  versionLabel: optionalSkillVersionLabelSchema,
-});
+export const forkSkillSchema = z
+  .object({
+    origin: skillOriginSchema,
+    selections: z.array(originSelectionSchema).min(1),
+    versionLabel: optionalSkillVersionLabelSchema,
+  })
+  .superRefine((input, context) => {
+    const seen = new Set<string>();
+
+    for (const [index, selection] of input.selections.entries()) {
+      if (seen.has(selection.skillName)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Selected skills must use unique names",
+          path: ["selections", index, "skillName"],
+        });
+      }
+
+      seen.add(selection.skillName);
+    }
+  });
 
 export type CreateSkillInput = z.infer<typeof createSkillSchema>;
 export type ForkSkillInput = z.infer<typeof forkSkillSchema>;

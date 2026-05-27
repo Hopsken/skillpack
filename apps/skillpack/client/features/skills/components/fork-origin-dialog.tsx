@@ -102,7 +102,7 @@ export const ForkOriginDialog = ({
           className="flex flex-col gap-4"
         >
           <DialogHeader>
-            <DialogTitle>Fork skills</DialogTitle>
+            <DialogTitle>Add to Library</DialogTitle>
             <DialogDescription>
               standing on the shoulders of giants.
             </DialogDescription>

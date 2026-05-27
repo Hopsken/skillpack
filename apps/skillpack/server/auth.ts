@@ -30,19 +30,7 @@ const requiredEnv = (value: string | undefined, name: string) => {
   return value;
 };
 
-interface AuthSessionContext {
-  asResponse: false;
-  headers: Headers;
-}
-
-interface AuthHandler {
-  api: {
-    getSession: (context: AuthSessionContext) => Promise<unknown | null>;
-  };
-  handler: (request: Request) => Promise<Response>;
-}
-
-export const createAuth = (env: Env, origin: string): AuthHandler => {
+export const createAuth = (env: Env, origin: string) => {
   const baseURL = env.AUTH_BASE_URL ?? origin;
 
   return betterAuth({
@@ -70,3 +58,7 @@ export const createAuth = (env: Env, origin: string): AuthHandler => {
     trustedOrigins: [baseURL, origin],
   });
 };
+
+export type AuthSession = NonNullable<
+  Awaited<ReturnType<ReturnType<typeof createAuth>["api"]["getSession"]>>
+>;

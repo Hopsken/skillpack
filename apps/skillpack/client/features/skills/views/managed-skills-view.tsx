@@ -1,5 +1,5 @@
 import type { SkillListItem } from "@skillpack/contracts/skills/responses";
-import { GitForkIcon, LibraryIcon, PlusIcon } from "lucide-react";
+import { LibraryIcon, PlusIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { Link } from "react-router";
 
@@ -29,8 +29,8 @@ export const ManagedSkillsView = ({
       </div>
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" onClick={onFork}>
-          <GitForkIcon />
-          Fork
+          <PlusIcon />
+          Add
         </Button>
         <Button size="sm" asChild>
           <Link to="/skills/new">

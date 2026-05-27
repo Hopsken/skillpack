@@ -116,10 +116,17 @@ Rules:
 
 Managed Skill Version commits are a repository concern. The service prepares a
 complete Resource Manifest snapshot first, then the repository commits the
-version row, resource rows, and parent skill timestamp with D1 `batch()` and SQL
-subqueries. The current version is the highest committed `version_number` for a
-skill. Do not use Drizzle `transaction()` for this path; D1 rejects the SQL
-`BEGIN`/`SAVEPOINT` statements emitted by that adapter.
+version row, resource rows, optional version-level Skill Origin provenance, and
+parent skill timestamp with D1 `batch()` and SQL subqueries. The current version
+is the highest committed `version_number` for a skill. Do not use Drizzle
+`transaction()` for this path; D1 rejects the SQL `BEGIN`/`SAVEPOINT` statements
+emitted by that adapter.
+
+Repository create methods should create complete domain objects, not placeholder
+rows. For Managed Skills, creation means committing the `skills` row, first
+`skill_versions` row, resource rows, and optional origin row together after the
+service has prepared any R2 objects. This avoids invisible records that reserve a
+unique name but cannot be resolved or listed as a Managed Skill.
 
 ### `storage.ts`
 

@@ -9,6 +9,7 @@ export type Database = ReturnType<typeof createDb>;
 export interface AppBindings {
   Bindings: Env;
   Variables: {
+    currentUser: { id: string };
     db: Database;
     originService: OriginService;
     skillRepository: SkillRepository;

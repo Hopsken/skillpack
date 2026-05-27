@@ -1,6 +1,6 @@
 # Skillpack Context
 
-Skillpack is a product context for managing skills as platform-owned copies, organizing them into user-curated skill collections, and delivering them to agent runtimes.
+Skillpack is a product context for managing user-owned skills as platform-owned copies, organizing them into user-curated skill collections, and delivering them to agent runtimes.
 
 ## Language
 
@@ -21,15 +21,15 @@ A Skillpack capability that knows how to discover Skills at a specific kind of S
 _Avoid_: Source adapter, importer, sync backend, registry identity
 
 **Managed Skill**:
-A platform-owned skill record in Skillpack's library that users can understand and agents can consume. Forked, user-authored, agent-created, and API-created skills all become Managed Skills once Skillpack stores and owns their content lifecycle.
+A user-owned, platform-stored skill record in Skillpack's library that users can understand and agents can consume. Forked, user-authored, agent-created, and API-created skills all become Managed Skills once Skillpack stores and owns their content lifecycle for one user.
 _Avoid_: Skill Entry, imported skill, raw source file, database row
 
 **Fork**:
-A workflow that creates a Managed Skill copy from a Skill Origin or another Managed Skill. Forking expresses user ownership and responsibility for reviewing, curating, and maintaining the resulting Managed Skill.
+A workflow that creates or updates a user's Managed Skill from a Skill Origin or another Managed Skill. In user-facing UI, this workflow is presented as Add to Library. Forking expresses user ownership and responsibility for reviewing, curating, and maintaining the resulting Managed Skill.
 _Avoid_: Import, sync, mirror
 
 **Batch Fork**:
-A Fork workflow that creates Managed Skill copies for multiple selected Skills from one Skill Origin. Batch Fork uses partial success: one selected Skill failing to Fork does not prevent other selected Skills from becoming Managed Skills.
+A Fork workflow that creates or updates Managed Skills for multiple selected Skills from one Skill Origin. Batch Fork uses partial success: one selected Skill failing to Fork does not prevent other selected Skills from becoming Managed Skills.
 _Avoid_: All-or-nothing import, sync batch, origin mirror
 
 **Origin Comparison**:
@@ -41,11 +41,11 @@ The Skillpack-owned primary identity for a Managed Skill. All system operations 
 _Avoid_: Handle, source identity, Skill Name as identity
 
 **Skill Name**:
-The human-readable name used for display and discovery. Multiple Managed Skills may share the same Skill Name, even for the same user.
-_Avoid_: Handle, unique name, primary identity
+The lowercase-hyphen name used for display and discovery inside one user's Skill Library. A Skill Name is immutable after creation and must be unique within that user's Library; different users may use the same Skill Name.
+_Avoid_: Handle, global name, version name, primary identity
 
 **Skill Location**:
-An agent-facing private `skill://skillpack/{skillId}` locator derived from Skill ID. Agents and harnesses resolve Skill Locations through Skillpack APIs, MCP tools, or extension tools to obtain `SKILL.md`, resources, and access metadata; the URI itself is not a fetchable content URL.
+An agent-facing private `skill://skillpack/{skillId}` locator derived from Skill ID. Agents and harnesses resolve Skill Locations through Skillpack APIs, MCP tools, or extension tools in an authorized user context to obtain `SKILL.md`, resources, and access metadata; the URI itself is not a fetchable content URL.
 _Avoid_: Source-qualified locator, GitHub locator, handle locator, raw URL, direct download URL
 
 **Skill Location Pin**:
@@ -53,8 +53,8 @@ An optional qualifier on a Skill Location that binds resolution to a Managed Ski
 _Avoid_: Source ref, source identity, user-authored version name, current pointer to historical version
 
 **Managed Skill Version**:
-A Skillpack-owned complete content snapshot for a Managed Skill, identified by a system-generated version number. A Managed Skill Version contains the canonical `SKILL.md` content plus its Resource Manifest; a new version is created by durable actions such as create, save, restore, or accepting an Origin Comparison.
-_Avoid_: Semver requirement, every keystroke as version, incremental patch, current R2 deduplication, Git ref, Git revision
+A Skillpack-owned complete content snapshot for a Managed Skill, identified by a system-generated version number. A Managed Skill Version contains the canonical `SKILL.md` content plus its Resource Manifest; a new version is created by durable actions such as create, save, restore, Add to Library updates, or accepting an Origin Comparison. A Managed Skill Version does not own the Skill Name.
+_Avoid_: Semver requirement, every keystroke as version, incremental patch, current R2 deduplication, Git ref, Git revision, version name
 
 **Resolved Skill**:
 The concrete content view produced by resolving a Skill Location at a point in time. A Resolved Skill includes `content` for the `SKILL.md` body, a resource manifest, resolved Skill ID, provenance, and access metadata.
@@ -77,7 +77,7 @@ A user-configurable policy that controls how Skillpack resolves Skill Locations 
 _Avoid_: Backend approval gate, hard-coded system rule
 
 **Skill Library**:
-A discovery-oriented view over Managed Skills, Skill Trust state, and organization metadata such as categories or tags. The Skill Library helps users and agents find skills.
+A user's discovery-oriented view over their Managed Skills, Skill Trust state, and organization metadata such as categories or tags. The Skill Library helps users and agents find skills in that user's owned collection.
 _Avoid_: Database table, raw registry, delivery interface
 
 **Skill Set**:

@@ -72,6 +72,32 @@ const parseMetadata = (value: string) => {
   return parsed as Record<string, string>;
 };
 
+const SkillNameField = ({
+  mode,
+  name,
+  onNameChange,
+}: {
+  mode: SkillFormViewProps["mode"];
+  name: string;
+  onNameChange: (name: string) => void;
+}) => {
+  if (mode !== "create") {
+    return null;
+  }
+
+  return (
+    <label htmlFor="skill-name" className="grid gap-2 text-sm font-medium">
+      Skill Name
+      <Input
+        id="skill-name"
+        value={name}
+        onChange={(event) => onNameChange(event.target.value)}
+        required
+      />
+    </label>
+  );
+};
+
 export const SkillFormView = ({
   mode,
   skill,
@@ -107,7 +133,7 @@ export const SkillFormView = ({
     event.preventDefault();
     setSubmitStatus("Saving...");
 
-    const sharedInput = {
+    const versionInput = {
       allowedTools: allowedTools.trim() || null,
       changeSummary: changeSummary.trim() || undefined,
       compatibility: compatibility.trim() || null,
@@ -115,7 +141,6 @@ export const SkillFormView = ({
       description,
       license: license.trim() || null,
       metadata: parseMetadata(metadata),
-      name,
       versionLabel: versionLabel.trim() || undefined,
     };
     const upsertResources = buildResourcePayload(
@@ -128,11 +153,12 @@ export const SkillFormView = ({
       await onSubmit(
         mode === "create"
           ? {
-              ...sharedInput,
+              ...versionInput,
+              name,
               resources: upsertResources,
             }
           : {
-              ...sharedInput,
+              ...versionInput,
               deleteResourcePaths: parseResourceLines(deleteResourcePaths),
               upsertResources,
             }
@@ -171,18 +197,7 @@ export const SkillFormView = ({
         <form onSubmit={submit} className="mx-auto grid max-w-4xl gap-6 p-6">
           <section className="grid gap-4 border-b border-border pb-6">
             <h2 className="text-sm font-semibold">Frontmatter</h2>
-            <label
-              htmlFor="skill-name"
-              className="grid gap-2 text-sm font-medium"
-            >
-              Skill Name
-              <Input
-                id="skill-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                required
-              />
-            </label>
+            <SkillNameField mode={mode} name={name} onNameChange={setName} />
             <label
               htmlFor="skill-description"
               className="grid gap-2 text-sm font-medium"

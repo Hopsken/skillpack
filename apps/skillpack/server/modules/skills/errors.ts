@@ -1,5 +1,6 @@
 export type SkillErrorCode =
   | "duplicate-resource-path"
+  | "duplicate-resolved-skill-name"
   | "duplicate-skill-name"
   | "duplicate-skill-version"
   | "empty-skill-patch"
@@ -23,6 +24,11 @@ export class SkillModuleError extends Error {
 }
 
 export const skillErrors = {
+  duplicateResolvedSkillName: () =>
+    new SkillModuleError(
+      "duplicate-resolved-skill-name",
+      "Multiple selected skills resolve to the same Skill Name"
+    ),
   duplicateResourcePath: () =>
     new SkillModuleError(
       "duplicate-resource-path",

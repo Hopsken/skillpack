@@ -43,7 +43,7 @@ export const presentSkillList = (skills: SkillWithCurrentVersion[]) =>
       id: skill.id,
       license: version.license,
       metadata: version.metadata,
-      name: version.name,
+      name: skill.name,
       origin: presentOrigin(origin),
       updatedAt: skill.updatedAt.toISOString(),
     })),
@@ -59,7 +59,7 @@ export const presentSkill = (result: ResolvedSkillResult) =>
     id: result.skill.id,
     license: result.version.license,
     metadata: result.version.metadata,
-    name: result.version.name,
+    name: result.skill.name,
     origin: presentOrigin(result.origin),
     resources: result.resources.map((resource) => ({
       mediaType: resource.mediaType,
@@ -82,7 +82,7 @@ export const presentSkillSummary = (result: ResolvedSkillResult) =>
     id: result.skill.id,
     license: result.version.license,
     metadata: result.version.metadata,
-    name: result.version.name,
+    name: result.skill.name,
     origin: presentOrigin(result.origin),
     updatedAt: result.skill.updatedAt.toISOString(),
   });
@@ -103,14 +103,14 @@ export const presentForkedSkills = (result: ForkSkillServiceResult) =>
   });
 
 export const presentSkillVersions = (
-  skill: { id: number },
+  skill: { id: number; name: string },
   currentVersion: SkillVersionRow | undefined,
   versions: SkillVersionRow[]
 ) =>
   skillVersionListResponseSchema.parse({
     currentVersion: currentVersion?.versionNumber ?? 0,
     id: skill.id,
-    name: currentVersion?.name ?? "",
+    name: skill.name,
     versions: versions.map((version) => ({
       allowedTools: version.allowedTools,
       changeSummary: version.changeSummary,
@@ -120,7 +120,7 @@ export const presentSkillVersions = (
       label: version.label,
       license: version.license,
       metadata: version.metadata,
-      name: version.name,
+      name: skill.name,
       version: version.versionNumber,
     })),
   });

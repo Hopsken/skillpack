@@ -5,29 +5,31 @@ import type {
   OriginSkillDefinitionPreview,
 } from "@skillpack/contracts/origins/responses";
 import type { ForkSkillInput } from "@skillpack/contracts/skills/requests";
-import type { ForkSkillResponse } from "@skillpack/contracts/skills/responses";
 import {
   ArrowLeftIcon,
-  CheckCircle2Icon,
   CircleAlertIcon,
   FileTextIcon,
-  GitForkIcon,
+  PlusIcon,
 } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router";
 
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 import { useOriginSkillDefinition } from "../api/use-origin-skill-definition";
 
 interface SkillForkViewProps {
   discovery: DiscoverSkillsResponse | undefined;
+  existingSkillNames: readonly string[];
   origin: SkillOriginInput;
   status: string;
-  onSubmit: (input: ForkSkillInput) => Promise<ForkSkillResponse>;
+  onComplete: () => void;
+  onSubmit: (input: ForkSkillInput) => Promise<void>;
 }
 
 type ForkOrigin = ForkSkillInput["origin"];
@@ -38,19 +40,6 @@ const loadResourceViewer = async () => {
 };
 
 const ResourceViewer = lazy(loadResourceViewer);
-
-const getForkSummary = (response: ForkSkillResponse) => {
-  const forked = response.results.filter(
-    (result) => result.status === "forked"
-  );
-  const failed = response.results.length - forked.length;
-
-  if (failed === 0) {
-    return `Forked ${forked.length} skill${forked.length === 1 ? "" : "s"}`;
-  }
-
-  return `Forked ${forked.length}, failed ${failed}`;
-};
 
 const getPinnedOrigin = (
   discovery: DiscoverSkillsResponse | undefined
@@ -79,30 +68,6 @@ const getCandidateClassName = (isActive: boolean) =>
     "flex min-w-0 items-start gap-3 border-b border-border px-4 py-3 text-sm",
     isActive ? "bg-muted text-foreground" : "hover:bg-muted/40"
   );
-
-const getResultBadge = (
-  result: ForkSkillResponse["results"][number] | undefined
-) => {
-  if (!result) {
-    return null;
-  }
-
-  if (result.status === "forked") {
-    return (
-      <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
-        <CheckCircle2Icon className="size-3" />
-        Forked
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1 text-destructive text-xs">
-      <CircleAlertIcon className="size-3" />
-      Failed
-    </span>
-  );
-};
 
 const getPreviewStatus = ({
   activeCandidate,
@@ -235,14 +200,20 @@ const DefinitionPreview = ({
 
 export const SkillForkView = ({
   discovery,
+  existingSkillNames,
   origin,
   status,
+  onComplete,
   onSubmit,
 }: SkillForkViewProps) => {
   const [activeSkillName, setActiveSkillName] = useState<string>();
   const [selectedSkillNames, setSelectedSkillNames] = useState<string[]>([]);
   const [submitStatus, setSubmitStatus] = useState("No skills selected");
-  const [forkResponse, setForkResponse] = useState<ForkSkillResponse>();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const existingSkillNameSet = useMemo(
+    () => new Set(existingSkillNames),
+    [existingSkillNames]
+  );
 
   const activeCandidate = discovery?.candidates.find(
     (candidate) => candidate.selection.skillName === activeSkillName
@@ -268,38 +239,27 @@ export const SkillForkView = ({
     result: definitionPreview.result,
     status,
   });
-  const forkResultBySkillName = useMemo(() => {
-    const results = new Map<string, ForkSkillResponse["results"][number]>();
-
-    for (const result of forkResponse?.results ?? []) {
-      results.set(result.selection.skillName, result);
-    }
-
-    return results;
-  }, [forkResponse]);
-
   useEffect(() => {
     const firstSkillName = discovery?.candidates.at(0)?.selection.skillName;
     setActiveSkillName(firstSkillName);
     setSelectedSkillNames([]);
-    setForkResponse(undefined);
     setSubmitStatus("No skills selected");
   }, [discovery]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setForkResponse(undefined);
-    setSubmitStatus("Forking...");
+    setIsSubmitting(true);
+    setSubmitStatus("Adding...");
 
     try {
-      const response = await onSubmit({
+      await onSubmit({
         origin: forkOrigin,
         selections: selectedSkillNames.map((skillName) => ({ skillName })),
       });
-      setForkResponse(response);
-      setSubmitStatus(getForkSummary(response));
+      onComplete();
     } catch (error) {
-      setSubmitStatus(error instanceof Error ? error.message : "Fork failed");
+      setSubmitStatus(error instanceof Error ? error.message : "Add failed");
+      setIsSubmitting(false);
     }
   };
 
@@ -310,9 +270,7 @@ export const SkillForkView = ({
         : [...current, skillName];
 
       setSubmitStatus(
-        next.length === 0
-          ? "No skills selected"
-          : `${next.length} selected for fork`
+        next.length === 0 ? "No skills selected" : `${next.length} selected`
       );
       return next;
     });
@@ -328,7 +286,7 @@ export const SkillForkView = ({
             </Link>
           </Button>
           <h1 className="truncate text-lg font-semibold tracking-tight">
-            Fork From GitHub
+            Add from GitHub
           </h1>
         </div>
       </header>
@@ -351,7 +309,7 @@ export const SkillForkView = ({
             {discovery?.candidates.length ? (
               discovery.candidates.map((candidate) => {
                 const { skillName } = candidate.selection;
-                const result = forkResultBySkillName.get(skillName);
+                const willUpdate = existingSkillNameSet.has(skillName);
 
                 return (
                   <div
@@ -365,6 +323,7 @@ export const SkillForkView = ({
                       aria-label={`Select ${candidate.name}`}
                       className="mt-1"
                       checked={selectedSkillNames.includes(skillName)}
+                      disabled={isSubmitting}
                       onChange={() => toggleSelection(skillName)}
                     />
                     <div className="grid min-w-0 flex-1 gap-1">
@@ -377,27 +336,22 @@ export const SkillForkView = ({
                           <span className="truncate font-medium">
                             {candidate.name}
                           </span>
-                          {getResultBadge(result)}
                         </span>
+                        {willUpdate ? (
+                          <Alert
+                            variant="warning"
+                            className="px-2 py-1 text-xs"
+                          >
+                            <CircleAlertIcon />
+                            <AlertTitle>Will update</AlertTitle>
+                          </Alert>
+                        ) : null}
                         {candidate.path ? (
                           <span className="truncate text-muted-foreground text-xs">
                             {candidate.path}
                           </span>
                         ) : null}
-                        {result?.status === "failed" ? (
-                          <span className="line-clamp-2 text-destructive text-xs">
-                            {result.error}
-                          </span>
-                        ) : null}
                       </button>
-                      {result?.status === "forked" ? (
-                        <Link
-                          to={`/skills/${result.skill.id}`}
-                          className="text-foreground text-xs underline-offset-4 hover:underline"
-                        >
-                          Open forked skill
-                        </Link>
-                      ) : null}
                     </div>
                   </div>
                 );
@@ -431,9 +385,16 @@ export const SkillForkView = ({
         <p className="min-w-0 truncate text-muted-foreground text-sm">
           {submitStatus}
         </p>
-        <Button type="submit" disabled={selectedSkillNames.length === 0}>
-          <GitForkIcon />
-          Fork Selected
+        <Button
+          type="submit"
+          disabled={isSubmitting || selectedSkillNames.length === 0}
+        >
+          {isSubmitting ? (
+            <Spinner data-icon="inline-start" />
+          ) : (
+            <PlusIcon data-icon="inline-start" />
+          )}
+          {isSubmitting ? "Adding..." : "Add Selected"}
         </Button>
       </form>
     </main>

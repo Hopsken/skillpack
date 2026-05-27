@@ -30,6 +30,8 @@ allowed-tools: Read
 const skillRow = (input?: Partial<SkillRow>): SkillRow => ({
   createdAt,
   id: input?.id ?? 1,
+  name: input?.name ?? "demo",
+  ownerUserId: input?.ownerUserId ?? "user-a",
   updatedAt,
 });
 
@@ -43,7 +45,6 @@ const baseVersionRow: SkillVersionRow = {
   label: null,
   license: "Apache-2.0",
   metadata: { author: "acme" },
-  name: "demo",
   skillId: 1,
   versionNumber: 1,
 };
@@ -68,7 +69,7 @@ const originRow = (input?: Partial<SkillOriginRow>): SkillOriginRow => ({
   id: input?.id ?? 1,
   kind: input?.kind ?? "github",
   metadata: input?.metadata ?? null,
-  skillId: input?.skillId ?? 1,
+  skillVersionId: input?.skillVersionId ?? 10,
   updatedAt,
   url: input?.url ?? "https://github.com/example/skills",
 });
@@ -88,16 +89,38 @@ const objectWithText = (text: string) =>
     text: () => Promise.resolve(text),
   }) as R2ObjectBody;
 
+const missingSkill = null as unknown as Awaited<
+  ReturnType<SkillRepository["findSkillById"]>
+>;
+
+const originDefinition = (input?: {
+  content?: string;
+  name?: string;
+  selectionName?: string;
+}) => ({
+  content: input?.content ?? skillFileContent,
+  description: "Forked description",
+  name: input?.name ?? "demo",
+  provenance: {
+    kind: "github" as const,
+    metadata: { resolvedSkillPath: "skills/demo/SKILL.md" },
+    url: "https://github.com/example/skills",
+  },
+  resources: [],
+  selection: { skillName: input?.selectionName ?? input?.name ?? "demo" },
+});
+
 const createService = () => {
   const repository = {
     commitSkillVersion: vi.fn<SkillRepository["commitSkillVersion"]>(),
+    createSkill: vi.fn<SkillRepository["createSkill"]>(),
     findLatestSkillVersion: vi.fn<SkillRepository["findLatestSkillVersion"]>(),
     findResourceByPath: vi.fn<SkillRepository["findResourceByPath"]>(),
     findSkillById: vi.fn<SkillRepository["findSkillById"]>(),
+    findSkillByName: vi.fn<SkillRepository["findSkillByName"]>(),
     findSkillOrigin: vi.fn<SkillRepository["findSkillOrigin"]>(),
     findSkillVersionByNumber:
       vi.fn<SkillRepository["findSkillVersionByNumber"]>(),
-    insertSkill: vi.fn<SkillRepository["insertSkill"]>(),
     listResourcesByVersionId:
       vi.fn<SkillRepository["listResourcesByVersionId"]>(),
   };
@@ -125,13 +148,27 @@ const createService = () => {
 };
 
 describe("SkillService version commit handoff", () => {
+  it("treats skills outside the owner scope as not found", async () => {
+    const { repository, service } = createService();
+
+    repository.findSkillById.mockResolvedValue(missingSkill);
+
+    await expect(service.resolveSkill(1)).rejects.toMatchObject({
+      code: "skill-not-found",
+    });
+    expect(repository.findSkillById).toHaveBeenCalledWith(1);
+  });
+
   it("serializes canonical SKILL.md before committing the first version", async () => {
     const { repository, resourceManifest, service } = createService();
     const skill = skillRow();
     const committedVersion = versionRow();
     const manifest = [storedResource()];
 
-    repository.insertSkill.mockResolvedValue(skill);
+    repository.createSkill.mockResolvedValue({
+      skill,
+      version: committedVersion,
+    });
     resourceManifest.storeSkillFile.mockResolvedValue({
       mediaType: "text/markdown; charset=utf-8",
       path: "SKILL.md",
@@ -139,7 +176,6 @@ describe("SkillService version commit handoff", () => {
       size: 120,
     });
     resourceManifest.createSnapshot.mockResolvedValue(manifest);
-    repository.commitSkillVersion.mockResolvedValue(committedVersion);
     repository.findSkillById.mockResolvedValue(skill);
     repository.findLatestSkillVersion.mockResolvedValue(committedVersion);
     repository.findSkillOrigin.mockResolvedValue(originRow());
@@ -161,8 +197,9 @@ describe("SkillService version commit handoff", () => {
     expect(resourceManifest.storeSkillFile).toHaveBeenCalledWith(
       expect.stringContaining("allowed-tools: Read")
     );
-    expect(repository.commitSkillVersion).toHaveBeenCalledWith(
+    expect(repository.createSkill).toHaveBeenCalledWith(
       expect.objectContaining({
+        name: "demo",
         resources: [
           expect.objectContaining({ path: "SKILL.md", sha256: "skill-md" }),
           ...manifest,
@@ -171,7 +208,6 @@ describe("SkillService version commit handoff", () => {
           description: "Demo description",
           name: "demo",
         }),
-        skillId: skill.id,
       }),
       expect.any(Date)
     );
@@ -324,5 +360,135 @@ describe("SkillService version commit handoff", () => {
       }),
       expect.any(Date)
     );
+  });
+
+  it("adds a source skill with an existing name as a new version of the user's skill", async () => {
+    const { originService, repository, resourceManifest, service } =
+      createService();
+    const existingSkill = skillRow({ id: 7, name: "demo" });
+    const committedVersion = versionRow({
+      id: 22,
+      skillId: existingSkill.id,
+      versionNumber: 2,
+    });
+
+    originService.readSkillDefinitions.mockResolvedValue([
+      { definition: originDefinition(), status: "resolved" },
+    ]);
+    repository.findSkillByName.mockResolvedValue(existingSkill);
+    resourceManifest.storeSkillFile.mockResolvedValue({
+      mediaType: "text/markdown; charset=utf-8",
+      path: "SKILL.md",
+      sha256: "forked-skill-md",
+      size: 140,
+    });
+    resourceManifest.createSnapshot.mockResolvedValue([]);
+    repository.commitSkillVersion.mockResolvedValue(committedVersion);
+    repository.findSkillById.mockResolvedValue(existingSkill);
+    repository.findLatestSkillVersion.mockResolvedValue(committedVersion);
+    repository.findSkillOrigin.mockResolvedValue(
+      originRow({ skillVersionId: 22 })
+    );
+    repository.listResourcesByVersionId.mockResolvedValue([resourceRow()]);
+    resourceManifest.getResourceObject.mockResolvedValue(
+      objectWithText(skillFileContent)
+    );
+
+    const result = await service.forkSkill({
+      origin: { kind: "github", repoUrl: "https://github.com/example/skills" },
+      selections: [{ skillName: "demo" }],
+    });
+
+    expect(result.results[0]).toMatchObject({
+      skill: { skill: { id: existingSkill.id, name: "demo" } },
+      status: "forked",
+    });
+    expect(repository.createSkill).not.toHaveBeenCalled();
+    expect(repository.commitSkillVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        origin: {
+          kind: "github",
+          metadata: { resolvedSkillPath: "skills/demo/SKILL.md" },
+          url: "https://github.com/example/skills",
+        },
+        skillId: existingSkill.id,
+      }),
+      expect.any(Date)
+    );
+  });
+
+  it("fails later fork selections that resolve to a duplicate skill name", async () => {
+    const { originService, repository, resourceManifest, service } =
+      createService();
+    const skill = skillRow({ id: 7, name: "shared-name" });
+    const committedVersion = versionRow({
+      id: 22,
+      skillId: skill.id,
+      versionNumber: 1,
+    });
+
+    originService.readSkillDefinitions.mockResolvedValue([
+      {
+        definition: originDefinition({
+          name: "shared-name",
+          selectionName: "path-a",
+        }),
+        status: "resolved",
+      },
+      {
+        definition: originDefinition({
+          name: "shared-name",
+          selectionName: "path-b",
+        }),
+        status: "resolved",
+      },
+    ]);
+    repository.findSkillByName.mockResolvedValue(missingSkill);
+    repository.createSkill.mockResolvedValue({
+      skill,
+      version: committedVersion,
+    });
+    resourceManifest.storeSkillFile.mockResolvedValue({
+      mediaType: "text/markdown; charset=utf-8",
+      path: "SKILL.md",
+      sha256: "forked-skill-md",
+      size: 140,
+    });
+    resourceManifest.createSnapshot.mockResolvedValue([]);
+    repository.findSkillById.mockResolvedValue(skill);
+    repository.findLatestSkillVersion.mockResolvedValue(committedVersion);
+    repository.findSkillOrigin.mockResolvedValue(
+      originRow({ skillVersionId: 22 })
+    );
+    repository.listResourcesByVersionId.mockResolvedValue([resourceRow()]);
+    resourceManifest.getResourceObject.mockResolvedValue(
+      objectWithText(skillFileContent)
+    );
+
+    const result = await service.forkSkill({
+      origin: { kind: "github", repoUrl: "https://github.com/example/skills" },
+      selections: [{ skillName: "path-a" }, { skillName: "path-b" }],
+    });
+
+    expect(result.results).toMatchObject([
+      { status: "forked" },
+      {
+        error: "Multiple selected skills resolve to the same Skill Name",
+        selection: { skillName: "path-b" },
+        status: "failed",
+      },
+    ]);
+    expect(repository.createSkill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "shared-name",
+        origin: {
+          kind: "github",
+          metadata: { resolvedSkillPath: "skills/demo/SKILL.md" },
+          url: "https://github.com/example/skills",
+        },
+      }),
+      expect.any(Date)
+    );
+    expect(repository.commitSkillVersion).not.toHaveBeenCalled();
   });
 });

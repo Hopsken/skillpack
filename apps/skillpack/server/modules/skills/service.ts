@@ -24,13 +24,16 @@ import type {
   StoredResourceObject,
 } from "./types";
 
-const getVersionSkillFileMetadata = (version: SkillVersionRow) => ({
+const getVersionSkillFileMetadata = (
+  skill: { name: string },
+  version: SkillVersionRow
+) => ({
   allowedTools: version.allowedTools,
   compatibility: version.compatibility,
   description: version.description,
   license: version.license,
   metadata: version.metadata,
-  name: version.name,
+  name: skill.name,
 });
 
 const patchValue = <T>(
@@ -115,7 +118,10 @@ export class SkillService {
       version.id
     );
     const manifest = ResourceManifest.resolveSnapshot(resources);
-    const skillFile = await this.readVersionSkillFile(manifest.resources);
+    const skillFile = await this.readVersionSkillFile(
+      skill.name,
+      manifest.resources
+    );
 
     return {
       content: skillFile.body,
@@ -162,7 +168,6 @@ export class SkillService {
 
   async createSkill(input: CreateSkillServiceInput) {
     const now = new Date();
-    const skill = await this.repository.insertSkill(now);
     const skillFileContent = serializeSkillFile(input, input.content);
     const skillFile =
       await this.resourceManifest.storeSkillFile(skillFileContent);
@@ -171,13 +176,13 @@ export class SkillService {
     );
     const resources = [skillFile, ...resourceManifest];
 
-    await this.createVersionSnapshot(
+    const { skill } = await this.repository.createSkill(
       {
         changeSummary: input.changeSummary,
         label: input.versionLabel,
+        name: input.name,
         resources,
         skillFileMetadata: input,
-        skillId: skill.id,
       },
       now
     );
@@ -193,7 +198,10 @@ export class SkillService {
     const currentResources = await this.repository.listResourcesByVersionId(
       version.id
     );
-    const currentSkillFile = await this.readVersionSkillFile(currentResources);
+    const currentSkillFile = await this.readVersionSkillFile(
+      skill.name,
+      currentResources
+    );
     const nextMetadata = {
       allowedTools: patchValue(
         input,
@@ -208,7 +216,7 @@ export class SkillService {
       description: input.description ?? currentSkillFile.description,
       license: patchValue(input, "license", currentSkillFile.license),
       metadata: patchValue(input, "metadata", currentSkillFile.metadata),
-      name: input.name ?? currentSkillFile.name,
+      name: skill.name,
     };
     const nextBody = input.content ?? currentSkillFile.body;
     const hasResourceChanges =
@@ -259,7 +267,7 @@ export class SkillService {
       id: skill.id,
       license: nextVersion.license,
       metadata: nextVersion.metadata,
-      name: nextVersion.name,
+      name: skill.name,
     };
   }
 
@@ -281,7 +289,7 @@ export class SkillService {
         changeSummary: input.changeSummary,
         label: input.versionLabel,
         resources: ResourceManifest.restoreSnapshot(sourceResources),
-        skillFileMetadata: getVersionSkillFileMetadata(version),
+        skillFileMetadata: getVersionSkillFileMetadata(skill, version),
         skillId: skill.id,
       },
       now
@@ -312,12 +320,24 @@ export class SkillService {
       input.selections
     );
     const results: ForkSkillServiceResult["results"] = [];
+    const resolvedSkillNames = new Set<string>();
 
     for (const definitionResult of definitions) {
       if (definitionResult.status === "failed") {
         results.push(definitionResult);
         continue;
       }
+
+      if (resolvedSkillNames.has(definitionResult.definition.name)) {
+        results.push({
+          error: skillErrors.duplicateResolvedSkillName().message,
+          selection: definitionResult.definition.selection,
+          status: "failed",
+        });
+        continue;
+      }
+
+      resolvedSkillNames.add(definitionResult.definition.name);
 
       try {
         results.push({
@@ -345,7 +365,9 @@ export class SkillService {
     versionLabel: string | undefined
   ) {
     const now = new Date();
-    const skill = await this.repository.insertSkill(now);
+    const existingSkill = await this.repository.findSkillByName(
+      definition.name
+    );
     const skillFile = await this.resourceManifest.storeSkillFile(
       definition.content
     );
@@ -354,21 +376,33 @@ export class SkillService {
     );
     const resources = [skillFile, ...resourceManifest];
 
-    await this.createVersionSnapshot(
+    const origin = {
+      kind: definition.provenance.kind,
+      metadata: definition.provenance.metadata,
+      url: definition.provenance.url,
+    };
+    if (existingSkill) {
+      await this.createVersionSnapshot(
+        {
+          label: versionLabel,
+          origin,
+          resources,
+          skillFileMetadata: definition,
+          skillId: existingSkill.id,
+        },
+        now
+      );
+
+      return this.resolveSkill(existingSkill.id);
+    }
+
+    const { skill } = await this.repository.createSkill(
       {
         label: versionLabel,
+        name: definition.name,
+        origin,
         resources,
         skillFileMetadata: definition,
-        skillId: skill.id,
-      },
-      now
-    );
-    await this.repository.insertSkillOrigin(
-      {
-        kind: definition.provenance.kind,
-        metadata: definition.provenance.metadata,
-        skillId: skill.id,
-        url: definition.provenance.url,
       },
       now
     );
@@ -394,11 +428,14 @@ export class SkillService {
       throw skillErrors.skillVersionNotFound();
     }
 
-    const origin = await this.repository.findSkillOrigin(skill.id);
+    const origin = await this.repository.findSkillOrigin(version.id);
     return { origin, skill, version };
   }
 
-  private async readVersionSkillFile(resources: SkillResourceRow[]) {
+  private async readVersionSkillFile(
+    skillName: string,
+    resources: SkillResourceRow[]
+  ) {
     const skillFileResource = resources.find(
       (resource) => resource.path === skillContentPath
     );
@@ -410,13 +447,18 @@ export class SkillService {
     const object =
       await this.resourceManifest.getResourceObject(skillFileResource);
 
-    return parseSkillFile(await object.text());
+    return { ...parseSkillFile(await object.text()), name: skillName };
   }
 
   private createVersionSnapshot(
     input: {
       changeSummary?: string | null;
       label?: string;
+      origin?: {
+        kind: "github";
+        metadata: Record<string, unknown> | null;
+        url: string;
+      };
       resources: StoredResourceObject[];
       skillFileMetadata: {
         allowedTools?: string | null;
