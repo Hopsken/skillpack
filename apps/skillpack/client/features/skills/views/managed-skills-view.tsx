@@ -32,11 +32,9 @@ export const ManagedSkillsView = ({
           <PlusIcon />
           Add
         </Button>
-        <Button size="sm" asChild>
-          <Link to="/skills/new">
-            <PlusIcon />
-            New
-          </Link>
+        <Button size="sm" render={<Link to="/skills/new" />}>
+          <PlusIcon />
+          New
         </Button>
       </div>
     </header>

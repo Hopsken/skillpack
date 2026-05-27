@@ -280,10 +280,12 @@ export const SkillForkView = ({
     <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
       <header className="flex h-16 shrink-0 items-center border-b border-border bg-background px-6">
         <div className="flex min-w-0 items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/skills" aria-label="Back to Library">
-              <ArrowLeftIcon />
-            </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            render={<Link to="/skills" aria-label="Back to Library" />}
+          >
+            <ArrowLeftIcon />
           </Button>
           <h1 className="truncate text-lg font-semibold tracking-tight">
             Add from GitHub
@@ -338,10 +340,7 @@ export const SkillForkView = ({
                           </span>
                         </span>
                         {willUpdate ? (
-                          <Alert
-                            variant="warning"
-                            className="px-2 py-1 text-xs"
-                          >
+                          <Alert className="border-warning/40 bg-warning/10 px-2 py-1 text-warning-foreground text-xs">
                             <CircleAlertIcon />
                             <AlertTitle>Will update</AlertTitle>
                           </Alert>

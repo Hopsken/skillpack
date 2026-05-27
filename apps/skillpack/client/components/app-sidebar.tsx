@@ -1,6 +1,7 @@
-import { LibraryIcon, LogOutIcon, UserCircleIcon } from "lucide-react";
+import { LibraryIcon, LogOutIcon } from "lucide-react";
 import { matchPath, NavLink, useLocation } from "react-router";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sidebar,
   SidebarContent,
@@ -33,6 +34,8 @@ export const AppSidebar = () => {
     managedSkillsActivePatterns
   );
   const userName = session.data?.user.name ?? "Account";
+  const userImage = session.data?.user.image;
+  const userInitial = userName.trim().charAt(0).toUpperCase() || "A";
 
   return (
     <Sidebar
@@ -49,16 +52,14 @@ export const AppSidebar = () => {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  asChild
                   isActive={isManagedSkillsActive}
                   size="lg"
                   tooltip="Library"
                   className="font-medium"
+                  render={<NavLink to="/skills" />}
                 >
-                  <NavLink to="/skills">
-                    <LibraryIcon />
-                    <span>Library</span>
-                  </NavLink>
+                  <LibraryIcon />
+                  <span>Library</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -70,7 +71,10 @@ export const AppSidebar = () => {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg">
-              <UserCircleIcon />
+              <Avatar size="sm">
+                {userImage ? <AvatarImage src={userImage} alt="" /> : null}
+                <AvatarFallback>{userInitial}</AvatarFallback>
+              </Avatar>
               <span>{userName}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

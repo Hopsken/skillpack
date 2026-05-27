@@ -275,10 +275,12 @@ export const SkillDetailView = ({
     <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
         <div className="flex min-w-0 items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/skills" aria-label="Back to Managed Skills">
-              <ArrowLeftIcon />
-            </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            render={<Link to="/skills" aria-label="Back to Managed Skills" />}
+          >
+            <ArrowLeftIcon />
           </Button>
           <div className="min-w-0">
             <h1 className="truncate text-lg font-semibold tracking-tight">

@@ -108,10 +108,12 @@ export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
     <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
         <div className="flex min-w-0 items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
-            <Link to="/skills" aria-label="Back">
-              <ArrowLeftIcon />
-            </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            render={<Link to="/skills" aria-label="Back" />}
+          >
+            <ArrowLeftIcon />
           </Button>
           <h1 className="truncate text-lg font-semibold tracking-tight">
             Create Skill
