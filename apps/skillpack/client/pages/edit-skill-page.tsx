@@ -1,50 +1,12 @@
-import type {
-  CreateSkillInput,
-  PatchSkillInput,
-} from "@skillpack/contracts/skills/requests";
-import { Navigate, useNavigate, useParams } from "react-router";
-
-import { useLatestSkill } from "@/features/skills/api/use-skill-detail";
-import { usePatchSkill } from "@/features/skills/api/use-skill-mutations";
-import { SkillFormView } from "@/features/skills/views/skill-form-view";
-
-const getSkillLoadStatus = (
-  skill: { name: string; version: number } | undefined,
-  isLoading: boolean
-) => {
-  if (isLoading) {
-    return "Loading skill...";
-  }
-
-  if (skill) {
-    return `Loaded ${skill.name} v${skill.version}`;
-  }
-
-  return "Skill unavailable";
-};
+import { Navigate, useParams } from "react-router";
 
 export const EditSkillPage = () => {
   const { skillId: skillIdParam } = useParams();
   const skillId = skillIdParam ? Number(skillIdParam) : undefined;
-  const { isLoading, skill } = useLatestSkill(skillId);
-  const patchSkill = usePatchSkill(skillId);
-  const navigate = useNavigate();
 
   if (!(skillId && Number.isInteger(skillId))) {
     return <Navigate to="/skills" replace />;
   }
 
-  const submit = async (input: CreateSkillInput | PatchSkillInput) => {
-    const patched = await patchSkill.mutateAsync(input as PatchSkillInput);
-    navigate(`/skills/${patched.id}?version=${patched.currentVersion}`);
-  };
-
-  return (
-    <SkillFormView
-      mode="edit"
-      skill={skill}
-      status={getSkillLoadStatus(skill, isLoading)}
-      onSubmit={submit}
-    />
-  );
+  return <Navigate to={`/skills/${skillId}`} replace />;
 };

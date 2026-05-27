@@ -1,7 +1,4 @@
-import type {
-  CreateSkillInput,
-  PatchSkillInput,
-} from "@skillpack/contracts/skills/requests";
+import type { CreateSkillInput } from "@skillpack/contracts/skills/requests";
 import { useNavigate } from "react-router";
 
 import { useCreateSkill } from "@/features/skills/api/use-skill-mutations";
@@ -11,10 +8,10 @@ export const CreateSkillPage = () => {
   const createSkill = useCreateSkill();
   const navigate = useNavigate();
 
-  const submit = async (input: CreateSkillInput | PatchSkillInput) => {
-    const created = await createSkill.mutateAsync(input as CreateSkillInput);
+  const submit = async (input: CreateSkillInput) => {
+    const created = await createSkill.mutateAsync(input);
     navigate(`/skills/${created.id}`);
   };
 
-  return <SkillFormView mode="create" status="Draft" onSubmit={submit} />;
+  return <SkillFormView status="Draft" onSubmit={submit} />;
 };

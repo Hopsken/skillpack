@@ -2,7 +2,7 @@ import type {
   ResolvedSkill,
   SkillVersionItem,
 } from "@skillpack/contracts/skills/responses";
-import { ArrowLeftIcon, RotateCcwIcon, SquarePenIcon } from "lucide-react";
+import { ArrowLeftIcon, RotateCcwIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -290,14 +290,6 @@ export const SkillDetailView = ({
           <span className="rounded-full border border-border bg-muted px-3 py-1 text-sm font-medium text-foreground">
             {skill ? `v${skill.version}` : "Version"}
           </span>
-          {skill && (
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/skills/${skill.id}/edit`}>
-                <SquarePenIcon />
-                Edit
-              </Link>
-            </Button>
-          )}
         </div>
       </header>
 

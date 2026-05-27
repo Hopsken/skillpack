@@ -1,168 +1,102 @@
-import type {
-  CreateSkillInput,
-  PatchSkillInput,
-} from "@skillpack/contracts/skills/requests";
-import type { ResolvedSkill } from "@skillpack/contracts/skills/responses";
-import { ArrowLeftIcon, SaveIcon } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { CreateSkillInput } from "@skillpack/contracts/skills/requests";
+import {
+  skillDescriptionSchema,
+  skillNameSchema,
+} from "@skillpack/core/primitives";
+import { ArrowLeftIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 import { Link } from "react-router";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
+import { useSkillList } from "../api/use-skill-list";
+
 interface SkillFormViewProps {
-  mode: "create" | "edit";
-  skill?: ResolvedSkill;
   status: string;
-  onSubmit: (input: CreateSkillInput | PatchSkillInput) => Promise<void>;
+  onSubmit: (input: CreateSkillInput) => Promise<void>;
 }
 
 const textAreaClassName =
   "min-h-32 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
-const parseResourceLines = (value: string) =>
-  value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+const skillFormId = "skill-form";
 
-const buildResourcePayload = (
-  path: string,
-  content: string,
-  mediaType: string
-) => {
-  const trimmedPath = path.trim();
+const skillFormSchema = z.object({
+  content: z.string().min(1, "SKILL.md is required"),
+  description: skillDescriptionSchema,
+  skillName: skillNameSchema,
+});
 
-  if (!(trimmedPath && content)) {
-    return [];
-  }
+type SkillFormInput = z.infer<typeof skillFormSchema>;
 
-  return [
-    {
-      content,
-      mediaType: mediaType.trim() || undefined,
-      path: trimmedPath,
-    },
-  ];
-};
-
-const formatMetadata = (metadata: Record<string, string> | null | undefined) =>
-  metadata ? JSON.stringify(metadata, null, 2) : "";
-
-const parseMetadata = (value: string) => {
-  const trimmed = value.trim();
-
-  if (!trimmed) {
-    return null;
-  }
-
-  const parsed = JSON.parse(trimmed) as unknown;
-
-  if (
-    !parsed ||
-    typeof parsed !== "object" ||
-    Array.isArray(parsed) ||
-    Object.values(parsed).some((item) => typeof item !== "string")
-  ) {
-    throw new Error("Metadata must be a JSON object with string values");
-  }
-
-  return parsed as Record<string, string>;
-};
-
-const SkillNameField = ({
-  mode,
-  name,
-  onNameChange,
-}: {
-  mode: SkillFormViewProps["mode"];
-  name: string;
-  onNameChange: (name: string) => void;
-}) => {
-  if (mode !== "create") {
-    return null;
-  }
-
-  return (
-    <label htmlFor="skill-name" className="grid gap-2 text-sm font-medium">
-      Skill Name
-      <Input
-        id="skill-name"
-        value={name}
-        onChange={(event) => onNameChange(event.target.value)}
-        required
-      />
-    </label>
-  );
-};
-
-export const SkillFormView = ({
-  mode,
-  skill,
-  status,
-  onSubmit,
-}: SkillFormViewProps) => {
-  const [allowedTools, setAllowedTools] = useState(skill?.allowedTools ?? "");
-  const [compatibility, setCompatibility] = useState(
-    skill?.compatibility ?? ""
-  );
-  const [name, setName] = useState(skill?.name ?? "");
-  const [description, setDescription] = useState(skill?.description ?? "");
-  const [content, setContent] = useState(skill?.content ?? "# New Skill\n");
-  const [license, setLicense] = useState(skill?.license ?? "");
-  const [metadata, setMetadata] = useState(formatMetadata(skill?.metadata));
-  const [versionLabel, setVersionLabel] = useState("");
-  const [changeSummary, setChangeSummary] = useState("");
-  const [resourcePath, setResourcePath] = useState("");
-  const [resourceMediaType, setResourceMediaType] = useState("");
-  const [resourceContent, setResourceContent] = useState("");
-  const [deleteResourcePaths, setDeleteResourcePaths] = useState("");
+export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
   const [submitStatus, setSubmitStatus] = useState(status);
-
-  const title =
-    mode === "create" ? "Create Managed Skill" : "Edit Managed Skill";
-  const submitLabel = mode === "create" ? "Create" : "Save Version";
-  const currentResources = useMemo(
-    () => skill?.resources.map((resource) => resource.path).join("\n") ?? "",
-    [skill?.resources]
+  const skillList = useSkillList();
+  const skillNameKey = skillList.skills
+    .map((listItem) => listItem.name)
+    .join("\0");
+  const existingSkillNames = useMemo(
+    () => new Set(skillNameKey ? skillNameKey.split("\0") : []),
+    [skillNameKey]
   );
+  const formSchema = useMemo(
+    () =>
+      skillFormSchema.refine(
+        (input) => !existingSkillNames.has(input.skillName),
+        {
+          message: "Skill name already exists",
+          path: ["skillName"],
+        }
+      ),
+    [existingSkillNames]
+  );
+  const form = useForm<SkillFormInput>({
+    defaultValues: {
+      content: "",
+      description: "",
+      skillName: "",
+    },
+    mode: "onChange",
+    resolver: zodResolver(formSchema),
+  });
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const nameError = form.formState.errors.skillName;
+  const descriptionError = form.formState.errors.description;
+  const contentError = form.formState.errors.content;
+  const showNameWarning = Boolean(
+    nameError && form.formState.dirtyFields.skillName
+  );
+  const isSubmitDisabled =
+    form.formState.isSubmitting ||
+    !form.formState.isValid ||
+    skillList.isLoading;
+
+  useEffect(() => {
+    void form.trigger("skillName");
+  }, [form, skillNameKey]);
+
+  const submit = async (input: SkillFormInput) => {
     setSubmitStatus("Saving...");
 
-    const versionInput = {
-      allowedTools: allowedTools.trim() || null,
-      changeSummary: changeSummary.trim() || undefined,
-      compatibility: compatibility.trim() || null,
-      content,
-      description,
-      license: license.trim() || null,
-      metadata: parseMetadata(metadata),
-      versionLabel: versionLabel.trim() || undefined,
-    };
-    const upsertResources = buildResourcePayload(
-      resourcePath,
-      resourceContent,
-      resourceMediaType
-    );
-
     try {
-      await onSubmit(
-        mode === "create"
-          ? {
-              ...versionInput,
-              name,
-              resources: upsertResources,
-            }
-          : {
-              ...versionInput,
-              deleteResourcePaths: parseResourceLines(deleteResourcePaths),
-              upsertResources,
-            }
-      );
+      await onSubmit({
+        allowedTools: null,
+        changeSummary: undefined,
+        compatibility: null,
+        content: input.content,
+        description: input.description,
+        license: null,
+        metadata: null,
+        name: input.skillName,
+        resources: [],
+        versionLabel: undefined,
+      });
 
       setSubmitStatus("Saved");
     } catch (error) {
@@ -175,18 +109,20 @@ export const SkillFormView = ({
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Button variant="ghost" size="icon" asChild>
-            <Link
-              to={skill ? `/skills/${skill.id}` : "/skills"}
-              aria-label="Back"
-            >
+            <Link to="/skills" aria-label="Back">
               <ArrowLeftIcon />
             </Link>
           </Button>
           <h1 className="truncate text-lg font-semibold tracking-tight">
-            {title}
+            Create Skill
           </h1>
         </div>
-        <p className="text-sm text-muted-foreground">{submitStatus}</p>
+        <div className="flex shrink-0 items-center gap-3">
+          <p className="text-sm text-muted-foreground">{submitStatus}</p>
+          <Button type="submit" form={skillFormId} disabled={isSubmitDisabled}>
+            Create
+          </Button>
+        </div>
       </header>
 
       <OverlayScrollbarsComponent
@@ -194,189 +130,47 @@ export const SkillFormView = ({
         options={{ scrollbars: { autoHide: "leave", theme: "os-theme-dark" } }}
         className="min-h-0 flex-1"
       >
-        <form onSubmit={submit} className="mx-auto grid max-w-4xl gap-6 p-6">
-          <section className="grid gap-4 border-b border-border pb-6">
-            <h2 className="text-sm font-semibold">Frontmatter</h2>
-            <SkillNameField mode={mode} name={name} onNameChange={setName} />
-            <label
-              htmlFor="skill-description"
-              className="grid gap-2 text-sm font-medium"
-            >
-              Description
+        <form
+          id={skillFormId}
+          onSubmit={form.handleSubmit(submit)}
+          className="mx-auto grid w-full max-w-3xl gap-6 p-6"
+        >
+          <section className="grid gap-5 border-b border-border pb-6">
+            <Field data-invalid={showNameWarning}>
+              <FieldLabel htmlFor="skill-name">Skill Name</FieldLabel>
+              <Input
+                id="skill-name"
+                aria-invalid={showNameWarning}
+                autoComplete="off"
+                placeholder="skill-name"
+                {...form.register("skillName")}
+              />
+              <FieldError errors={[showNameWarning ? nameError : undefined]} />
+            </Field>
+            <Field data-invalid={Boolean(descriptionError)}>
+              <FieldLabel htmlFor="skill-description">Description</FieldLabel>
               <Input
                 id="skill-description"
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                required
+                aria-invalid={Boolean(descriptionError)}
+                placeholder="What should this skill help with?"
+                {...form.register("description")}
               />
-            </label>
-            <div className="grid gap-3 md:grid-cols-3">
-              <label
-                htmlFor="skill-license"
-                className="grid gap-2 text-sm font-medium"
-              >
-                License
-                <Input
-                  id="skill-license"
-                  value={license}
-                  onChange={(event) => setLicense(event.target.value)}
-                />
-              </label>
-              <label
-                htmlFor="skill-compatibility"
-                className="grid gap-2 text-sm font-medium"
-              >
-                Compatibility
-                <Input
-                  id="skill-compatibility"
-                  value={compatibility}
-                  onChange={(event) => setCompatibility(event.target.value)}
-                />
-              </label>
-              <label
-                htmlFor="skill-allowed-tools"
-                className="grid gap-2 text-sm font-medium"
-              >
-                Allowed Tools
-                <Input
-                  id="skill-allowed-tools"
-                  value={allowedTools}
-                  onChange={(event) => setAllowedTools(event.target.value)}
-                />
-              </label>
-            </div>
-            <label
-              htmlFor="skill-metadata"
-              className="grid gap-2 text-sm font-medium"
-            >
-              Metadata
-              <textarea
-                id="skill-metadata"
-                aria-label="Metadata"
-                className={textAreaClassName}
-                value={metadata}
-                onChange={(event) => setMetadata(event.target.value)}
-                placeholder='{"author":"example-org"}'
-              />
-            </label>
+              <FieldError errors={[descriptionError]} />
+            </Field>
           </section>
 
-          <section className="grid gap-3 border-b border-border pb-6">
-            <div className="grid gap-3 md:grid-cols-2">
-              <label
-                htmlFor="skill-version-label"
-                className="grid gap-2 text-sm font-medium"
-              >
-                Version Label
-                <Input
-                  id="skill-version-label"
-                  value={versionLabel}
-                  onChange={(event) => setVersionLabel(event.target.value)}
-                />
-              </label>
-              <label
-                htmlFor="skill-change-summary"
-                className="grid gap-2 text-sm font-medium"
-              >
-                Change Summary
-                <Input
-                  id="skill-change-summary"
-                  value={changeSummary}
-                  onChange={(event) => setChangeSummary(event.target.value)}
-                />
-              </label>
-            </div>
-          </section>
-
-          <label
-            htmlFor="skill-content"
-            className="grid gap-2 border-b border-border pb-6 text-sm font-medium"
-          >
-            Instructions
+          <Field data-invalid={Boolean(contentError)}>
+            <FieldLabel htmlFor="skill-content">SKILL.md</FieldLabel>
             <textarea
               id="skill-content"
               aria-label="SKILL.md"
-              className={`${textAreaClassName} min-h-80 font-mono`}
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              required
+              aria-invalid={Boolean(contentError)}
+              className={`${textAreaClassName} min-h-[28rem] font-mono leading-relaxed`}
+              placeholder="# Skill instructions&#10;&#10;Use this skill when..."
+              {...form.register("content")}
             />
-          </label>
-
-          <section className="grid gap-3">
-            <div className="grid gap-3 md:grid-cols-[1fr_1fr]">
-              <label
-                htmlFor="skill-resource-path"
-                className="grid gap-2 text-sm font-medium"
-              >
-                Upsert Resource Path
-                <Input
-                  id="skill-resource-path"
-                  value={resourcePath}
-                  onChange={(event) => setResourcePath(event.target.value)}
-                  placeholder="scripts/check.ts"
-                />
-              </label>
-              <label
-                htmlFor="skill-resource-media-type"
-                className="grid gap-2 text-sm font-medium"
-              >
-                Media Type
-                <Input
-                  id="skill-resource-media-type"
-                  value={resourceMediaType}
-                  onChange={(event) => setResourceMediaType(event.target.value)}
-                  placeholder="text/typescript; charset=utf-8"
-                />
-              </label>
-            </div>
-            <label
-              htmlFor="skill-resource-content"
-              className="grid gap-2 text-sm font-medium"
-            >
-              Upsert Resource Content
-              <textarea
-                id="skill-resource-content"
-                aria-label="Upsert resource content"
-                className={`${textAreaClassName} font-mono`}
-                value={resourceContent}
-                onChange={(event) => setResourceContent(event.target.value)}
-              />
-            </label>
-          </section>
-
-          {mode === "edit" && (
-            <section className="grid gap-3">
-              <label
-                htmlFor="skill-delete-resource-paths"
-                className="grid gap-2 text-sm font-medium"
-              >
-                Delete Resource Paths
-                <textarea
-                  id="skill-delete-resource-paths"
-                  aria-label="Delete resource paths"
-                  className={textAreaClassName}
-                  value={deleteResourcePaths}
-                  onChange={(event) =>
-                    setDeleteResourcePaths(event.target.value)
-                  }
-                  placeholder="old-notes.md"
-                />
-              </label>
-              {currentResources && (
-                <pre className="rounded-md border border-border bg-muted p-3 text-xs text-muted-foreground">
-                  {currentResources}
-                </pre>
-              )}
-            </section>
-          )}
-
-          <div className="flex justify-end">
-            <Button type="submit">
-              <SaveIcon />
-              {submitLabel}
-            </Button>
-          </div>
+            <FieldError errors={[contentError]} />
+          </Field>
         </form>
       </OverlayScrollbarsComponent>
     </main>
