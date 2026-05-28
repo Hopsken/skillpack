@@ -2,6 +2,7 @@ import {
   forkSkillSchema,
   patchSkillSchema,
 } from "@skillpack/contracts/skills/requests";
+import { skillNameSchema } from "@skillpack/core/primitives";
 import { describe, expect, it } from "vitest";
 
 describe("skill request contracts", () => {
@@ -23,5 +24,10 @@ describe("skill request contracts", () => {
     });
 
     expect(result.success).toBeFalsy();
+  });
+
+  it("reserves pure numeric Skill Names for ID route resolution", () => {
+    expect(skillNameSchema.safeParse("123").success).toBeFalsy();
+    expect(skillNameSchema.safeParse("demo-123").success).toBeTruthy();
   });
 });

@@ -159,6 +159,43 @@ describe("SkillService version commit handoff", () => {
     expect(repository.findSkillById).toHaveBeenCalledWith(1);
   });
 
+  it("resolves a skill by the owner's Skill Name", async () => {
+    const { repository, resourceManifest, service } = createService();
+    const skill = skillRow({ id: 9, name: "demo-skill" });
+    const committedVersion = versionRow({
+      id: 19,
+      skillId: skill.id,
+      versionNumber: 2,
+    });
+
+    repository.findSkillByName.mockResolvedValue(skill);
+    repository.findSkillVersionByNumber.mockResolvedValue(committedVersion);
+    repository.findSkillOrigin.mockResolvedValue(
+      originRow({ skillVersionId: 19 })
+    );
+    repository.listResourcesByVersionId.mockResolvedValue([resourceRow()]);
+    resourceManifest.getResourceObject.mockResolvedValue(
+      objectWithText(skillFileContent)
+    );
+
+    const result = await service.resolveSkillByName("demo-skill", 2);
+
+    expect(result.skill).toBe(skill);
+    expect(result.version).toBe(committedVersion);
+    expect(repository.findSkillByName).toHaveBeenCalledWith("demo-skill");
+    expect(repository.findSkillVersionByNumber).toHaveBeenCalledWith(9, 2);
+  });
+
+  it("treats a missing Skill Name as not found", async () => {
+    const { repository, service } = createService();
+
+    repository.findSkillByName.mockResolvedValue(missingSkill);
+
+    await expect(service.resolveSkillByName("missing")).rejects.toMatchObject({
+      code: "skill-not-found",
+    });
+  });
+
   it("serializes canonical SKILL.md before committing the first version", async () => {
     const { repository, resourceManifest, service } = createService();
     const skill = skillRow();

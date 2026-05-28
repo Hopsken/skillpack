@@ -19,6 +19,7 @@ import type {
   ResolvedSkillResult,
   RestoreSkillVersionResult,
   RestoreVersionServiceInput,
+  SkillRow,
   SkillResourceRow,
   SkillVersionRow,
   StoredResourceObject,
@@ -114,6 +115,32 @@ export class SkillService {
       skillId,
       requestedVersion
     );
+    return await this.resolveSkillVersion(skill, version, origin);
+  }
+
+  async resolveSkillByName(
+    name: string,
+    requestedVersion?: number
+  ): Promise<ResolvedSkillResult> {
+    const skill = await this.repository.findSkillByName(name);
+
+    if (!skill) {
+      throw skillErrors.skillNotFound();
+    }
+
+    const { origin, version } = await this.readSkillVersionBySkill(
+      skill,
+      requestedVersion
+    );
+
+    return await this.resolveSkillVersion(skill, version, origin);
+  }
+
+  private async resolveSkillVersion(
+    skill: SkillRow,
+    version: SkillVersionRow,
+    origin: Awaited<ReturnType<SkillRepository["findSkillOrigin"]>>
+  ): Promise<ResolvedSkillResult> {
     const resources = await this.repository.listResourcesByVersionId(
       version.id
     );
@@ -417,6 +444,13 @@ export class SkillService {
       throw skillErrors.skillNotFound();
     }
 
+    return await this.readSkillVersionBySkill(skill, requestedVersion);
+  }
+
+  private async readSkillVersionBySkill<T extends { id: number }>(
+    skill: T,
+    requestedVersion?: number
+  ) {
     const version = requestedVersion
       ? await this.repository.findSkillVersionByNumber(
           skill.id,

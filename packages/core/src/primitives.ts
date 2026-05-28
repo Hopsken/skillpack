@@ -4,6 +4,7 @@ export const skillIdSchema = z.coerce.number().int().positive();
 export const skillVersionNumberSchema = z.coerce.number().int().positive();
 
 const skillNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const hasLowercaseLetterPattern = /[a-z]/u;
 
 export const skillNameSchema = z
   .string()
@@ -12,7 +13,8 @@ export const skillNameSchema = z
   .regex(
     skillNamePattern,
     "Skill name must use lowercase letters, numbers, and hyphens"
-  );
+  )
+  .regex(hasLowercaseLetterPattern, "Skill name must include a letter");
 export const skillDescriptionSchema = z.string().min(1).max(1024);
 export const skillCompatibilitySchema = z.string().min(1).max(500);
 export const skillLicenseSchema = z.string().min(1).max(500);

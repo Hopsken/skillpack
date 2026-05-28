@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createApp } from "./app";
 import type { SkillService } from "./modules/skills/service";
+import type { ResolvedSkillResult } from "./modules/skills/types";
 
 type VerifySkillReadBearerUserId = NonNullable<
   NonNullable<Parameters<typeof createApp>[0]>["getSkillReadBearerUserId"]
@@ -26,6 +27,35 @@ const setSkillServicesForUser =
     c.set("currentUser", { id: userId });
     c.set("skillService", skillService as SkillService);
   };
+
+const resolvedSkill = (): ResolvedSkillResult => {
+  const createdAt = new Date("2026-05-25T12:00:00.000Z");
+
+  return {
+    content: "# Demo\n",
+    resources: [],
+    skill: {
+      createdAt,
+      id: 42,
+      name: "demo",
+      ownerUserId: "user-oauth",
+      updatedAt: createdAt,
+    },
+    version: {
+      allowedTools: null,
+      changeSummary: null,
+      compatibility: null,
+      createdAt,
+      description: "Demo description",
+      id: 7,
+      label: null,
+      license: null,
+      metadata: null,
+      skillId: 42,
+      versionNumber: 1,
+    },
+  };
+};
 
 describe("app login provider discovery", () => {
   it("reports GitHub and OIDC when both provider configs are present", async () => {
@@ -154,6 +184,37 @@ describe("app OAuth bearer skills read auth", () => {
       skillId: 42,
       version: undefined,
     });
+    expect(seenUserIds).toStrictEqual(["user-oauth"]);
+  });
+
+  it("allows bearer tokens with skills:read to resolve skills by name", async () => {
+    const seenUserIds: string[] = [];
+    const resolveSkillByName = vi
+      .fn<SkillService["resolveSkillByName"]>()
+      .mockResolvedValue(resolvedSkill());
+    const getSkillReadBearerUserId = vi
+      .fn<VerifySkillReadBearerUserId>()
+      .mockResolvedValue("user-oauth");
+    const app = createApp({
+      getSkillReadBearerUserId,
+      setSkillServicesForUser: setSkillServicesForUser(
+        { resolveSkillByName },
+        seenUserIds
+      ),
+    });
+
+    const response = await app.request(
+      "/api/v1/skills/demo",
+      { headers: { authorization: "Bearer access-token" } },
+      testEnv
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      id: 42,
+      name: "demo",
+    });
+    expect(resolveSkillByName).toHaveBeenCalledWith("demo", undefined);
     expect(seenUserIds).toStrictEqual(["user-oauth"]);
   });
 

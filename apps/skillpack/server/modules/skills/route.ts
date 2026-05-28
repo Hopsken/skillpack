@@ -10,6 +10,7 @@ import {
 import {
   safeRelativePathSchema,
   skillIdSchema,
+  skillNameSchema,
   skillVersionNumberSchema,
 } from "@skillpack/core/primitives";
 import { Hono } from "hono";
@@ -54,6 +55,22 @@ const parseSkillId = (value: string | undefined) => {
   }
 
   return result.data;
+};
+
+const numericIdentifierPattern = /^\d+$/u;
+
+const parseSkillIdentifier = (value: string | undefined) => {
+  if (value && numericIdentifierPattern.test(value)) {
+    return { skillId: parseSkillId(value), type: "id" as const };
+  }
+
+  const result = skillNameSchema.safeParse(value);
+
+  if (!result.success) {
+    throw skillErrors.invalidSkillLocator();
+  }
+
+  return { name: result.data, type: "name" as const };
 };
 
 const parseRequiredVersion = (value: string | undefined) => {
@@ -123,11 +140,13 @@ export const skillsRoute = new Hono<AppBindings>()
       : 422;
     return c.json(presentForkedSkills(result), status);
   })
-  .get("/:skillId", async (c) => {
-    const result = await c.var.skillService.resolveSkill(
-      parseSkillId(c.req.param("skillId")),
-      parseVersion(c.req.query("version"))
-    );
+  .get("/:identifier", async (c) => {
+    const identifier = parseSkillIdentifier(c.req.param("identifier"));
+    const version = parseVersion(c.req.query("version"));
+    const result =
+      identifier.type === "id"
+        ? await c.var.skillService.resolveSkill(identifier.skillId, version)
+        : await c.var.skillService.resolveSkillByName(identifier.name, version);
     return c.json(presentSkill(result));
   })
   .patch("/:skillId", zValidator("json", patchSkillSchema), async (c) => {
