@@ -1,8 +1,4 @@
-import {
-  createFileRoute,
-  useLoaderData,
-  useSearch,
-} from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { Github, KeyRound } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -32,10 +28,12 @@ const loginSearchSchema = z.object({
 const getCallbackURL = (redirect: string | undefined) =>
   redirect ?? defaultCallbackURL;
 
+/* eslint-disable no-use-before-define -- Route exposes typed route-local hooks from the file route declared below. */
 const LoginRoute = () => {
   const session = useSession();
-  const search = useSearch({ from: "/login" });
-  const providers = useLoaderData({ from: "/login" });
+  const search = Route.useSearch();
+  const providers = Route.useLoaderData();
+  /* eslint-enable no-use-before-define */
   const [error, setError] = useState<string>();
   const [activeProvider, setActiveProvider] = useState<LoginProvider>();
   const callbackURL = getCallbackURL(search.redirect);

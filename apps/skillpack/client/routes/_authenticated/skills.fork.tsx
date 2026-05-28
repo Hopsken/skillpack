@@ -1,10 +1,6 @@
 import { skillOriginSchema } from "@skillpack/contracts/origins/requests";
 import type { ForkSkillInput } from "@skillpack/contracts/skills/requests";
-import {
-  createFileRoute,
-  useNavigate,
-  useSearch,
-} from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
@@ -43,11 +39,13 @@ const getDiscoveryStatus = (skillCount: number, isLoading: boolean) => {
   return `Found ${skillCount} skills`;
 };
 
+/* eslint-disable no-use-before-define -- Route exposes typed route-local hooks from the file route declared below. */
 const ForkSkillRoute = () => {
   const forkSkill = useForkSkill();
   const forkSkillAsync = forkSkill.mutateAsync;
-  const navigate = useNavigate();
-  const search = useSearch({ from: "/_authenticated/skills/fork" });
+  const navigate = Route.useNavigate();
+  const search = Route.useSearch();
+  /* eslint-enable no-use-before-define */
   const skillList = useSkillList();
   const origin = search.kind ? search : undefined;
   const discovery = useOriginDiscovery(origin);

@@ -2,21 +2,12 @@ import {
   skillIdSchema,
   skillVersionNumberSchema,
 } from "@skillpack/core/primitives";
-import {
-  createFileRoute,
-  useNavigate,
-  useParams,
-  useSearch,
-} from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import { activeSkillQueryOptions } from "@/features/skills/api/query-options";
 import {
-  latestSkillQueryOptions,
-  skillDetailQueryOptions,
-} from "@/features/skills/api/query-options";
-import {
-  useLatestSkill,
   useSkillDetail,
   useSkillVersions,
 } from "@/features/skills/api/use-skill-detail";
@@ -43,17 +34,17 @@ const parseSkillRouteParams = (params: unknown) => {
   return parsed.success ? parsed.data : false;
 };
 
+/* eslint-disable no-use-before-define -- Route exposes typed route-local hooks from the file route declared below. */
 const SkillDetailRoute = () => {
-  const { skillId } = useParams({ from: "/_authenticated/skills/$skillId" });
-  const search = useSearch({ from: "/_authenticated/skills/$skillId" });
-  const navigate = useNavigate();
+  const { skillId } = Route.useParams();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  /* eslint-enable no-use-before-define */
   const { version } = search;
-  const latestSkill = useLatestSkill(skillId);
-  const versionedSkill = useSkillDetail(skillId, version);
+  const skillDetail = useSkillDetail(skillId, version);
   const skillVersions = useSkillVersions(skillId);
   const restoreVersion = useRestoreSkillVersion(skillId);
-  const activeSkillQuery = version ? versionedSkill : latestSkill;
-  const skill = activeSkillQuery.data;
+  const skill = skillDetail.data;
 
   const { tab: activeTab } = search;
   const setActiveTab = (tab: SkillDetailTab) => {
@@ -81,7 +72,7 @@ const SkillDetailRoute = () => {
     ? "Loading versions..."
     : `${versionCount} versions loaded`;
 
-  if (activeSkillQuery.isPending && !skill) {
+  if (skillDetail.isPending && !skill) {
     return <SkillDetailSkeleton />;
   }
 
@@ -113,14 +104,8 @@ export const Route = createFileRoute("/_authenticated/skills/$skillId")({
     const { skillId } = params;
     const { version } = deps;
 
-    if (version) {
-      return context.queryClient.ensureQueryData(
-        skillDetailQueryOptions(skillId, version)
-      );
-    }
-
     return context.queryClient.ensureQueryData(
-      latestSkillQueryOptions(skillId)
+      activeSkillQueryOptions(skillId, version)
     );
   },
   validateSearch: zodValidator(skillDetailSearchSchema),

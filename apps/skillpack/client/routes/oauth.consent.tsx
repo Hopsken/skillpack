@@ -1,9 +1,4 @@
-import {
-  Navigate,
-  createFileRoute,
-  useLoaderData,
-  useSearch,
-} from "@tanstack/react-router";
+import { Navigate, createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useMemo, useState } from "react";
 import { z } from "zod";
@@ -39,10 +34,12 @@ const parseScopes = (scope: string | null) =>
 const getClientName = (client?: OAuthClientPreview) =>
   client?.client_name ?? client?.client_id ?? "OAuth client";
 
+/* eslint-disable no-use-before-define -- Route exposes typed route-local hooks from the file route declared below. */
 const OAuthConsentRoute = () => {
   const session = useSession();
-  const search = useSearch({ from: "/oauth/consent" });
-  const client = useLoaderData({ from: "/oauth/consent" });
+  const search = Route.useSearch();
+  const client = Route.useLoaderData();
+  /* eslint-enable no-use-before-define */
   const scopes = useMemo(() => parseScopes(search.scope), [search.scope]);
   const [error, setError] = useState<string>();
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -3,6 +3,8 @@ import { toast } from "sonner";
 
 import { getApiErrorMessage } from "./client";
 
+const defaultQueryStaleTimeMs = 30_000;
+
 const notifyQueryError = async (error: unknown) => {
   toast.error(await getApiErrorMessage(error));
 };
@@ -11,6 +13,7 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: false,
+      staleTime: defaultQueryStaleTimeMs,
     },
   },
   mutationCache: new MutationCache({

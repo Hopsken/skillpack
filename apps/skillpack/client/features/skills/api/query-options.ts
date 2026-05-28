@@ -2,6 +2,8 @@ import type {
   OriginSelectionInput,
   SkillOriginInput,
 } from "@skillpack/contracts/origins/requests";
+import type { ResolvedSkill } from "@skillpack/contracts/skills/responses";
+import type { QueryKey } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
 
 import { getOriginQueryKeyPart } from "../lib/origin-url";
@@ -32,16 +34,16 @@ export const skillListQueryOptions = () =>
     queryKey: skillListQueryKey,
   });
 
-export const latestSkillQueryOptions = (skillId: number) =>
-  queryOptions({
-    queryFn: () => fetchLatestSkill(skillId),
-    queryKey: latestSkillQueryKey(skillId),
-  });
-
-export const skillDetailQueryOptions = (skillId: number, version: number) =>
-  queryOptions({
-    queryFn: () => fetchSkillDetail(skillId, version),
-    queryKey: skillDetailQueryKey(skillId, version),
+export const activeSkillQueryOptions = (
+  skillId: number,
+  version: number | undefined
+) =>
+  queryOptions<ResolvedSkill, Error, ResolvedSkill, QueryKey>({
+    queryFn: () =>
+      version ? fetchSkillDetail(skillId, version) : fetchLatestSkill(skillId),
+    queryKey: version
+      ? skillDetailQueryKey(skillId, version)
+      : latestSkillQueryKey(skillId),
   });
 
 export const skillVersionsQueryOptions = (skillId: number) =>

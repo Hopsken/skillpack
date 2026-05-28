@@ -94,6 +94,12 @@ A route may:
 - load critical page data through TanStack Query using router context;
 - provide route-level pending, error, and not-found boundaries.
 
+Inside a route's own component, prefer the generated route-local hooks such as
+`Route.useParams()` and `Route.useSearch()` over generic hooks with a repeated
+`from` path. If lint rules complain because the generated `Route` is declared
+after the component, a narrow disable for that route-local hook access is
+acceptable.
+
 A route should not:
 
 - duplicate API data into local state;
