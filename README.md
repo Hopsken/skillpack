@@ -69,12 +69,15 @@ For deployed environments, set secrets with Wrangler:
 
 ```bash
 pnpm --filter @skillpack/app exec wrangler secret put BETTER_AUTH_SECRET
+pnpm --filter @skillpack/app exec wrangler secret put GITHUB_CLIENT_ID
 pnpm --filter @skillpack/app exec wrangler secret put GITHUB_CLIENT_SECRET
+pnpm --filter @skillpack/app exec wrangler secret put OIDC_CLIENT_ID
+pnpm --filter @skillpack/app exec wrangler secret put OIDC_DISCOVERY_URL
 ```
 
-Set `GITHUB_CLIENT_ID` as a non-secret environment variable in the deployed
-Worker environment. If enabling OIDC fallback, set `OIDC_CLIENT_ID` and
-`OIDC_DISCOVERY_URL` too.
+`GITHUB_CLIENT_ID`, `OIDC_CLIENT_ID`, and `OIDC_DISCOVERY_URL` are not strictly
+secret, but they are deployment-instance values. Keeping them in Cloudflare
+rather than tracked `wrangler.jsonc` keeps the open source config reusable.
 
 Register the deployed GitHub redirect URI with the same callback path:
 
