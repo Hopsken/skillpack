@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { contextStorage } from "hono/context-storage";
 
-import { createAuth } from "./auth";
+import { createAuth, getLoginProviders } from "./auth";
 import {
   createRequireSessionAuth,
   createRequireSkillsAuth,
@@ -40,6 +40,9 @@ const protectedResourceMetadata = async (c: Context<AppBindings>) => {
   return c.json(metadata);
 };
 
+const loginProviders = (c: Context<AppBindings>) =>
+  c.json(getLoginProviders(c.env));
+
 export const createApp = (options: AuthMiddlewareOptions = {}) =>
   new Hono<AppBindings>()
     .use(contextStorage())
@@ -50,6 +53,7 @@ export const createApp = (options: AuthMiddlewareOptions = {}) =>
     )
     .get("/.well-known/openid-configuration", openIdConfigurationMetadata)
     .get("/.well-known/oauth-protected-resource", protectedResourceMetadata)
+    .get("/api/auth/login-providers", loginProviders)
     .on(["GET", "POST"], "/api/auth/*", authHandler)
     .use("/api/v1/origins", createRequireSessionAuth())
     .use("/api/v1/origins/*", createRequireSessionAuth())

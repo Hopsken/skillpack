@@ -1,10 +1,23 @@
+import { useQuery } from "@tanstack/react-query";
+import { Github, KeyRound } from "lucide-react";
 import { useState } from "react";
 import { Navigate, useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
-import { signInWithOidc, useSession } from "@/shared/auth/client";
+import {
+  getLoginProviders,
+  signInWithGitHub,
+  signInWithOidc,
+  useSession,
+} from "@/shared/auth/client";
+import type { LoginProviders } from "@/shared/auth/client";
 
 const defaultCallbackURL = "/skills";
+const defaultLoginProviders: LoginProviders = { github: true, oidc: false };
+type LoginProvider = keyof LoginProviders;
+
+export const getVisibleLoginProviders = (providers: LoginProviders) =>
+  (["github", "oidc"] as const).filter((provider) => providers[provider]);
 
 const getCallbackURL = (redirect: string | null) => {
   if (redirect?.startsWith("/") && !redirect.startsWith("//")) {
@@ -18,19 +31,32 @@ export const LoginPage = () => {
   const session = useSession();
   const [searchParams] = useSearchParams();
   const [error, setError] = useState<string>();
+  const [activeProvider, setActiveProvider] = useState<LoginProvider>();
+  const providersQuery = useQuery({
+    queryFn: getLoginProviders,
+    queryKey: ["auth", "login-providers"],
+  });
   const callbackURL = getCallbackURL(searchParams.get("redirect"));
+  const visibleProviders = getVisibleLoginProviders(
+    providersQuery.data ?? defaultLoginProviders
+  );
 
   if (session.data) {
     return <Navigate to={callbackURL} replace />;
   }
 
-  const login = async () => {
+  const login = async (provider: LoginProvider) => {
     setError(undefined);
+    setActiveProvider(provider);
 
-    const response = await signInWithOidc(callbackURL);
+    const response =
+      provider === "github"
+        ? await signInWithGitHub(callbackURL)
+        : await signInWithOidc(callbackURL);
 
     if (response.error) {
       setError(response.error.message ?? "Login failed");
+      setActiveProvider(undefined);
     }
   };
 
@@ -41,19 +67,28 @@ export const LoginPage = () => {
           <p className="text-sm font-medium text-muted-foreground">skillpack</p>
           <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
           <p className="text-sm text-muted-foreground">
-            Continue with your identity provider.
+            Continue with GitHub or your configured identity provider.
           </p>
         </div>
 
-        <Button
-          className="mt-6 w-full"
-          disabled={session.isPending}
-          onClick={() => {
-            void login();
-          }}
-        >
-          Continue with OIDC
-        </Button>
+        <div className="mt-6 space-y-2">
+          {visibleProviders.map((provider) => (
+            <Button
+              className="w-full"
+              disabled={session.isPending || Boolean(activeProvider)}
+              key={provider}
+              onClick={() => {
+                void login(provider);
+              }}
+              variant={provider === "github" ? "default" : "outline"}
+            >
+              {provider === "github" ? <Github /> : <KeyRound />}
+              {provider === "github"
+                ? "Continue with GitHub"
+                : "Continue with OIDC"}
+            </Button>
+          ))}
+        </div>
 
         {error ? (
           <p className="mt-4 text-sm text-destructive">{error}</p>

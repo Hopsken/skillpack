@@ -30,21 +30,21 @@ const createTransport = (
   files: Record<string, string>
 ) => {
   const transport = {
-    getCommit: vi.fn<GitHubTransport["getCommit"]>().mockResolvedValue({
-      commit: { tree: { sha: "tree-sha" } },
-      sha: "commit-sha",
-    }),
-    getRawText: vi
-      .fn<GitHubTransport["getRawText"]>()
-      .mockImplementation((_owner, _repo, _revision, path) => {
-        const content = files[path];
+    getBlobText: vi
+      .fn<GitHubTransport["getBlobText"]>()
+      .mockImplementation((_owner, _repo, blobSha) => {
+        const content = files[blobSha];
 
         if (content === undefined) {
-          throw new Error(`Missing fixture for ${path}`);
+          throw new Error(`Missing fixture for ${blobSha}`);
         }
 
         return Promise.resolve(content);
       }),
+    getCommit: vi.fn<GitHubTransport["getCommit"]>().mockResolvedValue({
+      commit: { tree: { sha: "tree-sha" } },
+      sha: "commit-sha",
+    }),
     getRepository: vi.fn<GitHubTransport["getRepository"]>().mockResolvedValue({
       default_branch: "main",
     }),
@@ -77,23 +77,24 @@ describe("GitHub Origin retrieval", () => {
     vi.unstubAllGlobals();
   });
 
-  it("sends a GitHub token on API requests when configured", async () => {
+  it("sends OAuth App client credentials on API requests when configured", async () => {
     const requests = stubGitHubApiFetch();
     const transport = createGitHubTransport({
-      githubToken: " github-token ",
+      githubClientId: " client-id ",
+      githubClientSecret: " client-secret ",
     });
 
     await transport.getRepository("acme", "skills");
 
     expect(requests).toHaveLength(1);
     expect(requests.at(0)?.headers.get("authorization")).toBe(
-      "Bearer github-token"
+      "Basic Y2xpZW50LWlkOmNsaWVudC1zZWNyZXQ="
     );
   });
 
-  it("omits authorization on API requests without a GitHub token", async () => {
+  it("omits authorization on API requests without OAuth App credentials", async () => {
     const requests = stubGitHubApiFetch();
-    const transport = createGitHubTransport({ githubToken: " " });
+    const transport = createGitHubTransport({});
 
     await transport.getRepository("acme", "skills");
 
@@ -101,7 +102,41 @@ describe("GitHub Origin retrieval", () => {
     expect(requests.at(0)?.headers.has("authorization")).toBeFalsy();
   });
 
-  it("discovers candidates in Skillpack priority order without reading raw files", async () => {
+  it("rejects partial OAuth App credentials", () => {
+    expect(() =>
+      createGitHubTransport({ githubClientId: "client-id" })
+    ).toThrow("Both GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET are required");
+  });
+
+  it("reads blob text through the GitHub REST API", async () => {
+    const requests: Request[] = [];
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((request: Request) => {
+        requests.push(request);
+        return Promise.resolve(
+          Response.json({
+            content: btoa("hello"),
+            encoding: "base64",
+          })
+        );
+      })
+    );
+
+    const transport = createGitHubTransport();
+
+    await expect(
+      transport.getBlobText("acme", "skills", "blob-sha")
+    ).resolves.toBe("hello");
+
+    expect(requests).toHaveLength(1);
+    expect(new URL(requests[0].url).pathname).toBe(
+      "/repos/acme/skills/git/blobs/blob-sha"
+    );
+  });
+
+  it("discovers candidates in Skillpack priority order without reading blobs", async () => {
     const transport = createTransport(
       [
         treeEntry(".codex/skills/codex/SKILL.md"),
@@ -130,7 +165,7 @@ describe("GitHub Origin retrieval", () => {
       repoUrl: origin.repoUrl,
       rev: "commit-sha",
     });
-    expect(transport.getRawText).not.toHaveBeenCalled();
+    expect(transport.getBlobText).not.toHaveBeenCalled();
   });
 
   it("uses fallback discovery when priority roots are empty", async () => {
@@ -219,6 +254,51 @@ describe("GitHub Origin retrieval", () => {
       },
       status: "resolved",
     });
+  });
+
+  it("reads selected definitions through GitHub blob shas", async () => {
+    const tree = [
+      treeEntry("skills/demo/SKILL.md"),
+      treeEntry("skills/demo/references/notes.txt"),
+    ];
+    const blobs = new Map([
+      ["skills/demo/SKILL.md", skillContent("demo")],
+      ["skills/demo/references/notes.txt", "notes"],
+    ]);
+    const transport = {
+      ...createTransport(tree, {}),
+      getBlobText: vi
+        .fn<GitHubTransport["getBlobText"]>()
+        .mockImplementation(
+          (_owner: string, _repo: string, blobSha: string) => {
+            const content = blobs.get(blobSha);
+
+            if (content === undefined) {
+              throw new Error(`Missing fixture for ${blobSha}`);
+            }
+
+            return Promise.resolve(content);
+          }
+        ),
+    };
+    const retrieval = createGitHubRetrieval(transport);
+
+    const [result] = await retrieval.readDefinitions(origin, [
+      { skillName: "demo" },
+    ]);
+
+    expect(result).toMatchObject({
+      definition: {
+        content: skillContent("demo"),
+        resources: [{ content: "notes", path: "references/notes.txt" }],
+      },
+      status: "resolved",
+    });
+    expect(transport.getBlobText).toHaveBeenCalledWith(
+      "acme",
+      "skills",
+      "skills/demo/SKILL.md"
+    );
   });
 
   it("reads selected definitions from a pinned revision", async () => {
@@ -326,7 +406,7 @@ describe("GitHub Origin retrieval", () => {
     ]);
   });
 
-  it("normalizes raw file read failures to definition failures", async () => {
+  it("normalizes blob read failures to definition failures", async () => {
     const transport = createTransport([treeEntry("skills/demo/SKILL.md")], {});
     const retrieval = createGitHubRetrieval(transport);
 
@@ -335,7 +415,7 @@ describe("GitHub Origin retrieval", () => {
     ]);
 
     expect(result).toMatchObject({
-      error: "GitHub raw file request failed",
+      error: "GitHub blob request failed",
       selection: { skillName: "demo" },
       status: "failed",
     });

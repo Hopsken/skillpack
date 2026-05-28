@@ -8,10 +8,14 @@ import { createMiddleware } from "hono/factory";
 
 export const setRequestServices = createMiddleware<AppBindings>(
   async (c, next) => {
-    const runtimeEnv = env<{ GITHUB_TOKEN?: string }, Context<AppBindings>>(c);
+    const runtimeEnv = env<
+      { GITHUB_CLIENT_ID?: string; GITHUB_CLIENT_SECRET?: string },
+      Context<AppBindings>
+    >(c);
     const db = createDb(c.env.DB);
     const originService = new OriginService({
-      githubToken: runtimeEnv.GITHUB_TOKEN,
+      githubClientId: runtimeEnv.GITHUB_CLIENT_ID,
+      githubClientSecret: runtimeEnv.GITHUB_CLIENT_SECRET,
     });
     const skillStorage = new SkillStorage(c.env.BUCKET);
 

@@ -10,13 +10,15 @@ import type { GitHubTransport } from "./github-retrieval";
 type GithubOrigin = Extract<SkillOriginInput, { kind: "github" }>;
 
 interface GithubOriginAdapterOptions {
-  githubToken?: string;
+  githubClientId?: string;
+  githubClientSecret?: string;
   transport?: GitHubTransport;
 }
 
 export const createGithubOriginAdapter = ({
-  githubToken,
-  transport = createGitHubTransport({ githubToken }),
+  githubClientId,
+  githubClientSecret,
+  transport = createGitHubTransport({ githubClientId, githubClientSecret }),
 }: GithubOriginAdapterOptions = {}): OriginAdapter<GithubOrigin> => {
   const retrieval = createGitHubRetrieval(transport);
 

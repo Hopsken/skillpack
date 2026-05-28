@@ -9,7 +9,8 @@ import { originErrors } from "./errors";
 import type { OriginAdapter, OriginDefinitionResult } from "./types";
 
 interface OriginServiceOptions {
-  githubToken?: string;
+  githubClientId?: string;
+  githubClientSecret?: string;
 }
 
 export class OriginService {
@@ -17,7 +18,8 @@ export class OriginService {
 
   constructor(options: OriginServiceOptions = {}) {
     const githubOriginAdapter = createGithubOriginAdapter({
-      githubToken: options.githubToken,
+      githubClientId: options.githubClientId,
+      githubClientSecret: options.githubClientSecret,
     });
 
     this.adapters = new Map<SkillOriginInput["kind"], OriginAdapter>([

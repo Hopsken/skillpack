@@ -12,6 +12,14 @@ export const skillpackOAuthScopes = [
 const providerId = "oidc";
 const defaultScopes = ["openid", "email", "profile"];
 
+export const accountLinkingOptions = {
+  enabled: true,
+  // Temporary v1 shortcut: trust browser sign-in providers, while still requiring
+  // Better Auth's email-verified checks. Replace this with an explicit
+  // account-linking flow before adding more providers.
+  trustedProviders: ["github", "oidc"],
+};
+
 const getProfileValue = (profile: Record<string, unknown>, key: string) => {
   const value = profile[key];
   return typeof value === "string" && value ? value : undefined;
@@ -38,10 +46,53 @@ const requiredEnv = (value: string | undefined, name: string) => {
   return value;
 };
 
+const getOptionalEnvPair = (
+  env: Env,
+  firstName: "GITHUB_CLIENT_ID" | "OIDC_CLIENT_ID",
+  secondName: "GITHUB_CLIENT_SECRET" | "OIDC_DISCOVERY_URL"
+) => {
+  const firstValue = env[firstName]?.trim();
+  const secondValue = env[secondName]?.trim();
+
+  if (Boolean(firstValue) !== Boolean(secondValue)) {
+    throw new Error(
+      `Both ${firstName} and ${secondName} are required for auth`
+    );
+  }
+
+  if (!(firstValue && secondValue)) {
+    return;
+  }
+
+  return { firstValue, secondValue };
+};
+
+export const getLoginProviders = (env: Env) => ({
+  github: Boolean(
+    getOptionalEnvPair(env, "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET")
+  ),
+  oidc: Boolean(
+    getOptionalEnvPair(env, "OIDC_CLIENT_ID", "OIDC_DISCOVERY_URL")
+  ),
+});
+
 export const createAuth = (env: Env, origin: string) => {
   const baseURL = env.AUTH_BASE_URL ?? origin;
+  const githubConfig = getOptionalEnvPair(
+    env,
+    "GITHUB_CLIENT_ID",
+    "GITHUB_CLIENT_SECRET"
+  );
+  const oidcConfig = getOptionalEnvPair(
+    env,
+    "OIDC_CLIENT_ID",
+    "OIDC_DISCOVERY_URL"
+  );
 
   return betterAuth({
+    account: {
+      accountLinking: accountLinkingOptions,
+    },
     baseURL,
     database: env.DB,
     plugins: [
@@ -65,24 +116,32 @@ export const createAuth = (env: Env, origin: string) => {
         },
         validAudiences: [baseURL],
       }),
-      genericOAuth({
-        config: [
-          {
-            clientId: requiredEnv(env.OIDC_CLIENT_ID, "OIDC_CLIENT_ID"),
-            discoveryUrl: requiredEnv(
-              env.OIDC_DISCOVERY_URL,
-              "OIDC_DISCOVERY_URL"
-            ),
-            mapProfileToUser,
-            pkce: true,
-            providerId,
-            scopes: defaultScopes,
-          },
-        ],
-      }),
+      ...(oidcConfig
+        ? [
+            genericOAuth({
+              config: [
+                {
+                  clientId: oidcConfig.firstValue,
+                  discoveryUrl: oidcConfig.secondValue,
+                  mapProfileToUser,
+                  pkce: true,
+                  providerId,
+                  scopes: defaultScopes,
+                },
+              ],
+            }),
+          ]
+        : []),
     ],
     secret: requiredEnv(env.BETTER_AUTH_SECRET, "BETTER_AUTH_SECRET"),
-    socialProviders: {},
+    socialProviders: githubConfig
+      ? {
+          github: {
+            clientId: githubConfig.firstValue,
+            clientSecret: githubConfig.secondValue,
+          },
+        }
+      : {},
     trustedOrigins: [baseURL, origin],
   });
 };

@@ -13,6 +13,8 @@ const testEnv = {
   BETTER_AUTH_SECRET: "test-secret",
   BUCKET: {},
   DB: {},
+  GITHUB_CLIENT_ID: "github-client",
+  GITHUB_CLIENT_SECRET: "github-secret",
   OIDC_CLIENT_ID: "oidc-client",
   OIDC_DISCOVERY_URL: "https://issuer.example/.well-known/openid-configuration",
 } as Env;
@@ -24,6 +26,40 @@ const setSkillServicesForUser =
     c.set("currentUser", { id: userId });
     c.set("skillService", skillService as SkillService);
   };
+
+describe("app login provider discovery", () => {
+  it("reports GitHub and OIDC when both provider configs are present", async () => {
+    const app = createApp();
+
+    const response = await app.request(
+      "/api/auth/login-providers",
+      undefined,
+      testEnv
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toStrictEqual({
+      github: true,
+      oidc: true,
+    });
+  });
+
+  it("keeps OIDC optional when its provider config is absent", async () => {
+    const app = createApp();
+
+    const response = await app.request("/api/auth/login-providers", undefined, {
+      ...testEnv,
+      OIDC_CLIENT_ID: undefined,
+      OIDC_DISCOVERY_URL: undefined,
+    } as Env);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toStrictEqual({
+      github: true,
+      oidc: false,
+    });
+  });
+});
 
 describe("app OAuth bearer skills read auth", () => {
   it("serves protected resource metadata for skill reads", async () => {

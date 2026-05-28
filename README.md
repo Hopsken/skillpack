@@ -29,9 +29,12 @@ pnpm test
 pnpm build
 ```
 
-## Auth setup
+## Auth Setup
 
-Skillpack uses Better Auth with a generic OIDC provider. Provider endpoints are loaded through discovery, and the OAuth flow uses PKCE.
+Skillpack uses Better Auth. GitHub is the primary sign-in provider, and the
+same GitHub OAuth App credentials are reused for authenticated public GitHub
+Origin reads. A generic OIDC provider can be enabled as an optional fallback;
+when OIDC vars are absent, the OIDC login button is hidden.
 
 For local development:
 
@@ -39,23 +42,47 @@ For local development:
 cp apps/skillpack/.dev.vars.example apps/skillpack/.dev.vars
 ```
 
-Set `OIDC_CLIENT_ID` and `BETTER_AUTH_SECRET` in `.dev.vars`. Register this redirect URI with your OIDC provider:
+Set `BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`, and `GITHUB_CLIENT_SECRET` in
+`.dev.vars`. Register this redirect URI with your GitHub OAuth App:
+
+```text
+http://localhost:5173/api/auth/callback/github
+```
+
+Optionally set `OIDC_CLIENT_ID` and `OIDC_DISCOVERY_URL` to enable fallback
+OIDC login. Register this redirect URI with your OIDC provider:
 
 ```text
 http://localhost:5173/api/auth/oauth2/callback/oidc
 ```
 
-Optionally set `GITHUB_TOKEN` in `.dev.vars` to raise GitHub API rate limits for GitHub-origin discovery and fork reads.
+Use a GitHub OAuth App for `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`, not a
+personal access token. Those same values also raise GitHub API rate limits for
+public GitHub-origin discovery and fork reads.
+
+For now, Skillpack trusts the configured browser sign-in providers for
+same-email account linking while keeping Better Auth's email-verified checks.
+This is a temporary v1 shortcut; a formal account linking flow should replace
+it before adding more login providers.
 
 For deployed environments, set secrets with Wrangler:
 
 ```bash
 pnpm --filter @skillpack/app exec wrangler secret put BETTER_AUTH_SECRET
-pnpm --filter @skillpack/app exec wrangler secret put OIDC_CLIENT_ID
-pnpm --filter @skillpack/app exec wrangler secret put GITHUB_TOKEN
+pnpm --filter @skillpack/app exec wrangler secret put GITHUB_CLIENT_SECRET
 ```
 
-Register the deployed redirect URI with the same callback path:
+Set `GITHUB_CLIENT_ID` as a non-secret environment variable in the deployed
+Worker environment. If enabling OIDC fallback, set `OIDC_CLIENT_ID` and
+`OIDC_DISCOVERY_URL` too.
+
+Register the deployed GitHub redirect URI with the same callback path:
+
+```text
+https://<your-domain>/api/auth/callback/github
+```
+
+If OIDC is enabled, register the deployed OIDC redirect URI too:
 
 ```text
 https://<your-domain>/api/auth/oauth2/callback/oidc

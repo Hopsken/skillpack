@@ -31,6 +31,11 @@ interface GitHubTreeResponse {
   tree: GitHubTreeEntry[];
 }
 
+interface GitHubBlobResponse {
+  content: string;
+  encoding: string;
+}
+
 export interface GitHubTreeEntry {
   path: string;
   sha: string;
@@ -50,9 +55,11 @@ interface GitHubSkillFile {
   name: string;
   path: string;
   prefix: string;
+  sha: string;
 }
 
 export interface GitHubTransport {
+  getBlobText(owner: string, repo: string, blobSha: string): Promise<string>;
   getCommit(owner: string, repo: string, branch: string): Promise<GitHubCommit>;
   getRepository(owner: string, repo: string): Promise<GitHubRepository>;
   getTree(
@@ -60,51 +67,79 @@ export interface GitHubTransport {
     repo: string,
     treeSha: string
   ): Promise<GitHubTreeResponse>;
-  getRawText(
-    owner: string,
-    repo: string,
-    revision: string,
-    path: string
-  ): Promise<string>;
 }
 
 interface GitHubTransportOptions {
-  githubToken?: string;
+  githubClientId?: string;
+  githubClientSecret?: string;
 }
 
-const createGitHubApiHeaders = (githubToken?: string) => {
-  const token = githubToken?.trim();
+const createBasicAuthHeader = (clientId: string, clientSecret: string) => {
+  const credentials = `${clientId}:${clientSecret}`;
+  return `Basic ${btoa(credentials)}`;
+};
+
+const createGitHubApiHeaders = ({
+  githubClientId,
+  githubClientSecret,
+}: GitHubTransportOptions) => {
+  const clientId = githubClientId?.trim();
+  const clientSecret = githubClientSecret?.trim();
+
+  if (Boolean(clientId) !== Boolean(clientSecret)) {
+    throw new Error(
+      "Both GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET are required"
+    );
+  }
 
   return {
     accept: "application/vnd.github+json",
-    ...(token ? { authorization: `Bearer ${token}` } : {}),
+    ...(clientId && clientSecret
+      ? { authorization: createBasicAuthHeader(clientId, clientSecret) }
+      : {}),
     "user-agent": "skillpack",
   };
+};
+
+const decodeBase64Text = (content: string) => {
+  const binary = atob(content.replaceAll(/\s/gu, ""));
+  const bytes = Uint8Array.from(
+    binary,
+    (character) => character.codePointAt(0) ?? 0
+  );
+  return new TextDecoder().decode(bytes);
 };
 
 export const createGitHubTransport = (
   options: GitHubTransportOptions = {}
 ): GitHubTransport => {
+  // ADR-0005: public GitHub Origin reads use OAuth App credentials and REST blobs.
   const githubApi = ky.create({
-    headers: createGitHubApiHeaders(options.githubToken),
+    headers: createGitHubApiHeaders(options),
     prefix: "https://api.github.com",
   });
 
-  const githubRaw = ky.create({
-    headers: { "user-agent": "skillpack" },
-    prefix: "https://raw.githubusercontent.com",
-  });
-
   return {
+    getBlobText: async (owner, repo, blobSha) => {
+      const blob = await githubApi
+        .get(`repos/${owner}/${repo}/git/blobs/${blobSha}`)
+        .json<GitHubBlobResponse>();
+
+      if (blob.encoding !== "base64") {
+        throw new Error("Unsupported GitHub blob encoding");
+      }
+
+      return decodeBase64Text(blob.content);
+    },
     getCommit: (owner, repo, branch) =>
       githubApi
         .get(`repos/${owner}/${repo}/commits/${encodeURIComponent(branch)}`)
         .json<GitHubCommit>(),
-    getRawText: (owner, repo, revision, path) =>
-      githubRaw.get(`${owner}/${repo}/${revision}/${path}`).text(),
     getRepository: (owner, repo) =>
       githubApi.get(`repos/${owner}/${repo}`).json<GitHubRepository>(),
     getTree: (owner, repo, treeSha) =>
+      // Follow-up: if public repo reads hit large payloads or tree truncation,
+      // switch to targeted non-recursive walks over Skillpack priority roots.
       githubApi
         .get(`repos/${owner}/${repo}/git/trees/${treeSha}`, {
           searchParams: { recursive: "1" },
@@ -241,10 +276,15 @@ const discoverSkillFiles = (snapshot: GitHubOriginSnapshot) => {
     priorityPaths.length > 0
       ? priorityPaths
       : discoverFallbackSkillPaths(snapshot.tree);
+  const entriesByPath = new Map(
+    snapshot.tree.map((entry) => [entry.path, entry] as const)
+  );
   const byName = new Map<string, GitHubSkillFile>();
 
   for (const path of skillPaths) {
-    if (!safeRelativePathSchema.safeParse(path).success) {
+    const entry = entriesByPath.get(path);
+
+    if (!(entry && safeRelativePathSchema.safeParse(path).success)) {
       continue;
     }
 
@@ -255,6 +295,7 @@ const discoverSkillFiles = (snapshot: GitHubOriginSnapshot) => {
         name,
         path,
         prefix: getDirectoryPrefix(path),
+        sha: entry.sha,
       });
     }
   }
@@ -288,20 +329,15 @@ const findSkillFile = (
   return skillFile;
 };
 
-const readRawText = async (
+const readBlobText = async (
   transport: GitHubTransport,
   snapshot: GitHubOriginSnapshot,
-  path: string
+  blobSha: string
 ) => {
   try {
-    return await transport.getRawText(
-      snapshot.owner,
-      snapshot.repo,
-      snapshot.rev,
-      path
-    );
+    return await transport.getBlobText(snapshot.owner, snapshot.repo, blobSha);
   } catch {
-    throw originErrors.definitionFailed("GitHub raw file request failed");
+    throw originErrors.definitionFailed("GitHub blob request failed");
   }
 };
 
@@ -328,7 +364,7 @@ const readResources = async (
     assertTextResourcePath(path);
 
     resources.push({
-      content: await readRawText(transport, snapshot, entry.path),
+      content: await readBlobText(transport, snapshot, entry.sha),
       path,
     });
   }
@@ -371,7 +407,7 @@ const readDefinition = async (
   skillFiles: GitHubSkillFile[]
 ): Promise<OriginSkillDefinition> => {
   const skillFile = findSkillFile(snapshot, selection, skillFiles);
-  const content = await readRawText(transport, snapshot, skillFile.path);
+  const content = await readBlobText(transport, snapshot, skillFile.sha);
   const metadata = parseSkillMetadata(content);
 
   return {

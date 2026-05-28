@@ -20,3 +20,5 @@ Architecture Decision Records capture important architecture decisions, their co
 - [ADR-0001: Define Skillpack as a Skills Management Platform](0001-skillpack-north-star.md) — proposed
 - [ADR-0002: Separate Skill Origin Adapters from Managed Skill Lifecycle](0002-origin-adapters.md) — proposed
 - [ADR-0003: Adopt a Turborepo Monorepo Layout](0003-turborepo-monorepo-layout.md) — accepted
+- [ADR-0004: Make Skillpack an OAuth Provider for Skill Access](0004-skillpack-oauth-provider.md) — proposed
+- [ADR-0005: Use OAuth App Credentials for Public GitHub Origin Reads](0005-public-github-origin-reads.md) — proposed

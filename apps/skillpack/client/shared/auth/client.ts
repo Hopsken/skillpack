@@ -8,13 +8,48 @@ const authClient = createAuthClient({
 
 const oidcProviderId = "oidc";
 
+export interface LoginProviders {
+  github: boolean;
+  oidc: boolean;
+}
+
 export const useSession = () => authClient.useSession();
+
+export const getLoginProviders = async (): Promise<LoginProviders> => {
+  const response = await fetch("/api/auth/login-providers");
+
+  if (!response.ok) {
+    throw new Error("Failed to load login providers");
+  }
+
+  const body: unknown = await response.json();
+
+  if (
+    !body ||
+    typeof body !== "object" ||
+    !("github" in body) ||
+    typeof body.github !== "boolean" ||
+    !("oidc" in body) ||
+    typeof body.oidc !== "boolean"
+  ) {
+    throw new Error("Invalid login provider response");
+  }
+
+  return { github: body.github, oidc: body.oidc };
+};
 
 export const signInWithOidc = (callbackURL: string) =>
   authClient.signIn.oauth2({
     callbackURL,
     errorCallbackURL: "/login",
     providerId: oidcProviderId,
+  });
+
+export const signInWithGitHub = (callbackURL: string) =>
+  authClient.signIn.social({
+    callbackURL,
+    errorCallbackURL: "/login",
+    provider: "github",
   });
 
 export const signOut = (onSuccess: () => void) =>
