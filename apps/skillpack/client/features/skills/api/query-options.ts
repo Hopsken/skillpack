@@ -27,6 +27,16 @@ import {
 } from "./requests";
 
 const originStaleTimeMs = 60_000;
+const versionedSkillGcTimeMs = 60 * 60_000;
+const versionedSkillStaleTimeMs = 10 * 60_000;
+
+const getSkillDetailCachePolicy = (version: number | undefined) =>
+  version
+    ? {
+        gcTime: versionedSkillGcTimeMs,
+        staleTime: versionedSkillStaleTimeMs,
+      }
+    : {};
 
 export const skillListQueryOptions = () =>
   queryOptions({
@@ -39,6 +49,7 @@ export const activeSkillQueryOptions = (
   version: number | undefined
 ) =>
   queryOptions<ResolvedSkill, Error, ResolvedSkill, QueryKey>({
+    ...getSkillDetailCachePolicy(version),
     queryFn: () =>
       version ? fetchSkillDetail(skillId, version) : fetchLatestSkill(skillId),
     queryKey: version
