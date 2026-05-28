@@ -1,4 +1,5 @@
 export {
+  useSkillDetailByName,
   useSkillDetail,
   useSkillFile,
   useSkillVersions,

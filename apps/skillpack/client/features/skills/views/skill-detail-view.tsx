@@ -25,7 +25,7 @@ const ResourceViewer = lazy(loadResourceViewer);
 
 interface SkillDetailViewProps {
   skill: ResolvedSkill | undefined;
-  skillId: number;
+  skillName: string;
   versions: SkillVersionItem[];
   versionsStatus: string;
   activeTab: SkillDetailTab;
@@ -42,7 +42,7 @@ interface ResourcesPanelProps {
 
 interface VersionsPanelProps {
   skill: ResolvedSkill | undefined;
-  skillId: number;
+  skillName: string;
   versions: SkillVersionItem[];
   versionsStatus: string;
   onRestoreVersion: (version: number) => Promise<void>;
@@ -195,7 +195,7 @@ const ResourcesPanel = ({
 
 const VersionsPanel = ({
   skill,
-  skillId,
+  skillName,
   versions,
   versionsStatus,
   onRestoreVersion,
@@ -208,9 +208,9 @@ const VersionsPanel = ({
           className={getVersionClassName(skill?.version === version.version)}
         >
           <Link
-            params={{ skillId }}
+            params={{ skillName }}
             search={{ tab: "versions", version: version.version }}
-            to="/skills/$skillId"
+            to="/skills/$skillName"
             className="grid min-w-0 flex-1 gap-1"
           >
             <span className="font-medium">
@@ -249,7 +249,7 @@ const VersionsPanel = ({
 
 export const SkillDetailView = ({
   skill,
-  skillId,
+  skillName,
   versions,
   versionsStatus,
   activeTab,
@@ -331,7 +331,7 @@ export const SkillDetailView = ({
           {activeTab === "versions" && (
             <VersionsPanel
               skill={skill}
-              skillId={skillId}
+              skillName={skillName}
               versions={versions}
               versionsStatus={versionsStatus}
               onRestoreVersion={onRestoreVersion}

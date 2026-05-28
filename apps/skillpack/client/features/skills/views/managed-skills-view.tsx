@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 
 import { EmptyManagedSkills } from "../components/empty-managed-skills";
 import { SkillRow } from "../components/skill-row";
+import { createSkillPath } from "../lib/routes";
 
 interface ManagedSkillsViewProps {
   skills: SkillListItem[];
@@ -32,7 +33,7 @@ export const ManagedSkillsView = ({
           <PlusIcon />
           Add
         </Button>
-        <Button size="sm" render={<Link to="/skills/new" />}>
+        <Button size="sm" render={<Link to={createSkillPath} />}>
           <PlusIcon />
           New
         </Button>

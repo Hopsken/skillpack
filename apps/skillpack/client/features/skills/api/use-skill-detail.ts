@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import {
+  activeSkillByNameQueryOptions,
   activeSkillQueryOptions,
   skillFileQueryOptions,
   skillVersionsQueryOptions,
@@ -11,6 +12,16 @@ export const useSkillDetail = (skillId: number, version: number | undefined) =>
     ...activeSkillQueryOptions(skillId, version),
     placeholderData: (previousSkill) =>
       previousSkill?.id === skillId ? previousSkill : undefined,
+  });
+
+export const useSkillDetailByName = (
+  skillName: string,
+  version: number | undefined
+) =>
+  useQuery({
+    ...activeSkillByNameQueryOptions(skillName, version),
+    placeholderData: (previousSkill) =>
+      previousSkill?.name === skillName ? previousSkill : undefined,
   });
 
 export const useSkillVersions = (skillId: number | undefined) =>

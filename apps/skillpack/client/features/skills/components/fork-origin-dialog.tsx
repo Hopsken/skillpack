@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useOriginDiscovery } from "../api/use-origin-discovery";
+import { addSkillPath } from "../lib/routes";
 
 interface ForkOriginDialogProps {
   open: boolean;
@@ -81,7 +82,7 @@ export const ForkOriginDialog = ({
     onOpenChange(false);
     void navigate({
       search: submittedOrigin,
-      to: "/skills/fork",
+      to: addSkillPath,
     });
   };
 

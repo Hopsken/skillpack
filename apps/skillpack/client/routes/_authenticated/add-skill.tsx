@@ -110,7 +110,7 @@ const ForkSkillRoute = () => {
   );
 };
 
-export const Route = createFileRoute("/_authenticated/skills/fork")({
+export const Route = createFileRoute("/_authenticated/add-skill")({
   component: ForkSkillRoute,
   validateSearch: zodValidator(forkSkillSearchSchema),
 });

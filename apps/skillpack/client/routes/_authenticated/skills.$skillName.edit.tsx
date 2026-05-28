@@ -1,12 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/_authenticated/skills/$skillId/edit")({
+export const Route = createFileRoute("/_authenticated/skills/$skillName/edit")({
   beforeLoad: ({ params }) => {
     throw redirect({
-      params: { skillId: params.skillId },
+      params: { skillName: params.skillName },
       replace: true,
       search: { tab: undefined, version: undefined },
-      to: "/skills/$skillId",
+      to: "/skills/$skillName",
     });
   },
 });

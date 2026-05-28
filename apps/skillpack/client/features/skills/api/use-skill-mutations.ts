@@ -8,9 +8,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
   latestSkillQueryKey,
+  skillQueryPrefix,
   skillDetailQueryPrefix,
   skillFileQueryPrefix,
-  skillListQueryKey,
   skillVersionsQueryKey,
 } from "./query-keys";
 import {
@@ -24,7 +24,7 @@ const invalidateSkillQueries = async (
   queryClient: ReturnType<typeof useQueryClient>,
   skillId: number | undefined
 ) => {
-  await queryClient.invalidateQueries({ queryKey: skillListQueryKey });
+  await queryClient.invalidateQueries({ queryKey: skillQueryPrefix });
   await queryClient.invalidateQueries({
     queryKey: latestSkillQueryKey(skillId),
   });
@@ -45,7 +45,7 @@ export const useCreateSkill = () => {
   return useMutation({
     mutationFn: (input: CreateSkillInput) => createManagedSkill(input),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: skillListQueryKey });
+      await queryClient.invalidateQueries({ queryKey: skillQueryPrefix });
     },
   });
 };
@@ -96,7 +96,7 @@ export const useForkSkill = () => {
   return useMutation({
     mutationFn: (input: ForkSkillInput) => forkManagedSkill(input),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: skillListQueryKey });
+      await queryClient.invalidateQueries({ queryKey: skillQueryPrefix });
     },
   });
 };

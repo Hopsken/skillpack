@@ -11,15 +11,15 @@ const CreateSkillRoute = () => {
   const submit = async (input: CreateSkillInput) => {
     const created = await createSkill.mutateAsync(input);
     await navigate({
-      params: { skillId: created.id },
+      params: { skillName: created.name },
       search: { tab: undefined, version: undefined },
-      to: "/skills/$skillId",
+      to: "/skills/$skillName",
     });
   };
 
   return <SkillFormView status="Draft" onSubmit={submit} />;
 };
 
-export const Route = createFileRoute("/_authenticated/skills/new")({
+export const Route = createFileRoute("/_authenticated/create-skill")({
   component: CreateSkillRoute,
 });

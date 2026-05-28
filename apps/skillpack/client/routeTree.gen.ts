@@ -14,11 +14,11 @@ import { Route as AuthenticatedRouteImport } from "./routes/_authenticated";
 import { Route as IndexRouteImport } from "./routes/index";
 import { Route as OauthConsentRouteImport } from "./routes/oauth.consent";
 import { Route as AuthenticatedSkillsRouteImport } from "./routes/_authenticated/skills";
+import { Route as AuthenticatedCreateSkillRouteImport } from "./routes/_authenticated/create-skill";
+import { Route as AuthenticatedAddSkillRouteImport } from "./routes/_authenticated/add-skill";
 import { Route as AuthenticatedSkillsIndexRouteImport } from "./routes/_authenticated/skills.index";
-import { Route as AuthenticatedSkillsNewRouteImport } from "./routes/_authenticated/skills.new";
-import { Route as AuthenticatedSkillsForkRouteImport } from "./routes/_authenticated/skills.fork";
-import { Route as AuthenticatedSkillsSkillIdRouteImport } from "./routes/_authenticated/skills.$skillId";
-import { Route as AuthenticatedSkillsSkillIdEditRouteImport } from "./routes/_authenticated/skills.$skillId.edit";
+import { Route as AuthenticatedSkillsSkillNameRouteImport } from "./routes/_authenticated/skills.$skillName";
+import { Route as AuthenticatedSkillsSkillNameEditRouteImport } from "./routes/_authenticated/skills.$skillName.edit";
 
 const LoginRoute = LoginRouteImport.update({
   id: "/login",
@@ -44,103 +44,104 @@ const AuthenticatedSkillsRoute = AuthenticatedSkillsRouteImport.update({
   path: "/skills",
   getParentRoute: () => AuthenticatedRoute,
 } as any);
+const AuthenticatedCreateSkillRoute =
+  AuthenticatedCreateSkillRouteImport.update({
+    id: "/create-skill",
+    path: "/create-skill",
+    getParentRoute: () => AuthenticatedRoute,
+  } as any);
+const AuthenticatedAddSkillRoute = AuthenticatedAddSkillRouteImport.update({
+  id: "/add-skill",
+  path: "/add-skill",
+  getParentRoute: () => AuthenticatedRoute,
+} as any);
 const AuthenticatedSkillsIndexRoute =
   AuthenticatedSkillsIndexRouteImport.update({
     id: "/",
     path: "/",
     getParentRoute: () => AuthenticatedSkillsRoute,
   } as any);
-const AuthenticatedSkillsNewRoute = AuthenticatedSkillsNewRouteImport.update({
-  id: "/new",
-  path: "/new",
-  getParentRoute: () => AuthenticatedSkillsRoute,
-} as any);
-const AuthenticatedSkillsForkRoute = AuthenticatedSkillsForkRouteImport.update({
-  id: "/fork",
-  path: "/fork",
-  getParentRoute: () => AuthenticatedSkillsRoute,
-} as any);
-const AuthenticatedSkillsSkillIdRoute =
-  AuthenticatedSkillsSkillIdRouteImport.update({
-    id: "/$skillId",
-    path: "/$skillId",
+const AuthenticatedSkillsSkillNameRoute =
+  AuthenticatedSkillsSkillNameRouteImport.update({
+    id: "/$skillName",
+    path: "/$skillName",
     getParentRoute: () => AuthenticatedSkillsRoute,
   } as any);
-const AuthenticatedSkillsSkillIdEditRoute =
-  AuthenticatedSkillsSkillIdEditRouteImport.update({
+const AuthenticatedSkillsSkillNameEditRoute =
+  AuthenticatedSkillsSkillNameEditRouteImport.update({
     id: "/edit",
     path: "/edit",
-    getParentRoute: () => AuthenticatedSkillsSkillIdRoute,
+    getParentRoute: () => AuthenticatedSkillsSkillNameRoute,
   } as any);
 
 export interface FileRoutesByFullPath {
   "/": typeof IndexRoute;
   "/login": typeof LoginRoute;
+  "/add-skill": typeof AuthenticatedAddSkillRoute;
+  "/create-skill": typeof AuthenticatedCreateSkillRoute;
   "/skills": typeof AuthenticatedSkillsRouteWithChildren;
   "/oauth/consent": typeof OauthConsentRoute;
-  "/skills/$skillId": typeof AuthenticatedSkillsSkillIdRouteWithChildren;
-  "/skills/fork": typeof AuthenticatedSkillsForkRoute;
-  "/skills/new": typeof AuthenticatedSkillsNewRoute;
+  "/skills/$skillName": typeof AuthenticatedSkillsSkillNameRouteWithChildren;
   "/skills/": typeof AuthenticatedSkillsIndexRoute;
-  "/skills/$skillId/edit": typeof AuthenticatedSkillsSkillIdEditRoute;
+  "/skills/$skillName/edit": typeof AuthenticatedSkillsSkillNameEditRoute;
 }
 export interface FileRoutesByTo {
   "/": typeof IndexRoute;
   "/login": typeof LoginRoute;
+  "/add-skill": typeof AuthenticatedAddSkillRoute;
+  "/create-skill": typeof AuthenticatedCreateSkillRoute;
   "/oauth/consent": typeof OauthConsentRoute;
-  "/skills/$skillId": typeof AuthenticatedSkillsSkillIdRouteWithChildren;
-  "/skills/fork": typeof AuthenticatedSkillsForkRoute;
-  "/skills/new": typeof AuthenticatedSkillsNewRoute;
+  "/skills/$skillName": typeof AuthenticatedSkillsSkillNameRouteWithChildren;
   "/skills": typeof AuthenticatedSkillsIndexRoute;
-  "/skills/$skillId/edit": typeof AuthenticatedSkillsSkillIdEditRoute;
+  "/skills/$skillName/edit": typeof AuthenticatedSkillsSkillNameEditRoute;
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport;
   "/": typeof IndexRoute;
   "/_authenticated": typeof AuthenticatedRouteWithChildren;
   "/login": typeof LoginRoute;
+  "/_authenticated/add-skill": typeof AuthenticatedAddSkillRoute;
+  "/_authenticated/create-skill": typeof AuthenticatedCreateSkillRoute;
   "/_authenticated/skills": typeof AuthenticatedSkillsRouteWithChildren;
   "/oauth/consent": typeof OauthConsentRoute;
-  "/_authenticated/skills/$skillId": typeof AuthenticatedSkillsSkillIdRouteWithChildren;
-  "/_authenticated/skills/fork": typeof AuthenticatedSkillsForkRoute;
-  "/_authenticated/skills/new": typeof AuthenticatedSkillsNewRoute;
+  "/_authenticated/skills/$skillName": typeof AuthenticatedSkillsSkillNameRouteWithChildren;
   "/_authenticated/skills/": typeof AuthenticatedSkillsIndexRoute;
-  "/_authenticated/skills/$skillId/edit": typeof AuthenticatedSkillsSkillIdEditRoute;
+  "/_authenticated/skills/$skillName/edit": typeof AuthenticatedSkillsSkillNameEditRoute;
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath;
   fullPaths:
     | "/"
     | "/login"
+    | "/add-skill"
+    | "/create-skill"
     | "/skills"
     | "/oauth/consent"
-    | "/skills/$skillId"
-    | "/skills/fork"
-    | "/skills/new"
+    | "/skills/$skillName"
     | "/skills/"
-    | "/skills/$skillId/edit";
+    | "/skills/$skillName/edit";
   fileRoutesByTo: FileRoutesByTo;
   to:
     | "/"
     | "/login"
+    | "/add-skill"
+    | "/create-skill"
     | "/oauth/consent"
-    | "/skills/$skillId"
-    | "/skills/fork"
-    | "/skills/new"
+    | "/skills/$skillName"
     | "/skills"
-    | "/skills/$skillId/edit";
+    | "/skills/$skillName/edit";
   id:
     | "__root__"
     | "/"
     | "/_authenticated"
     | "/login"
+    | "/_authenticated/add-skill"
+    | "/_authenticated/create-skill"
     | "/_authenticated/skills"
     | "/oauth/consent"
-    | "/_authenticated/skills/$skillId"
-    | "/_authenticated/skills/fork"
-    | "/_authenticated/skills/new"
+    | "/_authenticated/skills/$skillName"
     | "/_authenticated/skills/"
-    | "/_authenticated/skills/$skillId/edit";
+    | "/_authenticated/skills/$skillName/edit";
   fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
@@ -187,6 +188,20 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AuthenticatedSkillsRouteImport;
       parentRoute: typeof AuthenticatedRoute;
     };
+    "/_authenticated/create-skill": {
+      id: "/_authenticated/create-skill";
+      path: "/create-skill";
+      fullPath: "/create-skill";
+      preLoaderRoute: typeof AuthenticatedCreateSkillRouteImport;
+      parentRoute: typeof AuthenticatedRoute;
+    };
+    "/_authenticated/add-skill": {
+      id: "/_authenticated/add-skill";
+      path: "/add-skill";
+      fullPath: "/add-skill";
+      preLoaderRoute: typeof AuthenticatedAddSkillRouteImport;
+      parentRoute: typeof AuthenticatedRoute;
+    };
     "/_authenticated/skills/": {
       id: "/_authenticated/skills/";
       path: "/";
@@ -194,62 +209,46 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AuthenticatedSkillsIndexRouteImport;
       parentRoute: typeof AuthenticatedSkillsRoute;
     };
-    "/_authenticated/skills/new": {
-      id: "/_authenticated/skills/new";
-      path: "/new";
-      fullPath: "/skills/new";
-      preLoaderRoute: typeof AuthenticatedSkillsNewRouteImport;
+    "/_authenticated/skills/$skillName": {
+      id: "/_authenticated/skills/$skillName";
+      path: "/$skillName";
+      fullPath: "/skills/$skillName";
+      preLoaderRoute: typeof AuthenticatedSkillsSkillNameRouteImport;
       parentRoute: typeof AuthenticatedSkillsRoute;
     };
-    "/_authenticated/skills/fork": {
-      id: "/_authenticated/skills/fork";
-      path: "/fork";
-      fullPath: "/skills/fork";
-      preLoaderRoute: typeof AuthenticatedSkillsForkRouteImport;
-      parentRoute: typeof AuthenticatedSkillsRoute;
-    };
-    "/_authenticated/skills/$skillId": {
-      id: "/_authenticated/skills/$skillId";
-      path: "/$skillId";
-      fullPath: "/skills/$skillId";
-      preLoaderRoute: typeof AuthenticatedSkillsSkillIdRouteImport;
-      parentRoute: typeof AuthenticatedSkillsRoute;
-    };
-    "/_authenticated/skills/$skillId/edit": {
-      id: "/_authenticated/skills/$skillId/edit";
+    "/_authenticated/skills/$skillName/edit": {
+      id: "/_authenticated/skills/$skillName/edit";
       path: "/edit";
-      fullPath: "/skills/$skillId/edit";
-      preLoaderRoute: typeof AuthenticatedSkillsSkillIdEditRouteImport;
-      parentRoute: typeof AuthenticatedSkillsSkillIdRoute;
+      fullPath: "/skills/$skillName/edit";
+      preLoaderRoute: typeof AuthenticatedSkillsSkillNameEditRouteImport;
+      parentRoute: typeof AuthenticatedSkillsSkillNameRoute;
     };
   }
 }
 
-interface AuthenticatedSkillsSkillIdRouteChildren {
-  AuthenticatedSkillsSkillIdEditRoute: typeof AuthenticatedSkillsSkillIdEditRoute;
+interface AuthenticatedSkillsSkillNameRouteChildren {
+  AuthenticatedSkillsSkillNameEditRoute: typeof AuthenticatedSkillsSkillNameEditRoute;
 }
 
-const AuthenticatedSkillsSkillIdRouteChildren: AuthenticatedSkillsSkillIdRouteChildren =
+const AuthenticatedSkillsSkillNameRouteChildren: AuthenticatedSkillsSkillNameRouteChildren =
   {
-    AuthenticatedSkillsSkillIdEditRoute: AuthenticatedSkillsSkillIdEditRoute,
+    AuthenticatedSkillsSkillNameEditRoute:
+      AuthenticatedSkillsSkillNameEditRoute,
   };
 
-const AuthenticatedSkillsSkillIdRouteWithChildren =
-  AuthenticatedSkillsSkillIdRoute._addFileChildren(
-    AuthenticatedSkillsSkillIdRouteChildren,
+const AuthenticatedSkillsSkillNameRouteWithChildren =
+  AuthenticatedSkillsSkillNameRoute._addFileChildren(
+    AuthenticatedSkillsSkillNameRouteChildren,
   );
 
 interface AuthenticatedSkillsRouteChildren {
-  AuthenticatedSkillsSkillIdRoute: typeof AuthenticatedSkillsSkillIdRouteWithChildren;
-  AuthenticatedSkillsForkRoute: typeof AuthenticatedSkillsForkRoute;
-  AuthenticatedSkillsNewRoute: typeof AuthenticatedSkillsNewRoute;
+  AuthenticatedSkillsSkillNameRoute: typeof AuthenticatedSkillsSkillNameRouteWithChildren;
   AuthenticatedSkillsIndexRoute: typeof AuthenticatedSkillsIndexRoute;
 }
 
 const AuthenticatedSkillsRouteChildren: AuthenticatedSkillsRouteChildren = {
-  AuthenticatedSkillsSkillIdRoute: AuthenticatedSkillsSkillIdRouteWithChildren,
-  AuthenticatedSkillsForkRoute: AuthenticatedSkillsForkRoute,
-  AuthenticatedSkillsNewRoute: AuthenticatedSkillsNewRoute,
+  AuthenticatedSkillsSkillNameRoute:
+    AuthenticatedSkillsSkillNameRouteWithChildren,
   AuthenticatedSkillsIndexRoute: AuthenticatedSkillsIndexRoute,
 };
 
@@ -257,10 +256,14 @@ const AuthenticatedSkillsRouteWithChildren =
   AuthenticatedSkillsRoute._addFileChildren(AuthenticatedSkillsRouteChildren);
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedAddSkillRoute: typeof AuthenticatedAddSkillRoute;
+  AuthenticatedCreateSkillRoute: typeof AuthenticatedCreateSkillRoute;
   AuthenticatedSkillsRoute: typeof AuthenticatedSkillsRouteWithChildren;
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAddSkillRoute: AuthenticatedAddSkillRoute,
+  AuthenticatedCreateSkillRoute: AuthenticatedCreateSkillRoute,
   AuthenticatedSkillsRoute: AuthenticatedSkillsRouteWithChildren,
 };
 

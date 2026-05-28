@@ -26,10 +26,10 @@ describe("client auth", () => {
   it("starts GitHub social sign-in with the requested callback URL", async () => {
     const { signInWithGitHub } = await import("./client");
 
-    signInWithGitHub("/skills/fork");
+    signInWithGitHub("/add-skill");
 
     expect(signInSocial).toHaveBeenCalledWith({
-      callbackURL: "/skills/fork",
+      callbackURL: "/add-skill",
       errorCallbackURL: "/login",
       provider: "github",
     });

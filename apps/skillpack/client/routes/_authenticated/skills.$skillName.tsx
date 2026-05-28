@@ -1,14 +1,14 @@
 import {
-  skillIdSchema,
+  skillNameSchema,
   skillVersionNumberSchema,
 } from "@skillpack/core/primitives";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { activeSkillQueryOptions } from "@/features/skills/api/query-options";
+import { activeSkillByNameQueryOptions } from "@/features/skills/api/query-options";
 import {
-  useSkillDetail,
+  useSkillDetailByName,
   useSkillVersions,
 } from "@/features/skills/api/use-skill-detail";
 import { useRestoreSkillVersion } from "@/features/skills/api/use-skill-mutations";
@@ -26,7 +26,7 @@ const skillDetailSearchSchema = z.object({
 });
 
 const skillRouteParamsSchema = z.object({
-  skillId: skillIdSchema,
+  skillName: skillNameSchema,
 });
 
 const parseSkillRouteParams = (params: unknown) => {
@@ -36,25 +36,25 @@ const parseSkillRouteParams = (params: unknown) => {
 
 /* eslint-disable no-use-before-define -- Route exposes typed route-local hooks from the file route declared below. */
 const SkillDetailRoute = () => {
-  const { skillId } = Route.useParams();
+  const { skillName } = Route.useParams();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   /* eslint-enable no-use-before-define */
   const { version } = search;
-  const skillDetail = useSkillDetail(skillId, version);
-  const skillVersions = useSkillVersions(skillId);
-  const restoreVersion = useRestoreSkillVersion(skillId);
+  const skillDetail = useSkillDetailByName(skillName, version);
   const skill = skillDetail.data;
+  const skillVersions = useSkillVersions(skill?.id);
+  const restoreVersion = useRestoreSkillVersion(skill?.id);
 
   const { tab: activeTab } = search;
   const setActiveTab = (tab: SkillDetailTab) => {
     void navigate({
-      params: { skillId },
+      params: { skillName },
       search: {
         tab: tab === "skill" ? undefined : tab,
         version: search.version,
       },
-      to: "/skills/$skillId",
+      to: "/skills/$skillName",
     });
   };
 
@@ -79,7 +79,7 @@ const SkillDetailRoute = () => {
   return (
     <SkillDetailView
       skill={skill}
-      skillId={skillId}
+      skillName={skillName}
       versions={versions}
       versionsStatus={versionsStatus}
       activeTab={activeTab}
@@ -89,11 +89,11 @@ const SkillDetailRoute = () => {
   );
 };
 
-export const Route = createFileRoute("/_authenticated/skills/$skillId")({
+export const Route = createFileRoute("/_authenticated/skills/$skillName")({
   component: SkillDetailRoute,
   params: {
     parse: parseSkillRouteParams,
-    stringify: ({ skillId }) => ({ skillId: String(skillId) }),
+    stringify: ({ skillName }) => ({ skillName }),
   },
 
   loaderDeps: ({ search }) => ({
@@ -101,11 +101,11 @@ export const Route = createFileRoute("/_authenticated/skills/$skillId")({
   }),
 
   loader: ({ context, deps, params }) => {
-    const { skillId } = params;
+    const { skillName } = params;
     const { version } = deps;
 
     return context.queryClient.ensureQueryData(
-      activeSkillQueryOptions(skillId, version)
+      activeSkillByNameQueryOptions(skillName, version)
     );
   },
   validateSearch: zodValidator(skillDetailSearchSchema),

@@ -104,7 +104,7 @@ State management rule: TanStack Query owns server state from APIs; Zustand owns 
 ## Data Model Notes
 
 - Skillpack-managed skills are addressed by Skill ID.
-- Skill names are display metadata and may duplicate.
+- Skill names are user-scoped, immutable display metadata and are unique for each user.
 - Skill content is stored at `skills/skillpack/{skillId}/{versionNumber}/SKILL.md` in R2.
 - `skill_versions` keeps version metadata, object keys, SHA-256 values, resolved locations, and version labels.
 
@@ -113,8 +113,8 @@ State management rule: TanStack Query owns server state from APIs; Zustand owns 
 ```text
 GET  /api/health
 GET  /api/v1/skills
-GET  /api/v1/skills/:skillId
-GET  /api/v1/skills/:skillId?version=:version
+GET  /api/v1/skills/:identifier
+GET  /api/v1/skills/:identifier?version=:version
 GET  /api/v1/skills/:skillId/resources?version=:version&path=:path
 GET  /api/v1/skills/:skillId/resources/raw?version=:version&path=:path
 POST /api/v1/skills

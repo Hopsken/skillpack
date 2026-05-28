@@ -129,8 +129,8 @@ pnpm deploy
 ```text
 GET  /api/health
 GET  /api/v1/skills
-GET  /api/v1/skills/:skillId
-GET  /api/v1/skills/:skillId?version=
+GET  /api/v1/skills/:identifier
+GET  /api/v1/skills/:identifier?version=
 GET  /api/v1/skills/:skillId/versions
 GET  /api/v1/skills/:skillId/resources?version=&path=
 GET  /api/v1/skills/:skillId/resources/raw?version=&path=
@@ -166,8 +166,9 @@ curl -X POST http://localhost:5173/api/v1/skills \
   }'
 ```
 
-Created Skillpack-managed skills are addressed by Skill ID:
+Created Skillpack-managed skills can be resolved by Skill ID or Skill Name:
 
 ```text
 /api/v1/skills/1
+/api/v1/skills/demo
 ```

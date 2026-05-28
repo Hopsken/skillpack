@@ -1,4 +1,5 @@
 export const skillListQueryKey = ["skills", "list"] as const;
+export const skillQueryPrefix = ["skills"] as const;
 
 export const skillDetailQueryKey = (
   skillId: number | undefined,
@@ -10,6 +11,14 @@ export const skillDetailQueryPrefix = (skillId: number | undefined) =>
 
 export const latestSkillQueryKey = (skillId: number | undefined) =>
   ["skills", "latest", skillId] as const;
+
+export const skillDetailByNameQueryKey = (
+  skillName: string | undefined,
+  version?: number
+) => ["skills", "detail-by-name", skillName, version] as const;
+
+export const latestSkillByNameQueryKey = (skillName: string | undefined) =>
+  ["skills", "latest-by-name", skillName] as const;
 
 export const skillVersionsQueryKey = (skillId: number | undefined) =>
   ["skills", "versions", skillId] as const;

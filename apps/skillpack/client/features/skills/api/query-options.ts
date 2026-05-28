@@ -8,9 +8,11 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { getOriginQueryKeyPart } from "../lib/origin-url";
 import {
+  latestSkillByNameQueryKey,
   latestSkillQueryKey,
   originDefinitionQueryKey,
   originDiscoveryQueryKey,
+  skillDetailByNameQueryKey,
   skillDetailQueryKey,
   skillFileQueryKey,
   skillListQueryKey,
@@ -19,7 +21,9 @@ import {
 import {
   discoverOriginSkills,
   fetchLatestSkill,
+  fetchLatestSkillByName,
   fetchSkillDetail,
+  fetchSkillDetailByName,
   fetchSkillFile,
   fetchSkillList,
   fetchSkillVersions,
@@ -55,6 +59,21 @@ export const activeSkillQueryOptions = (
     queryKey: version
       ? skillDetailQueryKey(skillId, version)
       : latestSkillQueryKey(skillId),
+  });
+
+export const activeSkillByNameQueryOptions = (
+  skillName: string,
+  version: number | undefined
+) =>
+  queryOptions<ResolvedSkill, Error, ResolvedSkill, QueryKey>({
+    ...getSkillDetailCachePolicy(version),
+    queryFn: () =>
+      version
+        ? fetchSkillDetailByName(skillName, version)
+        : fetchLatestSkillByName(skillName),
+    queryKey: version
+      ? skillDetailByNameQueryKey(skillName, version)
+      : latestSkillByNameQueryKey(skillName),
   });
 
 export const skillVersionsQueryOptions = (skillId: number) =>

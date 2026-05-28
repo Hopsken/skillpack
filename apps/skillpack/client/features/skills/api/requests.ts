@@ -51,12 +51,29 @@ export const fetchLatestSkill = async (
   return resolvedSkillSchema.parse(data);
 };
 
+export const fetchLatestSkillByName = async (
+  skillName: string
+): Promise<ResolvedSkill> => {
+  const data = await api.get(`skills/${skillName}`).json();
+  return resolvedSkillSchema.parse(data);
+};
+
 export const fetchSkillDetail = async (
   skillId: number,
   version: number
 ): Promise<ResolvedSkill> => {
   const data = await api
     .get(`skills/${skillId}`, { searchParams: { version } })
+    .json();
+  return resolvedSkillSchema.parse(data);
+};
+
+export const fetchSkillDetailByName = async (
+  skillName: string,
+  version: number
+): Promise<ResolvedSkill> => {
+  const data = await api
+    .get(`skills/${skillName}`, { searchParams: { version } })
     .json();
   return resolvedSkillSchema.parse(data);
 };
