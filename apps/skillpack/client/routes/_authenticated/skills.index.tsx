@@ -1,20 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { skillListQueryOptions } from "@/features/skills/api/queries";
+import { skillListQueryOptions } from "@/features/skills/api/query-options";
 import { useSkillList } from "@/features/skills/api/use-skill-list";
 import { ForkOriginDialog } from "@/features/skills/components/fork-origin-dialog";
 import { ManagedSkillsSkeleton } from "@/features/skills/components/skill-page-skeletons";
 import { ManagedSkillsView } from "@/features/skills/views/managed-skills-view";
 
 const ManagedSkillsRoute = () => {
-  const { isLoading, isPending, skills, refresh } = useSkillList();
+  const skillList = useSkillList();
+  const skills = skillList.data ?? [];
   const [forkDialogOpen, setForkDialogOpen] = useState(false);
-  const status = isLoading
+  const status = skillList.isLoading
     ? "Loading skills..."
     : `${skills.length} skills loaded`;
 
-  if (isPending) {
+  if (skillList.isPending) {
     return <ManagedSkillsSkeleton />;
   }
 
@@ -24,7 +25,7 @@ const ManagedSkillsRoute = () => {
         skills={skills}
         status={status}
         onFork={() => setForkDialogOpen(true)}
-        onRefresh={refresh}
+        onRefresh={skillList.refetch}
       />
       <ForkOriginDialog
         open={forkDialogOpen}

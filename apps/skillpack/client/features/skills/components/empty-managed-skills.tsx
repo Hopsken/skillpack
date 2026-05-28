@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 interface EmptyManagedSkillsProps {
   status: string;
-  onRefresh: () => Promise<void>;
+  onRefresh: () => void;
 }
 
 export const EmptyManagedSkills = ({

@@ -38,9 +38,8 @@ type SkillFormInput = z.infer<typeof skillFormSchema>;
 export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
   const [submitStatus, setSubmitStatus] = useState(status);
   const skillList = useSkillList();
-  const skillNameKey = skillList.skills
-    .map((listItem) => listItem.name)
-    .join("\0");
+  const skills = skillList.data ?? [];
+  const skillNameKey = skills.map((listItem) => listItem.name).join("\0");
   const existingSkillNames = useMemo(
     () => new Set(skillNameKey ? skillNameKey.split("\0") : []),
     [skillNameKey]

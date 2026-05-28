@@ -1,32 +1,9 @@
-import type { SkillListItem } from "@skillpack/contracts/skills/responses";
 import { useQuery } from "@tanstack/react-query";
 
-import { skillListQueryOptions } from "./queries";
+import { skillListQueryOptions } from "./query-options";
 
-export interface SkillListState {
-  isFetching: boolean;
-  isLoading: boolean;
-  isPending: boolean;
-  skills: SkillListItem[];
-  refresh: () => Promise<void>;
-}
-
-export const useSkillList = (): SkillListState => {
-  const query = useQuery({
+export const useSkillList = () =>
+  useQuery({
     ...skillListQueryOptions(),
+    select: (data) => data.skills,
   });
-
-  const skills = query.data?.skills ?? [];
-
-  const refresh = async (): Promise<void> => {
-    await query.refetch();
-  };
-
-  return {
-    isFetching: query.isFetching,
-    isLoading: query.isLoading,
-    isPending: query.isPending,
-    refresh,
-    skills,
-  };
-};

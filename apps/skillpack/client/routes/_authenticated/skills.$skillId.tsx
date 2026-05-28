@@ -14,7 +14,7 @@ import { z } from "zod";
 import {
   latestSkillQueryOptions,
   skillDetailQueryOptions,
-} from "@/features/skills/api/queries";
+} from "@/features/skills/api/query-options";
 import {
   useLatestSkill,
   useSkillDetail,
@@ -53,7 +53,7 @@ const SkillDetailRoute = () => {
   const skillVersions = useSkillVersions(skillId);
   const restoreVersion = useRestoreSkillVersion(skillId);
   const activeSkillQuery = version ? versionedSkill : latestSkill;
-  const { skill } = activeSkillQuery;
+  const skill = activeSkillQuery.data;
 
   const { tab: activeTab } = search;
   const setActiveTab = (tab: SkillDetailTab) => {
@@ -75,7 +75,8 @@ const SkillDetailRoute = () => {
       version: versionNumber,
     });
   };
-  const versionCount = skillVersions.versions?.versions.length ?? 0;
+  const versions = skillVersions.data ?? [];
+  const versionCount = versions.length;
   const versionsStatus = skillVersions.isPending
     ? "Loading versions..."
     : `${versionCount} versions loaded`;
@@ -88,7 +89,7 @@ const SkillDetailRoute = () => {
     <SkillDetailView
       skill={skill}
       skillId={skillId}
-      versions={skillVersions.versions?.versions ?? []}
+      versions={versions}
       versionsStatus={versionsStatus}
       activeTab={activeTab}
       onTabChange={setActiveTab}

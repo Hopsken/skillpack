@@ -54,7 +54,7 @@ export const ForkOriginDialog = ({
   });
   const repoUrlError = form.formState.errors.repoUrl;
   const discovery = useOriginDiscovery(submittedOrigin);
-  const discoveredSkills = discovery.discovery?.candidates ?? [];
+  const discoveredSkills = discovery.data?.candidates ?? [];
   const visibleDiscoveredSkills = discoveredSkills.slice(
     0,
     visibleDiscoveredSkillLimit
@@ -64,14 +64,14 @@ export const ForkOriginDialog = ({
   const canContinue = discoveredSkills.length > 0;
 
   useEffect(() => {
-    if (!submittedOrigin || !discovery.discovery) {
+    if (!submittedOrigin || !discovery.data) {
       return;
     }
 
-    if (discovery.discovery.candidates.length === 0) {
+    if (discovery.data.candidates.length === 0) {
       toast.info("No skills found.");
     }
-  }, [discovery.discovery, submittedOrigin]);
+  }, [discovery.data, submittedOrigin]);
 
   const continueToFork = () => {
     if (!submittedOrigin || !canContinue) {

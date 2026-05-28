@@ -81,7 +81,7 @@ const getPreviewStatus = ({
   discovery: DiscoverSkillsResponse | undefined;
   error: Error | null;
   isLoading: boolean;
-  result: ReturnType<typeof useOriginSkillDefinition>["result"];
+  result: ReturnType<typeof useOriginSkillDefinition>["data"];
   status: string;
 }) => {
   if (!activeCandidate) {
@@ -228,15 +228,15 @@ export const SkillForkView = ({
     activeCandidate?.selection
   );
   const previewDefinition =
-    definitionPreview.result?.status === "resolved"
-      ? definitionPreview.result.definition
+    definitionPreview.data?.status === "resolved"
+      ? definitionPreview.data.definition
       : undefined;
   const previewStatus = getPreviewStatus({
     activeCandidate,
     discovery,
     error: definitionPreview.error,
     isLoading: definitionPreview.isLoading,
-    result: definitionPreview.result,
+    result: definitionPreview.data,
     status,
   });
   useEffect(() => {

@@ -51,6 +51,7 @@ const ForkSkillRoute = () => {
   const skillList = useSkillList();
   const origin = search.kind ? search : undefined;
   const discovery = useOriginDiscovery(origin);
+  const discoveredSkills = discovery.data?.candidates ?? [];
   const [forkDialogOpen, setForkDialogOpen] = useState(!origin);
 
   const submit = useCallback(
@@ -60,10 +61,10 @@ const ForkSkillRoute = () => {
     [forkSkillAsync]
   );
 
-  const discoveredSkillCount = discovery.discovery?.candidates.length ?? 0;
+  const discoveredSkillCount = discoveredSkills.length;
   const existingSkillNames = useMemo(
-    () => skillList.skills.map((skill) => skill.name),
-    [skillList.skills]
+    () => (skillList.data ?? []).map((skill) => skill.name),
+    [skillList.data]
   );
   const discoveryStatus = getDiscoveryStatus(
     discoveredSkillCount,
@@ -94,7 +95,7 @@ const ForkSkillRoute = () => {
   return (
     <>
       <SkillForkView
-        discovery={discovery.discovery}
+        discovery={discovery.data}
         existingSkillNames={existingSkillNames}
         origin={origin}
         status={discoveryStatus}

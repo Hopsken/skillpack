@@ -78,6 +78,7 @@ The frontend architecture relies on a strict split between server state and clie
 
 - TanStack Query owns all server state: anything fetched from an API belongs in the Query cache.
 - Keep server state fresh through invalidation after mutations or push events. Do not duplicate it into Zustand stores, and avoid polling or `staleTime` workarounds as architectural fixes.
+- For feature API code, keep query keys, request adapters, query descriptors, and React hooks as separate concepts. Query descriptors combine `queryKey`, `queryFn`, and cache policy for reuse by route loaders and hooks, but they must not include `select`. Put `select` only in `use-*` hooks when a hook should expose a narrower `data` shape.
 - Zustand owns client state: UI selections, filters, drafts, modal state, and other interaction state.
 - Zustand stores should live with the owning workflow under `features/<feature>/store/`. Use zustand vanilla stores (not react hooks) when possible.
 - React Context is reserved for cross-cutting platform plumbing, such as providers for workspace, navigation, theme, or app shell concerns. Do not use it for general feature state.

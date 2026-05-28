@@ -36,53 +36,13 @@ import type {
   SkillResourceResponse,
   SkillVersionListResponse,
 } from "@skillpack/contracts/skills/responses";
-import { queryOptions } from "@tanstack/react-query";
 
 import { api } from "@/shared/api/client";
-
-export const skillListQueryKey = ["skills", "list"] as const;
-
-export const skillDetailQueryKey = (
-  skillId: number | undefined,
-  version?: number
-) => ["skills", "detail", skillId, version] as const;
-
-export const skillDetailQueryPrefix = (skillId: number | undefined) =>
-  ["skills", "detail", skillId] as const;
-
-export const latestSkillQueryKey = (skillId: number | undefined) =>
-  ["skills", "latest", skillId] as const;
-
-export const skillVersionsQueryKey = (skillId: number | undefined) =>
-  ["skills", "versions", skillId] as const;
-
-export const skillFileQueryKey = (
-  skillId: number | undefined,
-  version: number | undefined,
-  path: string | undefined
-) => ["skills", "file", skillId, version, path] as const;
-
-export const skillFileQueryPrefix = (skillId: number | undefined) =>
-  ["skills", "file", skillId] as const;
-
-export const originDiscoveryQueryKey = (originKey: string | undefined) =>
-  ["origins", "discover", originKey] as const;
-
-export const originDefinitionQueryKey = (
-  originKey: string | undefined,
-  skillName: string | undefined
-) => ["origins", "definitions", originKey, skillName] as const;
 
 export const fetchSkillList = async (): Promise<SkillListResponse> => {
   const data = await api.get("skills").json();
   return skillListResponseSchema.parse(data);
 };
-
-export const skillListQueryOptions = () =>
-  queryOptions({
-    queryFn: fetchSkillList,
-    queryKey: skillListQueryKey,
-  });
 
 export const fetchLatestSkill = async (
   skillId: number
@@ -90,12 +50,6 @@ export const fetchLatestSkill = async (
   const data = await api.get(`skills/${skillId}`).json();
   return resolvedSkillSchema.parse(data);
 };
-
-export const latestSkillQueryOptions = (skillId: number) =>
-  queryOptions({
-    queryFn: () => fetchLatestSkill(skillId),
-    queryKey: latestSkillQueryKey(skillId),
-  });
 
 export const fetchSkillDetail = async (
   skillId: number,
@@ -106,12 +60,6 @@ export const fetchSkillDetail = async (
     .json();
   return resolvedSkillSchema.parse(data);
 };
-
-export const skillDetailQueryOptions = (skillId: number, version: number) =>
-  queryOptions({
-    queryFn: () => fetchSkillDetail(skillId, version),
-    queryKey: skillDetailQueryKey(skillId, version),
-  });
 
 export const fetchSkillVersions = async (
   skillId: number

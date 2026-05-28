@@ -12,7 +12,7 @@ interface ManagedSkillsViewProps {
   skills: SkillListItem[];
   status: string;
   onFork: () => void;
-  onRefresh: () => Promise<void>;
+  onRefresh: () => void;
 }
 
 export const ManagedSkillsView = ({

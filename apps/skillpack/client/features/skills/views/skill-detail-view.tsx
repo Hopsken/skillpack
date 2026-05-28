@@ -137,7 +137,7 @@ const ResourcesPanel = ({
     selectedResource?.path
   );
   const viewerStatus = selectedResource
-    ? getResourceContentStatus(skillFile.file, skillFile.isLoading)
+    ? getResourceContentStatus(skillFile.data, skillFile.isLoading)
     : fileContentStatus;
 
   return (
@@ -182,7 +182,7 @@ const ResourcesPanel = ({
           }
         >
           <ResourceViewer
-            file={skillFile.file}
+            file={skillFile.data}
             rawUrl={rawUrl}
             resource={selectedResource}
             status={viewerStatus}

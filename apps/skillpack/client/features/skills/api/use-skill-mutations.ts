@@ -7,16 +7,18 @@ import type {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
-  createManagedSkill,
-  forkManagedSkill,
   latestSkillQueryKey,
-  patchManagedSkill,
-  restoreManagedSkillVersion,
   skillDetailQueryPrefix,
   skillFileQueryPrefix,
   skillListQueryKey,
   skillVersionsQueryKey,
-} from "./queries";
+} from "./query-keys";
+import {
+  createManagedSkill,
+  forkManagedSkill,
+  patchManagedSkill,
+  restoreManagedSkillVersion,
+} from "./requests";
 
 const invalidateSkillQueries = async (
   queryClient: ReturnType<typeof useQueryClient>,
