@@ -19,7 +19,7 @@ apps/skillpack/client/
   main.tsx
   styles.css
 
-  pages/        # route entry points; intentionally thin
+  routes/       # TanStack Router file-based route definitions
   features/     # user workflows, state orchestration, feature-specific API hooks
   domain/       # business models and pure business logic
   components/      # reusable business UI blocks
@@ -29,7 +29,7 @@ apps/skillpack/client/
 
 Use this rule of thumb:
 
-- `pages/`: route boundary.
+- `routes/`: framework route definitions, loaders, route guards, search validation, route-level error/pending boundaries, and thin route composition.
 - `features/`: user-visible workflows and interaction state.
 - `domain/`: business concepts, rules, validation, transformation, serialization.
 - `components/`: reusable, business-aware UI blocks.
@@ -40,13 +40,13 @@ Use this rule of thumb:
 Allowed dependency direction:
 
 ```text
-pages
+routes
   -> features
   -> components
   -> domain
   -> shared
 
-pages may also import components and shared directly when the route really is just composition.
+routes may also import components and shared directly when the route really is just composition.
 features may also import domain and shared directly.
 components may import domain and shared.
 domain may import shared only when the dependency is truly generic.
@@ -82,24 +82,24 @@ The frontend architecture relies on a strict split between server state and clie
 - Zustand stores should live with the owning workflow under `features/<feature>/store/`. Use zustand vanilla stores (not react hooks) when possible.
 - React Context is reserved for cross-cutting platform plumbing, such as providers for workspace, navigation, theme, or app shell concerns. Do not use it for general feature state.
 
-## `pages/`
+## `routes/`
 
-`pages/` contains route entry points. Pages should stay thin.
+`routes/` contains TanStack Router file-based route definitions and thin route composition. Route files should stay focused on framework concerns and delegate reusable workflows to feature views.
 
-A page may:
+A route may:
 
-- read route params/search params;
-- choose page-level layout;
-- render a feature view;
-- provide route-level suspense/error boundaries.
+- define path/search params and search validation;
+- run route guards such as auth `beforeLoad`;
+- load critical page data through TanStack Query using router context;
+- provide route-level pending, error, and not-found boundaries.
 
-A page should not:
+A route should not:
 
-- own complex Zustand state;
-- normalize datasets;
-- validate chart definitions;
-- contain chart-building workflow logic;
-- implement reusable chart UI.
+- duplicate API data into local state;
+- implement reusable workflow UI;
+- own complex client interaction state.
+
+Use route loaders only for data needed to render the first useful page state. Keep slow or optional reads, tab-only reads, resource content, and preview fetches in component-level TanStack Query hooks.
 
 ## `features/`
 
@@ -145,7 +145,8 @@ Do not use `shared/` as a dumping ground for cross-feature business logic. Prefe
 
 | File kind                                  | Location                         |
 | ------------------------------------------ | -------------------------------- |
-| Route component                            | `pages/`                         |
+| TanStack Router file route                 | `routes/`                        |
+| Thin route composition                     | `routes/`                        |
 | Top-level workflow view                    | `features/<feature>/views/`      |
 | Zustand store for one workflow             | `features/<feature>/store/`      |
 | React Query hook used only by one workflow | `features/<feature>/api/`        |

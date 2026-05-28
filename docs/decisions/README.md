@@ -22,3 +22,4 @@ Architecture Decision Records capture important architecture decisions, their co
 - [ADR-0003: Adopt a Turborepo Monorepo Layout](0003-turborepo-monorepo-layout.md) — accepted
 - [ADR-0004: Make Skillpack an OAuth Provider for Skill Access](0004-skillpack-oauth-provider.md) — proposed
 - [ADR-0005: Use OAuth App Credentials for Public GitHub Origin Reads](0005-public-github-origin-reads.md) — proposed
+- [ADR-0006: Use TanStack Router File-Based Routing for the SPA](0006-tanstack-router-file-based-routing.md) — accepted

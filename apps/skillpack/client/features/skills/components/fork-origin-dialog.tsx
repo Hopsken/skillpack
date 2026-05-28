@@ -1,10 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { SkillOriginInput } from "@skillpack/contracts/origins/requests";
 import { githubOriginSchema } from "@skillpack/contracts/origins/requests";
+import { useNavigate } from "@tanstack/react-router";
 import { ArrowRightIcon, SearchIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -28,7 +28,6 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useOriginDiscovery } from "../api/use-origin-discovery";
-import { toOriginSearchParams } from "../lib/origin-url";
 
 interface ForkOriginDialogProps {
   open: boolean;
@@ -80,7 +79,10 @@ export const ForkOriginDialog = ({
     }
 
     onOpenChange(false);
-    void navigate(`/skills/fork?${toOriginSearchParams(submittedOrigin)}`);
+    void navigate({
+      search: submittedOrigin,
+      to: "/skills/fork",
+    });
   };
 
   const submit = (input: ForkOriginFormInput) => {

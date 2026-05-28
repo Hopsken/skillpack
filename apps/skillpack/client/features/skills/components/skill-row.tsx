@@ -1,5 +1,5 @@
 import type { SkillListItem } from "@skillpack/contracts/skills/responses";
-import { Link } from "react-router";
+import { Link } from "@tanstack/react-router";
 
 interface SkillRowProps {
   skill: SkillListItem;
@@ -8,7 +8,9 @@ interface SkillRowProps {
 export const SkillRow = ({ skill }: SkillRowProps) => (
   <article className="border-b border-border last:border-b-0 hover:bg-muted/40">
     <Link
-      to={`/skills/${skill.id}`}
+      params={{ skillId: skill.id }}
+      search={{ tab: undefined, version: undefined }}
+      to="/skills/$skillId"
       className="flex items-start justify-between gap-4 px-6 py-3"
     >
       <div className="min-w-0 flex-1">

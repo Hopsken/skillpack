@@ -1,6 +1,13 @@
+import { skillOriginSchema } from "@skillpack/contracts/origins/requests";
 import type { ForkSkillInput } from "@skillpack/contracts/skills/requests";
+import {
+  createFileRoute,
+  useNavigate,
+  useSearch,
+} from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +17,19 @@ import {
   useOriginDiscovery,
   useSkillList,
 } from "@/features/skills";
-import { parseOriginSearchParams } from "@/features/skills/lib/origin-url";
+
+const noForkOriginSearchSchema = z.object({
+  branch: z.undefined().optional(),
+  kind: z.undefined().optional(),
+  packageName: z.undefined().optional(),
+  repoUrl: z.undefined().optional(),
+  rev: z.undefined().optional(),
+  version: z.undefined().optional(),
+});
+const forkSkillSearchSchema = z.union([
+  skillOriginSchema,
+  noForkOriginSearchSchema,
+]);
 
 const getDiscoveryStatus = (skillCount: number, isLoading: boolean) => {
   if (isLoading) {
@@ -24,16 +43,13 @@ const getDiscoveryStatus = (skillCount: number, isLoading: boolean) => {
   return `Found ${skillCount} skills`;
 };
 
-export const ForkSkillPage = () => {
+const ForkSkillRoute = () => {
   const forkSkill = useForkSkill();
   const forkSkillAsync = forkSkill.mutateAsync;
   const navigate = useNavigate();
+  const search = useSearch({ from: "/_authenticated/skills/fork" });
   const skillList = useSkillList();
-  const [searchParams] = useSearchParams();
-  const origin = useMemo(
-    () => parseOriginSearchParams(searchParams),
-    [searchParams]
-  );
+  const origin = search.kind ? search : undefined;
   const discovery = useOriginDiscovery(origin);
   const [forkDialogOpen, setForkDialogOpen] = useState(!origin);
 
@@ -56,7 +72,7 @@ export const ForkSkillPage = () => {
 
   if (!origin) {
     return (
-      <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
+      <>
         <header className="flex h-16 shrink-0 items-center border-b border-border bg-background px-6">
           <h1 className="truncate text-lg font-semibold tracking-tight">
             Add from GitHub
@@ -71,7 +87,7 @@ export const ForkSkillPage = () => {
           open={forkDialogOpen}
           onOpenChange={setForkDialogOpen}
         />
-      </main>
+      </>
     );
   }
 
@@ -82,7 +98,9 @@ export const ForkSkillPage = () => {
         existingSkillNames={existingSkillNames}
         origin={origin}
         status={discoveryStatus}
-        onComplete={() => navigate("/skills")}
+        onComplete={() => {
+          void navigate({ to: "/skills" });
+        }}
         onSubmit={submit}
       />
       <ForkOriginDialog
@@ -92,3 +110,8 @@ export const ForkSkillPage = () => {
     </>
   );
 };
+
+export const Route = createFileRoute("/_authenticated/skills/fork")({
+  component: ForkSkillRoute,
+  validateSearch: zodValidator(forkSkillSearchSchema),
+});

@@ -1,5 +1,5 @@
+import { Link, useLocation } from "@tanstack/react-router";
 import { LibraryIcon, LogOutIcon } from "lucide-react";
-import { matchPath, NavLink, useLocation } from "react-router";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -13,12 +13,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { signOut, useSession } from "@/shared/auth/client";
-
-const managedSkillsActivePatterns = ["/skills/*"] as const;
-
-const matchesAnyPath = (pathname: string, patterns: readonly string[]) =>
-  patterns.some((pattern) => matchPath(pattern, pathname));
+import { signOut } from "@/shared/auth/client";
+import type { Session } from "@/shared/auth/client";
 
 const signOutAndRedirect = async () => {
   await signOut(() => {
@@ -26,15 +22,11 @@ const signOutAndRedirect = async () => {
   });
 };
 
-export const AppSidebar = () => {
-  const { pathname } = useLocation();
-  const session = useSession();
-  const isManagedSkillsActive = matchesAnyPath(
-    pathname,
-    managedSkillsActivePatterns
-  );
-  const userName = session.data?.user.name ?? "Account";
-  const userImage = session.data?.user.image;
+export const AppSidebar = ({ session }: { session: Session }) => {
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const isManagedSkillsActive = pathname.startsWith("/skills");
+  const userName = session.user.name ?? "Account";
+  const userImage = session.user.image;
   const userInitial = userName.trim().charAt(0).toUpperCase() || "A";
 
   return (
@@ -56,7 +48,7 @@ export const AppSidebar = () => {
                   size="lg"
                   tooltip="Library"
                   className="font-medium"
-                  render={<NavLink to="/skills" />}
+                  render={<Link to="/skills" />}
                 >
                   <LibraryIcon />
                   <span>Library</span>

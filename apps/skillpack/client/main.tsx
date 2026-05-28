@@ -1,12 +1,12 @@
 import { QueryClientProvider } from "@tanstack/react-query";
+import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router";
 
 import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/shared/api/query-client";
 
-import { App } from "./app";
+import { router } from "./router";
 
 import "overlayscrollbars/overlayscrollbars.css";
 import "./styles.css";
@@ -20,10 +20,8 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-        <Toaster />
-      </BrowserRouter>
+      <RouterProvider router={router} />
+      <Toaster />
     </QueryClientProvider>
   </StrictMode>
 );

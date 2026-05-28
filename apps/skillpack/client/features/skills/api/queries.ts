@@ -36,6 +36,7 @@ import type {
   SkillResourceResponse,
   SkillVersionListResponse,
 } from "@skillpack/contracts/skills/responses";
+import { queryOptions } from "@tanstack/react-query";
 
 import { api } from "@/shared/api/client";
 
@@ -77,12 +78,24 @@ export const fetchSkillList = async (): Promise<SkillListResponse> => {
   return skillListResponseSchema.parse(data);
 };
 
+export const skillListQueryOptions = () =>
+  queryOptions({
+    queryFn: fetchSkillList,
+    queryKey: skillListQueryKey,
+  });
+
 export const fetchLatestSkill = async (
   skillId: number
 ): Promise<ResolvedSkill> => {
   const data = await api.get(`skills/${skillId}`).json();
   return resolvedSkillSchema.parse(data);
 };
+
+export const latestSkillQueryOptions = (skillId: number) =>
+  queryOptions({
+    queryFn: () => fetchLatestSkill(skillId),
+    queryKey: latestSkillQueryKey(skillId),
+  });
 
 export const fetchSkillDetail = async (
   skillId: number,
@@ -93,6 +106,12 @@ export const fetchSkillDetail = async (
     .json();
   return resolvedSkillSchema.parse(data);
 };
+
+export const skillDetailQueryOptions = (skillId: number, version: number) =>
+  queryOptions({
+    queryFn: () => fetchSkillDetail(skillId, version),
+    queryKey: skillDetailQueryKey(skillId, version),
+  });
 
 export const fetchSkillVersions = async (
   skillId: number

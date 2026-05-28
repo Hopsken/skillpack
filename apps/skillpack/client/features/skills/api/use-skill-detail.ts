@@ -6,36 +6,42 @@ import type {
 import { useQuery } from "@tanstack/react-query";
 
 import {
-  fetchLatestSkill,
-  fetchSkillDetail,
   fetchSkillFile,
   fetchSkillVersions,
-  latestSkillQueryKey,
-  skillDetailQueryKey,
+  latestSkillQueryOptions,
+  skillDetailQueryOptions,
   skillFileQueryKey,
   skillVersionsQueryKey,
 } from "./queries";
 
 interface SkillDetailState {
+  isFetching: boolean;
   isLoading: boolean;
+  isPending: boolean;
   skill: ResolvedSkill | undefined;
   refresh: () => Promise<void>;
 }
 
 interface LatestSkillState {
+  isFetching: boolean;
   isLoading: boolean;
+  isPending: boolean;
   skill: ResolvedSkill | undefined;
   refresh: () => Promise<void>;
 }
 
 interface SkillVersionsState {
+  isFetching: boolean;
   isLoading: boolean;
+  isPending: boolean;
   versions: SkillVersionListResponse | undefined;
 }
 
 interface SkillFileState {
   file: SkillResourceResponse | undefined;
+  isFetching: boolean;
   isLoading: boolean;
+  isPending: boolean;
 }
 
 export const useLatestSkill = (
@@ -43,15 +49,20 @@ export const useLatestSkill = (
 ): LatestSkillState => {
   const query = useQuery({
     enabled: Boolean(skillId),
-    queryFn: () => fetchLatestSkill(skillId ?? 0),
-    queryKey: latestSkillQueryKey(skillId),
+    ...latestSkillQueryOptions(skillId ?? 0),
   });
 
   const refresh = async (): Promise<void> => {
     await query.refetch();
   };
 
-  return { isLoading: query.isLoading, refresh, skill: query.data };
+  return {
+    isFetching: query.isFetching,
+    isLoading: query.isLoading,
+    isPending: query.isPending,
+    refresh,
+    skill: query.data,
+  };
 };
 
 export const useSkillDetail = (
@@ -60,15 +71,22 @@ export const useSkillDetail = (
 ): SkillDetailState => {
   const query = useQuery({
     enabled: Boolean(skillId && version),
-    queryFn: () => fetchSkillDetail(skillId ?? 0, version ?? 0),
-    queryKey: skillDetailQueryKey(skillId, version),
+    placeholderData: (previousSkill) =>
+      previousSkill?.id === skillId ? previousSkill : undefined,
+    ...skillDetailQueryOptions(skillId ?? 0, version ?? 0),
   });
 
   const refresh = async (): Promise<void> => {
     await query.refetch();
   };
 
-  return { isLoading: query.isLoading, refresh, skill: query.data };
+  return {
+    isFetching: query.isFetching,
+    isLoading: query.isLoading,
+    isPending: query.isPending,
+    refresh,
+    skill: query.data,
+  };
 };
 
 export const useSkillVersions = (
@@ -80,7 +98,12 @@ export const useSkillVersions = (
     queryKey: skillVersionsQueryKey(skillId),
   });
 
-  return { isLoading: query.isLoading, versions: query.data };
+  return {
+    isFetching: query.isFetching,
+    isLoading: query.isLoading,
+    isPending: query.isPending,
+    versions: query.data,
+  };
 };
 
 export const useSkillFile = (
@@ -94,5 +117,10 @@ export const useSkillFile = (
     queryKey: skillFileQueryKey(skillId, version, path),
   });
 
-  return { file: query.data, isLoading: query.isLoading };
+  return {
+    file: query.data,
+    isFetching: query.isFetching,
+    isLoading: query.isLoading,
+    isPending: query.isPending,
+  };
 };

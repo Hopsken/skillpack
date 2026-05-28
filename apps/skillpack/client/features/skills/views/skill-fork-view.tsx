@@ -5,6 +5,7 @@ import type {
   OriginSkillDefinitionPreview,
 } from "@skillpack/contracts/origins/responses";
 import type { ForkSkillInput } from "@skillpack/contracts/skills/requests";
+import { Link } from "@tanstack/react-router";
 import {
   ArrowLeftIcon,
   CircleAlertIcon,
@@ -14,7 +15,6 @@ import {
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router";
 
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -277,7 +277,7 @@ export const SkillForkView = ({
   };
 
   return (
-    <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
+    <>
       <header className="flex h-16 shrink-0 items-center border-b border-border bg-background px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Button
@@ -396,6 +396,6 @@ export const SkillForkView = ({
           {isSubmitting ? "Adding..." : "Add Selected"}
         </Button>
       </form>
-    </main>
+    </>
   );
 };

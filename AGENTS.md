@@ -215,6 +215,7 @@ Write code that is **accessible, performant, type-safe, and maintainable**. Focu
 - Use early returns to reduce nesting
 - Prefer simple conditionals over nested ternary operators
 - Group related code together and separate concerns
+- `sort-keys` allows line-separated groups. When object key order matters for type inference or readability, use blank-line groups instead of forcing extra helpers, wrappers, or indirection just to satisfy key sorting.
 
 ### Security
 

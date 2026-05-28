@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { getVisibleLoginProviders } from "./login-page";
+import { getVisibleLoginProviders } from "@/shared/auth/login-providers";
 
-describe("login page provider order", () => {
+describe("login route provider order", () => {
   it("places GitHub above optional OIDC", () => {
     expect(
       getVisibleLoginProviders({

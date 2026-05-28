@@ -1,5 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { Navigate, useSearchParams } from "react-router";
+import {
+  Navigate,
+  createFileRoute,
+  useLoaderData,
+  useSearch,
+} from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { useMemo, useState } from "react";
+import { z } from "zod";
 
 import {
   Alert,
@@ -9,19 +16,19 @@ import {
   Spinner,
 } from "@/components/ui";
 import {
-  getPublicOAuthClient,
+  publicOAuthClientQueryOptions,
   respondToOAuthConsent,
   useSession,
 } from "@/shared/auth/client";
+import type { OAuthClientPreview } from "@/shared/auth/client";
 
+const clientIdSchema = z.string().min(1);
 const skillReadScope = "skills:read";
 
-interface OAuthClientPreview {
-  client_id?: string;
-  client_name?: string;
-  client_uri?: string;
-  logo_uri?: string;
-}
+const oauthConsentSearchSchema = z.object({
+  client_id: clientIdSchema,
+  scope: z.string().default(""),
+});
 
 const parseScopes = (scope: string | null) =>
   scope
@@ -32,47 +39,13 @@ const parseScopes = (scope: string | null) =>
 const getClientName = (client?: OAuthClientPreview) =>
   client?.client_name ?? client?.client_id ?? "OAuth client";
 
-export const OAuthConsentPage = () => {
+const OAuthConsentRoute = () => {
   const session = useSession();
-  const [searchParams] = useSearchParams();
-  const clientId = searchParams.get("client_id");
-  const scopes = useMemo(
-    () => parseScopes(searchParams.get("scope")),
-    [searchParams]
-  );
-  const [client, setClient] = useState<OAuthClientPreview>();
+  const search = useSearch({ from: "/oauth/consent" });
+  const client = useLoaderData({ from: "/oauth/consent" });
+  const scopes = useMemo(() => parseScopes(search.scope), [search.scope]);
   const [error, setError] = useState<string>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-
-    const loadClient = async () => {
-      if (!clientId) {
-        setError("Invalid OAuth client");
-        return;
-      }
-
-      const response = await getPublicOAuthClient(clientId);
-
-      if (!active) {
-        return;
-      }
-
-      if (response.error) {
-        setError(response.error.message ?? "OAuth client not found");
-        return;
-      }
-
-      setClient(response.data as OAuthClientPreview);
-    };
-
-    void loadClient();
-
-    return () => {
-      active = false;
-    };
-  }, [clientId]);
 
   if (session.isPending) {
     return (
@@ -83,13 +56,16 @@ export const OAuthConsentPage = () => {
   }
 
   if (!session.data) {
-    const redirect = `/oauth/consent?${searchParams.toString()}`;
-    return (
-      <Navigate
-        to={`/login?redirect=${encodeURIComponent(redirect)}`}
-        replace
-      />
-    );
+    const redirectSearchParams = new URLSearchParams();
+
+    redirectSearchParams.set("client_id", search.client_id);
+
+    if (search.scope) {
+      redirectSearchParams.set("scope", search.scope);
+    }
+
+    const redirect = `/oauth/consent?${redirectSearchParams.toString()}`;
+    return <Navigate replace search={{ redirect }} to="/login" />;
   }
 
   const submitConsent = async (accept: boolean) => {
@@ -176,3 +152,20 @@ export const OAuthConsentPage = () => {
     </main>
   );
 };
+
+export const Route = createFileRoute("/oauth/consent")({
+  component: OAuthConsentRoute,
+
+  loaderDeps: ({ search }) => ({
+    clientId: search.client_id,
+  }),
+
+  loader: ({ context, deps }) => {
+    const { clientId } = deps;
+
+    return context.queryClient.ensureQueryData(
+      publicOAuthClientQueryOptions(clientId)
+    );
+  },
+  validateSearch: zodValidator(oauthConsentSearchSchema),
+});

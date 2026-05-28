@@ -4,11 +4,11 @@ import {
   skillDescriptionSchema,
   skillNameSchema,
 } from "@skillpack/core/primitives";
+import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
@@ -75,7 +75,7 @@ export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
   const isSubmitDisabled =
     form.formState.isSubmitting ||
     !form.formState.isValid ||
-    skillList.isLoading;
+    skillList.isPending;
 
   useEffect(() => {
     void form.trigger("skillName");
@@ -105,7 +105,7 @@ export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
   };
 
   return (
-    <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
+    <>
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Button
@@ -175,6 +175,6 @@ export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
           </Field>
         </form>
       </OverlayScrollbarsComponent>
-    </main>
+    </>
   );
 };

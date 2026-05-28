@@ -1,48 +1,54 @@
-import { useQuery } from "@tanstack/react-query";
+import {
+  createFileRoute,
+  useLoaderData,
+  useSearch,
+} from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { Github, KeyRound } from "lucide-react";
-import { useState } from "react";
-import { Navigate, useSearchParams } from "react-router";
+import { useEffect, useState } from "react";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
-  getLoginProviders,
+  loginProvidersQueryOptions,
   signInWithGitHub,
   signInWithOidc,
   useSession,
 } from "@/shared/auth/client";
 import type { LoginProviders } from "@/shared/auth/client";
+import { getVisibleLoginProviders } from "@/shared/auth/login-providers";
 
 const defaultCallbackURL = "/skills";
-const defaultLoginProviders: LoginProviders = { github: true, oidc: false };
 type LoginProvider = keyof LoginProviders;
 
-export const getVisibleLoginProviders = (providers: LoginProviders) =>
-  (["github", "oidc"] as const).filter((provider) => providers[provider]);
+const internalRedirectSchema = z
+  .string()
+  .refine((value) => value.startsWith("/") && !value.startsWith("//"));
 
-const getCallbackURL = (redirect: string | null) => {
-  if (redirect?.startsWith("/") && !redirect.startsWith("//")) {
-    return redirect;
-  }
+const loginSearchSchema = z.object({
+  redirect: internalRedirectSchema.optional(),
+});
 
-  return defaultCallbackURL;
-};
+const getCallbackURL = (redirect: string | undefined) =>
+  redirect ?? defaultCallbackURL;
 
-export const LoginPage = () => {
+const LoginRoute = () => {
   const session = useSession();
-  const [searchParams] = useSearchParams();
+  const search = useSearch({ from: "/login" });
+  const providers = useLoaderData({ from: "/login" });
   const [error, setError] = useState<string>();
   const [activeProvider, setActiveProvider] = useState<LoginProvider>();
-  const providersQuery = useQuery({
-    queryFn: getLoginProviders,
-    queryKey: ["auth", "login-providers"],
-  });
-  const callbackURL = getCallbackURL(searchParams.get("redirect"));
-  const visibleProviders = getVisibleLoginProviders(
-    providersQuery.data ?? defaultLoginProviders
-  );
+  const callbackURL = getCallbackURL(search.redirect);
+  const visibleProviders = getVisibleLoginProviders(providers);
+
+  useEffect(() => {
+    if (session.data) {
+      window.location.assign(callbackURL);
+    }
+  }, [callbackURL, session.data]);
 
   if (session.data) {
-    return <Navigate to={callbackURL} replace />;
+    return null;
   }
 
   const login = async (provider: LoginProvider) => {
@@ -97,3 +103,10 @@ export const LoginPage = () => {
     </main>
   );
 };
+
+export const Route = createFileRoute("/login")({
+  component: LoginRoute,
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(loginProvidersQueryOptions()),
+  validateSearch: zodValidator(loginSearchSchema),
+});

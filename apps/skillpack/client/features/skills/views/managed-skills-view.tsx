@@ -1,7 +1,7 @@
 import type { SkillListItem } from "@skillpack/contracts/skills/responses";
+import { Link } from "@tanstack/react-router";
 import { LibraryIcon, PlusIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button";
 
@@ -21,7 +21,7 @@ export const ManagedSkillsView = ({
   onFork,
   onRefresh,
 }: ManagedSkillsViewProps) => (
-  <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
+  <>
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
       <div className="flex items-center gap-2 text-lg font-semibold tracking-tight">
         <LibraryIcon className="size-4 text-muted-foreground" />
@@ -56,5 +56,5 @@ export const ManagedSkillsView = ({
         )}
       </section>
     </OverlayScrollbarsComponent>
-  </main>
+  </>
 );

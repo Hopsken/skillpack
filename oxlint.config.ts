@@ -8,6 +8,7 @@ export default defineConfig({
   extends: [core, react, remix, vitest],
   ignorePatterns: [
     "apps/skillpack/client/components/ui/**",
+    "apps/skillpack/client/routeTree.gen.ts",
     ".agents/skills/**",
     ".claude/skills/**",
   ],

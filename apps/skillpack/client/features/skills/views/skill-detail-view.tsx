@@ -2,10 +2,10 @@ import type {
   ResolvedSkill,
   SkillVersionItem,
 } from "@skillpack/contracts/skills/responses";
+import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon, RotateCcwIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Link } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -208,7 +208,9 @@ const VersionsPanel = ({
           className={getVersionClassName(skill?.version === version.version)}
         >
           <Link
-            to={`/skills/${skillId}?version=${version.version}&tab=versions`}
+            params={{ skillId }}
+            search={{ tab: "versions", version: version.version }}
+            to="/skills/$skillId"
             className="grid min-w-0 flex-1 gap-1"
           >
             <span className="font-medium">
@@ -272,7 +274,7 @@ export const SkillDetailView = ({
   }, [activeTab, firstResourcePath, selectedResourcePath]);
 
   return (
-    <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
+    <>
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Button
@@ -337,7 +339,7 @@ export const SkillDetailView = ({
           )}
         </OverlayScrollbarsComponent>
       )}
-    </main>
+    </>
   );
 };
 
