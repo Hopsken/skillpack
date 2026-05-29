@@ -1,0 +1,37 @@
+{
+  "name": "@skillpack/pi-extension",
+  "version": "0.1.0",
+  "private": true,
+  "keywords": [
+    "pi-package"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit --project tsconfig.json --pretty false"
+  },
+  "dependencies": {
+    "@earendil-works/pi-ai": "^0.75.3",
+    "@earendil-works/pi-coding-agent": "^0.75.3",
+    "@skillpack/contracts": "workspace:*",
+    "typebox": "^1.1.38"
+  },
+  "devDependencies": {
+    "@skillpack/typescript-config": "workspace:*",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.7"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  }
+}
