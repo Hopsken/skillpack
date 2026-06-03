@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "pnpm build && wrangler deploy",
+    "env:pull": "doppler secrets download --no-file --format env > .dev.vars",
     "typecheck": "tsc --noEmit --project tsconfig.client.json --pretty false && tsc --noEmit --project tsconfig.server.json --pretty false",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply skillpack --local",

@@ -1,3 +1,3 @@
 {
-  "setup": ["pnpm install"]
+  "setup": ["pnpm install", "pnpm env:pull", "pnpm db:migrate:local"]
 }
