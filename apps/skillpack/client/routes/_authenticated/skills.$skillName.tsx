@@ -1,4 +1,5 @@
 import {
+  safeRelativePathSchema,
   skillNameSchema,
   skillVersionNumberSchema,
 } from "@skillpack/core/primitives";
@@ -13,15 +14,10 @@ import {
 } from "@/features/skills/api/use-skill-detail";
 import { useRestoreSkillVersion } from "@/features/skills/api/use-skill-mutations";
 import { SkillDetailSkeleton } from "@/features/skills/components/skill-page-skeletons";
-import type { SkillDetailTab } from "@/features/skills/views/skill-detail-view";
 import { SkillDetailView } from "@/features/skills/views/skill-detail-view";
 
-const skillDetailTabs = ["skill", "resources", "versions"] as const;
-const skillDetailTabSchema = z.enum(skillDetailTabs);
-const defaultSkillDetailTab: SkillDetailTab = "skill";
-
 const skillDetailSearchSchema = z.object({
-  tab: skillDetailTabSchema.default(defaultSkillDetailTab),
+  path: safeRelativePathSchema.optional(),
   version: skillVersionNumberSchema.optional(),
 });
 
@@ -40,18 +36,17 @@ const SkillDetailRoute = () => {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   /* eslint-enable no-use-before-define */
-  const { version } = search;
+  const { path, version } = search;
   const skillDetail = useSkillDetail(skillName, version);
   const skill = skillDetail.data;
   const skillVersions = useSkillVersions(skillName);
   const restoreVersion = useRestoreSkillVersion(skillName);
 
-  const { tab: activeTab } = search;
-  const setActiveTab = (tab: SkillDetailTab) => {
+  const setSelectedPath = (nextPath: string | undefined) => {
     void navigate({
       params: { skillName },
       search: {
-        tab: tab === "skill" ? undefined : tab,
+        path: nextPath === "SKILL.md" ? undefined : nextPath,
         version: search.version,
       },
       to: "/skills/$skillName",
@@ -82,8 +77,8 @@ const SkillDetailRoute = () => {
       skillName={skillName}
       versions={versions}
       versionsStatus={versionsStatus}
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
+      selectedPath={path}
+      onPathChange={setSelectedPath}
       onRestoreVersion={restore}
     />
   );

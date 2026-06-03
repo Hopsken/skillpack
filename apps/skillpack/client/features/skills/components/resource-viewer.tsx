@@ -1,5 +1,7 @@
 import { lazy, Suspense } from "react";
 
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+
 import { formatBytes } from "../lib/format-bytes";
 import {
   getSkillResourceKind,
@@ -14,7 +16,9 @@ interface ResourceViewerFile {
 }
 
 interface ResourceViewerResource {
+  description?: string;
   mediaType: string;
+  name?: string;
   path: string;
   size: number;
 }
@@ -65,6 +69,39 @@ const ResourceMeta = ({
   );
 };
 
+const SkillDescription = ({
+  description,
+  name,
+}: {
+  description: string;
+  name: string | undefined;
+}) => (
+  <div className="border-b border-border">
+    <Table>
+      <TableBody>
+        {name ? (
+          <TableRow>
+            <TableCell className="w-28 py-3 pr-4 pl-6 text-muted-foreground">
+              name
+            </TableCell>
+            <TableCell className="py-3 pr-6 pl-0 text-foreground">
+              {name}
+            </TableCell>
+          </TableRow>
+        ) : null}
+        <TableRow>
+          <TableCell className="w-28 py-3 pr-4 pl-6 text-muted-foreground">
+            description
+          </TableCell>
+          <TableCell className="py-3 pr-6 pl-0 whitespace-normal text-foreground">
+            {description}
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+  </div>
+);
+
 const ResourceBody = ({
   file,
   kind,
@@ -86,15 +123,23 @@ const ResourceBody = ({
 
   if (kind === "markdown") {
     return (
-      <Suspense
-        fallback={
-          <p className="px-6 py-4 text-sm text-muted-foreground">
-            Loading markdown preview...
-          </p>
-        }
-      >
-        <MarkdownContent content={file?.content} fallback={status} />
-      </Suspense>
+      <>
+        {resource.description ? (
+          <SkillDescription
+            description={resource.description}
+            name={resource.name}
+          />
+        ) : null}
+        <Suspense
+          fallback={
+            <p className="px-6 py-4 text-sm text-muted-foreground">
+              Loading markdown preview...
+            </p>
+          }
+        >
+          <MarkdownContent content={file?.content} fallback={status} />
+        </Suspense>
+      </>
     );
   }
 

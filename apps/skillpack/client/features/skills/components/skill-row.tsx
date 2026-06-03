@@ -9,7 +9,7 @@ export const SkillRow = ({ skill }: SkillRowProps) => (
   <article className="border-b border-border last:border-b-0 hover:bg-muted/40">
     <Link
       params={{ skillName: skill.name }}
-      search={{ tab: undefined, version: undefined }}
+      search={{ path: undefined, version: undefined }}
       to="/skills/$skillName"
       className="flex items-start justify-between gap-4 px-6 py-3"
     >

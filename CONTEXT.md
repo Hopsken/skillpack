@@ -68,6 +68,10 @@ _Avoid_: Cross-version resource state, resource content bundle, resource patch a
 A safe relative path for a Resource Manifest item, resolved from the directory containing `SKILL.md` and following agent skills conventions. A Resource Path may include `/` for nested files, is unique within one Resource Manifest, and is not an origin repository path.
 _Avoid_: Absolute path, origin repo path, display label, cross-version resource identity
 
+**Skill File**:
+A user-facing file entry contained in a Resolved Skill view. Skill Files include the canonical `SKILL.md` file and attached resources, and are presented together when a user browses a Managed Skill Version's contents.
+_Avoid_: Resource Manifest item for `SKILL.md`, origin repository file, independent versioned file
+
 **Skill Trust**:
 The curation and safety metadata Skillpack maintains for a Managed Skill, including provenance, review signals, current version, and risk metadata. User review is a product workflow that guides responsible skill use.
 _Avoid_: Popularity score, source metadata only, approval-only state machine

@@ -14,7 +14,6 @@ export {
 export { useSkillList } from "./api/use-skill-list";
 export { ForkOriginDialog } from "./components/fork-origin-dialog";
 export { SkillFormView } from "./views/skill-form-view";
-export type { SkillDetailTab } from "./views/skill-detail-view";
 export { SkillDetailView } from "./views/skill-detail-view";
 export { SkillForkView } from "./views/skill-fork-view";
 export { ManagedSkillsView } from "./views/managed-skills-view";

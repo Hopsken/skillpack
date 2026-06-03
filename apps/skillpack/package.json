@@ -36,6 +36,7 @@
     "better-auth": "^1.6.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "catalog:",
     "dompurify": "^3.4.5",
     "drizzle-orm": "^0.43.1",
     "hono": "^4.7.10",

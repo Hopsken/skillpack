@@ -1,20 +1,33 @@
 import type {
   ResolvedSkill,
+  ResourceManifestItem,
   SkillVersionItem,
 } from "@skillpack/contracts/skills/responses";
 import { Link } from "@tanstack/react-router";
+import { formatDistanceToNow } from "date-fns";
 import { ArrowLeftIcon, RotateCcwIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 import { useSkillFile } from "../api/use-skill-detail";
-import { MarkdownContent } from "../components/markdown-content";
 import { getSkillResourceKind } from "../lib/resource-kind";
 
-type SkillDetailTab = "skill" | "resources" | "versions";
+const skillFilePath = "SKILL.md";
+const skillFileMediaType = "text/markdown";
+
+type SkillFile = Pick<ResourceManifestItem, "mediaType" | "path" | "size"> & {
+  description?: string;
+  name?: string;
+};
 
 const loadResourceViewer = async () => {
   const module = await import("../components/resource-viewer");
@@ -28,41 +41,30 @@ interface SkillDetailViewProps {
   skillName: string;
   versions: SkillVersionItem[];
   versionsStatus: string;
-  activeTab: SkillDetailTab;
-  onTabChange: (tab: SkillDetailTab) => void;
+  selectedPath: string | undefined;
+  onPathChange: (path: string | undefined) => void;
   onRestoreVersion: (version: number) => Promise<void>;
 }
 
-interface ResourcesPanelProps {
+interface FilesPanelProps {
+  files: SkillFile[];
+  selectedFile: SkillFile | undefined;
   skill: ResolvedSkill | undefined;
-  selectedPath: string | undefined;
-  fileContentStatus: string;
   onSelectPath: (path: string) => void;
 }
 
-interface VersionsPanelProps {
+interface VersionsSheetProps {
+  open: boolean;
+  selectedPath: string | undefined;
   skill: ResolvedSkill | undefined;
   skillName: string;
   versions: SkillVersionItem[];
   versionsStatus: string;
+  onOpenChange: (open: boolean) => void;
   onRestoreVersion: (version: number) => Promise<void>;
 }
 
-const tabs = [
-  { id: "skill", label: "SKILL.md" },
-  { id: "resources", label: "Resources" },
-  { id: "versions", label: "Versions" },
-] as const;
-
-const getTabClassName = (isActive: boolean) =>
-  cn(
-    "border-b-2 px-3 py-3 text-sm font-medium",
-    isActive
-      ? "border-foreground text-foreground"
-      : "border-transparent text-muted-foreground hover:text-foreground"
-  );
-
-const getResourceClassName = (isSelected: boolean) =>
+const getFileClassName = (isSelected: boolean) =>
   cn(
     "block w-full border-b border-border px-4 py-3 text-left text-sm",
     isSelected
@@ -72,16 +74,36 @@ const getResourceClassName = (isSelected: boolean) =>
 
 const getVersionClassName = (isCurrent: boolean) =>
   cn(
-    "flex items-center justify-between border-b border-border px-6 py-3 text-sm hover:bg-muted/40",
+    "flex items-center justify-between gap-3 border-b border-border px-6 py-3 text-sm hover:bg-muted/40",
     isCurrent && "bg-muted/60"
   );
+
+const getTextSize = (content: string) =>
+  new TextEncoder().encode(content).length;
+
+const getSkillFiles = (skill: ResolvedSkill | undefined): SkillFile[] => {
+  if (!skill) {
+    return [];
+  }
+
+  return [
+    {
+      description: skill.description,
+      mediaType: skillFileMediaType,
+      name: skill.name,
+      path: skillFilePath,
+      size: getTextSize(skill.content),
+    },
+    ...skill.resources.filter((resource) => resource.path !== skillFilePath),
+  ];
+};
 
 const getRawResourceUrl = (
   skillName: string | undefined,
   version: number | undefined,
   path: string | undefined
 ) => {
-  if (!(skillName && version && path)) {
+  if (!(skillName && version && path && path !== skillFilePath)) {
     return;
   }
 
@@ -94,51 +116,50 @@ const getResourceContentStatus = (
   isLoading: boolean
 ) => {
   if (isLoading) {
-    return "Loading resource...";
+    return "Loading file...";
   }
 
   if (file) {
     return `Loaded ${file.path}`;
   }
 
-  return "Resource unavailable";
+  return "File unavailable";
 };
 
-const SkillMarkdownPanel = ({
+const FilesPanel = ({
+  files,
+  selectedFile,
   skill,
-}: {
-  skill: ResolvedSkill | undefined;
-}) => (
-  <MarkdownContent
-    content={skill?.content}
-    fallback="No skill content loaded."
-  />
-);
-
-const ResourcesPanel = ({
-  skill,
-  selectedPath,
-  fileContentStatus,
   onSelectPath,
-}: ResourcesPanelProps) => {
-  const selectedResource = skill?.resources.find(
-    (resource) => resource.path === selectedPath
-  );
+}: FilesPanelProps) => {
+  const isSkillFile = selectedFile?.path === skillFilePath;
   const shouldFetchFile =
-    selectedResource && getSkillResourceKind(selectedResource) !== "image";
-  const skillFile = useSkillFile(
+    selectedFile &&
+    !isSkillFile &&
+    getSkillResourceKind(selectedFile) !== "image";
+  const resourceFile = useSkillFile(
     skill?.name,
     skill?.version,
-    shouldFetchFile ? selectedResource.path : undefined
+    shouldFetchFile ? selectedFile.path : undefined
   );
+  const skillFile =
+    skill && selectedFile?.path === skillFilePath
+      ? {
+          content: skill.content,
+          mediaType: skillFileMediaType,
+          path: skillFilePath,
+          size: getTextSize(skill.content),
+        }
+      : undefined;
+  const file = skillFile ?? resourceFile.data;
   const rawUrl = getRawResourceUrl(
     skill?.name,
     skill?.version,
-    selectedResource?.path
+    selectedFile?.path
   );
-  const viewerStatus = selectedResource
-    ? getResourceContentStatus(skillFile.data, skillFile.isLoading)
-    : fileContentStatus;
+  const viewerStatus = selectedFile
+    ? getResourceContentStatus(file, resourceFile.isLoading)
+    : "Select a file";
 
   return (
     <section className="grid h-full min-h-0 grid-cols-[minmax(10rem,16rem)_1fr]">
@@ -147,25 +168,28 @@ const ResourcesPanel = ({
         options={{ scrollbars: { autoHide: "leave", theme: "os-theme-dark" } }}
         className="min-h-0 border-r border-border"
       >
-        {skill?.resources.length ? (
-          skill.resources.map((resource) => (
+        <div className="border-b border-border px-4 py-3 text-sm font-medium text-muted-foreground">
+          Files
+        </div>
+        {files.length ? (
+          files.map((fileItem) => (
             <button
               type="button"
-              key={resource.path}
-              onClick={() => onSelectPath(resource.path)}
-              className={getResourceClassName(selectedPath === resource.path)}
+              key={fileItem.path}
+              onClick={() => onSelectPath(fileItem.path)}
+              className={getFileClassName(selectedFile?.path === fileItem.path)}
             >
               <span
                 className="block truncate font-medium"
-                title={resource.path}
+                title={fileItem.path}
               >
-                {resource.path}
+                {fileItem.path}
               </span>
             </button>
           ))
         ) : (
           <p className="px-6 py-4 text-sm text-muted-foreground">
-            No resources for this skill version.
+            No files for this skill version.
           </p>
         )}
       </OverlayScrollbarsComponent>
@@ -177,14 +201,14 @@ const ResourcesPanel = ({
         <Suspense
           fallback={
             <p className="px-6 py-4 text-sm text-muted-foreground">
-              Loading resource viewer...
+              Loading file viewer...
             </p>
           }
         >
           <ResourceViewer
-            file={skillFile.data}
+            file={file}
             rawUrl={rawUrl}
-            resource={selectedResource}
+            resource={selectedFile}
             status={viewerStatus}
           />
         </Suspense>
@@ -193,85 +217,103 @@ const ResourcesPanel = ({
   );
 };
 
-const VersionsPanel = ({
+const VersionsSheet = ({
+  open,
+  selectedPath,
   skill,
   skillName,
   versions,
   versionsStatus,
+  onOpenChange,
   onRestoreVersion,
-}: VersionsPanelProps) => (
-  <section>
-    {versions.length ? (
-      versions.map((version) => (
-        <div
-          key={version.version}
-          className={getVersionClassName(skill?.version === version.version)}
+}: VersionsSheetProps) => {
+  const linkSearchPath =
+    selectedPath && selectedPath !== skillFilePath ? selectedPath : undefined;
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="sm:max-w-xl">
+        <SheetHeader>
+          <SheetTitle>Versions</SheetTitle>
+        </SheetHeader>
+        <OverlayScrollbarsComponent
+          defer
+          options={{
+            scrollbars: { autoHide: "leave", theme: "os-theme-dark" },
+          }}
+          className="min-h-0 flex-1"
         >
-          <Link
-            params={{ skillName }}
-            search={{ tab: "versions", version: version.version }}
-            to="/skills/$skillName"
-            className="grid min-w-0 flex-1 gap-1"
-          >
-            <span className="font-medium">
-              v{version.version}
-              {version.label ? ` · ${version.label}` : ""}
-            </span>
-            <span className="truncate text-muted-foreground">
-              {version.description}
-            </span>
-          </Link>
-          <div className="flex shrink-0 items-center gap-3">
-            <span className="text-muted-foreground">
-              {new Date(version.createdAt).toLocaleString()}
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void onRestoreVersion(version.version);
-              }}
-            >
-              <RotateCcwIcon />
-              Restore
-            </Button>
-          </div>
-        </div>
-      ))
-    ) : (
-      <p className="px-6 py-4 text-sm text-muted-foreground">
-        {versionsStatus}
-      </p>
-    )}
-  </section>
-);
+          {versions.length ? (
+            versions.map((version) => {
+              const isCurrentVersion = skill?.version === version.version;
+
+              return (
+                <div
+                  key={version.version}
+                  className={getVersionClassName(isCurrentVersion)}
+                >
+                  <Link
+                    params={{ skillName }}
+                    search={{ path: linkSearchPath, version: version.version }}
+                    to="/skills/$skillName"
+                    onClick={() => onOpenChange(false)}
+                    className="grid min-w-0 flex-1 gap-1"
+                  >
+                    <span className="truncate font-medium">
+                      v{version.version}
+                      {version.label ? ` · ${version.label}` : ""}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(version.createdAt), {
+                        addSuffix: true,
+                      })}
+                    </span>
+                  </Link>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isCurrentVersion}
+                    onClick={() => {
+                      void onRestoreVersion(version.version);
+                    }}
+                  >
+                    {isCurrentVersion ? null : <RotateCcwIcon />}
+                    {isCurrentVersion ? "Current" : "Restore"}
+                  </Button>
+                </div>
+              );
+            })
+          ) : (
+            <p className="px-6 py-4 text-sm text-muted-foreground">
+              {versionsStatus}
+            </p>
+          )}
+        </OverlayScrollbarsComponent>
+      </SheetContent>
+    </Sheet>
+  );
+};
 
 export const SkillDetailView = ({
   skill,
   skillName,
   versions,
   versionsStatus,
-  activeTab,
-  onTabChange,
+  selectedPath,
+  onPathChange,
   onRestoreVersion,
 }: SkillDetailViewProps) => {
-  const [selectedResourcePath, setSelectedResourcePath] = useState<string>();
-  const firstResourcePath = skill?.resources.at(0)?.path;
+  const [versionSheetOpen, setVersionSheetOpen] = useState(false);
+  const files = useMemo(() => getSkillFiles(skill), [skill]);
+  const requestedPath = selectedPath ?? skillFilePath;
+  const selectedFile = files.find((file) => file.path === requestedPath);
 
   useEffect(() => {
-    setSelectedResourcePath(undefined);
-  }, [skill?.name, skill?.version]);
-
-  useEffect(() => {
-    if (
-      activeTab === "resources" &&
-      !selectedResourcePath &&
-      firstResourcePath
-    ) {
-      setSelectedResourcePath(firstResourcePath);
+    if (skill && !selectedFile) {
+      onPathChange(skillFilePath);
     }
-  }, [activeTab, firstResourcePath, selectedResourcePath]);
+  }, [onPathChange, selectedFile, skill]);
 
   return (
     <>
@@ -291,56 +333,36 @@ export const SkillDetailView = ({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="rounded-full border border-border bg-muted px-3 py-1 text-sm font-medium text-foreground">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setVersionSheetOpen(true)}
+          >
             {skill ? `v${skill.version}` : "Version"}
-          </span>
+          </Button>
         </div>
       </header>
 
-      <div className="flex h-12 shrink-0 items-end gap-1 border-b border-border px-6">
-        {tabs.map((tab) => (
-          <button
-            type="button"
-            key={tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className={getTabClassName(activeTab === tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="min-h-0 flex-1">
+        <FilesPanel
+          files={files}
+          selectedFile={selectedFile}
+          skill={skill}
+          onSelectPath={onPathChange}
+        />
       </div>
 
-      {activeTab === "resources" ? (
-        <div className="min-h-0 flex-1">
-          <ResourcesPanel
-            skill={skill}
-            selectedPath={selectedResourcePath}
-            fileContentStatus="Select a resource"
-            onSelectPath={setSelectedResourcePath}
-          />
-        </div>
-      ) : (
-        <OverlayScrollbarsComponent
-          defer
-          options={{
-            scrollbars: { autoHide: "leave", theme: "os-theme-dark" },
-          }}
-          className="min-h-0 flex-1"
-        >
-          {activeTab === "skill" && <SkillMarkdownPanel skill={skill} />}
-          {activeTab === "versions" && (
-            <VersionsPanel
-              skill={skill}
-              skillName={skillName}
-              versions={versions}
-              versionsStatus={versionsStatus}
-              onRestoreVersion={onRestoreVersion}
-            />
-          )}
-        </OverlayScrollbarsComponent>
-      )}
+      <VersionsSheet
+        open={versionSheetOpen}
+        selectedPath={selectedFile?.path}
+        skill={skill}
+        skillName={skillName}
+        versions={versions}
+        versionsStatus={versionsStatus}
+        onOpenChange={setVersionSheetOpen}
+        onRestoreVersion={onRestoreVersion}
+      />
     </>
   );
 };
-
-export type { SkillDetailTab };

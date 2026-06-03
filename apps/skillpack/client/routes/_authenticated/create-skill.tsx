@@ -12,7 +12,7 @@ const CreateSkillRoute = () => {
     const created = await createSkill.mutateAsync(input);
     await navigate({
       params: { skillName: created.name },
-      search: { tab: undefined, version: undefined },
+      search: { path: undefined, version: undefined },
       to: "/skills/$skillName",
     });
   };
