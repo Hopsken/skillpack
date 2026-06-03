@@ -65,6 +65,18 @@ same-email account linking while keeping Better Auth's email-verified checks.
 This is a temporary v1 shortcut; a formal account linking flow should replace
 it before adding more login providers.
 
+Skillpack also acts as an OAuth Provider for agent-facing Skill Delivery. MCP
+clients and extensions should discover:
+
+```text
+/.well-known/oauth-authorization-server
+/.well-known/oauth-protected-resource
+```
+
+Public clients should use authorization code with PKCE, dynamic client
+registration, and the `skills:read` scope. The OAuth resource/audience is the
+Skillpack base URL, not a transport-specific URL such as `/mcp`.
+
 For deployed environments, set secrets with Wrangler:
 
 ```bash
@@ -128,6 +140,7 @@ pnpm deploy
 
 ```text
 GET  /api/health
+POST /mcp
 GET  /api/v1/skills
 GET  /api/v1/skills/:identifier
 GET  /api/v1/skills/:identifier?version=
@@ -172,3 +185,19 @@ Created Skillpack-managed skills can be resolved by Skill ID or Skill Name:
 /api/v1/skills/1
 /api/v1/skills/demo
 ```
+
+## MCP Skill Delivery
+
+Skillpack exposes a remote MCP endpoint at `/mcp` for authenticated agents.
+Call it with an OAuth Bearer token that has `skills:read`.
+
+The MCP server exposes:
+
+- `skillpack_list` — list the authenticated user's Managed Skill catalog.
+- `skillpack_read` — read a `skill://skillpack/{skillId}` location or one
+  attached resource path.
+- MCP resources — list and read current Skill versions plus attached resources.
+- `use_skillpack_skills` — prompt guidance for agents.
+
+Agents should use `skillpack_read` for `skill://skillpack/...` locations instead
+of filesystem reads.

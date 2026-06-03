@@ -1,10 +1,14 @@
-import { createAuth } from "@server/auth";
+import { createAuth, skillReadScope } from "@server/auth";
 import type { AuthSession } from "@server/auth";
 import { apiError } from "@server/lib/http";
 import { SkillRepository } from "@server/modules/skills/repository";
 import { ResourceManifest } from "@server/modules/skills/resource-manifest";
 import { SkillService } from "@server/modules/skills/service";
-import { getSkillReadBearerUserId, getRequestOrigin } from "@server/oauth";
+import {
+  getOAuthResource,
+  getSkillReadBearerUserId,
+  getRequestOrigin,
+} from "@server/oauth";
 import type { AppBindings } from "@server/types";
 import type { Context, MiddlewareHandler } from "hono";
 import { some } from "hono/combine";
@@ -139,5 +143,51 @@ export const createRequireSkillsAuth = (
     }
 
     return await requireSessionAuth(c, next);
+  });
+};
+
+export const createRequireMcpAuth = (
+  options: AuthMiddlewareOptions
+): MiddlewareHandler<AppBindings> => {
+  const verifyBearerUserId =
+    options.getSkillReadBearerUserId ?? getSkillReadBearerUserId;
+  const setSkillServicesForUser =
+    options.setSkillServicesForUser ?? setDefaultSkillServicesForUser;
+
+  return createMiddleware<AppBindings>(async (c, next) => {
+    const requestOrigin = getRequestOrigin(c.req.url);
+    const resource = getOAuthResource(c.env, requestOrigin);
+    const challenge = `Bearer realm="mcp", resource_metadata="${resource}/.well-known/oauth-protected-resource", scope="${skillReadScope}"`;
+    const origin = c.req.header("origin");
+
+    if (origin && origin !== requestOrigin && origin !== resource) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
+    if (!c.req.header("authorization")?.startsWith("Bearer ")) {
+      c.header("WWW-Authenticate", challenge);
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    let userId: string | undefined;
+
+    try {
+      userId = await verifyBearerUserId(
+        c.env,
+        requestOrigin,
+        c.req.raw.headers
+      );
+    } catch {
+      c.header("WWW-Authenticate", challenge);
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    if (!userId) {
+      c.header("WWW-Authenticate", challenge);
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    setSkillServicesForUser(c, userId);
+    await next();
   });
 };

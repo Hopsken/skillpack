@@ -4,11 +4,13 @@ import { contextStorage } from "hono/context-storage";
 
 import { createAuth, getLoginProviders } from "./auth";
 import {
+  createRequireMcpAuth,
   createRequireSessionAuth,
   createRequireSkillsAuth,
 } from "./middlewares/auth";
 import type { AuthMiddlewareOptions } from "./middlewares/auth";
 import { setRequestServices } from "./middlewares/request-services";
+import { mcpRoute } from "./modules/mcp/route";
 import { getProtectedResourceMetadata, getRequestOrigin } from "./oauth";
 import { apiRoutes } from "./routes";
 import type { AppBindings } from "./types";
@@ -58,6 +60,8 @@ export const createApp = (options: AuthMiddlewareOptions = {}) =>
     .use("/api/v1/origins", createRequireSessionAuth())
     .use("/api/v1/origins/*", createRequireSessionAuth())
     .use("/api/v1/skills/*", createRequireSkillsAuth(options))
+    .use("/mcp", createRequireMcpAuth(options))
+    .route("/mcp", mcpRoute)
     .route("/", apiRoutes);
 
 export const app = createApp();

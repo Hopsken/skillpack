@@ -1,6 +1,6 @@
 # Skill Delivery Design
 
-Skill Delivery exposes Skillpack-managed Agent Skills to Pi Coding Agent without mapping remote skills onto the local filesystem. Pi's current `resources_discover` path is still local-skill oriented, so Skillpack delivery uses a prompt catalog plus explicit read tools.
+Skill Delivery exposes Skillpack-managed Agent Skills to agent runtimes without mapping remote skills onto the local filesystem. Pi's current `resources_discover` path is still local-skill oriented, so the Pi extension uses a prompt catalog plus explicit read tools. Generic MCP clients can use Skillpack's first-party `/mcp` endpoint.
 
 ## Decision
 
@@ -50,7 +50,7 @@ Delivery identity is always Skill ID plus optional numeric version. GitHub URLs,
 
 ## API Reuse
 
-No new server delivery API is required for v1. The extension uses the existing authenticated Skillpack API:
+The Pi extension uses the existing authenticated Skillpack API:
 
 ```text
 GET /api/v1/skills
@@ -59,6 +59,29 @@ GET /api/v1/skills/:skillId?version=:version
 GET /api/v1/skills/:skillId/resources?version=:version&path=:path
 GET /api/v1/skills/:skillId/resources/raw?version=:version&path=:path
 ```
+
+## MCP Endpoint
+
+Skillpack exposes a remote MCP server at:
+
+```text
+POST /mcp
+```
+
+The endpoint uses OAuth Bearer tokens with `skills:read`. The protected
+resource remains the Skillpack base URL rather than `/mcp`.
+
+MCP capabilities:
+
+- `skillpack_list` lists the authenticated user's Managed Skill catalog.
+- `skillpack_read` reads `skill://skillpack/{skillId}` locations and attached
+  resource paths.
+- MCP resources expose current Skill versions and attached resources for clients
+  that prefer resource discovery.
+- `use_skillpack_skills` provides agent prompt guidance.
+
+The endpoint is stateless in v1 and uses request/response JSON over
+`@hono/mcp` Streamable HTTP transport.
 
 ## Auth
 
@@ -81,4 +104,5 @@ There is no dev bypass in the extension.
 - Do not use Pi `resources_discover` for Skillpack remote skills in v1.
 - Do not register remote skills as local `/skill:name` filesystem skills.
 - Do not introduce Skill Sets for v1 catalog scope.
-- Do not add new Skillpack server delivery endpoints until existing API shape is insufficient.
+- Do not add stateful MCP SSE sessions until Skillpack introduces a durable
+  state boundary for them.

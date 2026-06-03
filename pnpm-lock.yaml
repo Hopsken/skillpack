@@ -38,12 +38,18 @@ importers:
       '@fontsource-variable/geist':
         specifier: ^5.2.9
         version: 5.2.9
+      '@hono/mcp':
+        specifier: ^0.3.0
+        version: 0.3.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(hono-rate-limiter@0.5.3(hono@4.12.21))(hono@4.12.21)(zod@3.25.76)
       '@hono/zod-validator':
         specifier: ^0.7.0
         version: 0.7.6(hono@4.12.21)(zod@3.25.76)
       '@hookform/resolvers':
         specifier: ^5.4.0
         version: 5.4.0(react-hook-form@7.76.1(react@19.2.6))
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(zod@3.25.76)
       '@skillpack/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -83,6 +89,9 @@ importers:
       hono:
         specifier: ^4.7.10
         version: 4.12.21
+      hono-rate-limiter:
+        specifier: ^0.5.3
+        version: 0.5.3(hono@4.12.21)
       ky:
         specifier: ^2.0.2
         version: 2.0.2
@@ -1441,6 +1450,14 @@ packages:
     peerDependenciesMeta:
       '@modelcontextprotocol/sdk':
         optional: true
+
+  '@hono/mcp@0.3.0':
+    resolution: {integrity: sha512-UhSWFbZwRxHBdptOn2r1HyB8Vt6gU+BL3AbTis2t8TBW69ZhG4soJQ09yEL/t/ymxszJnWp5Rq6tOXXOjuK1qg==}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': ^1.25.1
+      hono: '*'
+      hono-rate-limiter: ^0.5.3
+      zod: ^3.25.0 || ^4.0.0
 
   '@hono/node-server@1.19.14':
     resolution: {integrity: sha512-GwtvgtXxnWsucXvbQXkRgqksiH2Qed37H9xHZocE5sA3N8O8O8/8FA3uclQXxXVzc9XBZuEOMK7+r02FmSpHtw==}
@@ -4094,6 +4111,15 @@ packages:
 
   highlight.js@10.7.3:
     resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}
+
+  hono-rate-limiter@0.5.3:
+    resolution: {integrity: sha512-M0DxbVMpPELEzLi0AJg1XyBHLGJXz7GySjsPoK+gc5YeeBsdGDGe+2RvVuCAv8ydINiwlbxqYMNxUEyYfRji/A==}
+    peerDependencies:
+      hono: ^4.10.8
+      unstorage: ^1.17.3
+    peerDependenciesMeta:
+      unstorage:
+        optional: true
 
   hono@4.12.21:
     resolution: {integrity: sha512-uV63apnb0kyPtAUwoWgaGh9HyIFcv8lgmzPZSiTBQAFOFGIzka5EZ1dZocmGnn0XdX0+XTqJ6Tqv7selMuGLRQ==}
@@ -6760,6 +6786,14 @@ snapshots:
       - supports-color
       - utf-8-validate
 
+  '@hono/mcp@0.3.0(@modelcontextprotocol/sdk@1.29.0(zod@3.25.76))(hono-rate-limiter@0.5.3(hono@4.12.21))(hono@4.12.21)(zod@3.25.76)':
+    dependencies:
+      '@modelcontextprotocol/sdk': 1.29.0(zod@3.25.76)
+      hono: 4.12.21
+      hono-rate-limiter: 0.5.3(hono@4.12.21)
+      pkce-challenge: 5.0.1
+      zod: 3.25.76
+
   '@hono/node-server@1.19.14(hono@4.12.21)':
     dependencies:
       hono: 4.12.21
@@ -9283,6 +9317,10 @@ snapshots:
       set-cookie-parser: 3.1.0
 
   highlight.js@10.7.3: {}
+
+  hono-rate-limiter@0.5.3(hono@4.12.21):
+    dependencies:
+      hono: 4.12.21
 
   hono@4.12.21: {}
 
