@@ -9,7 +9,6 @@ import {
 } from "@skillpack/contracts/skills/requests";
 import {
   safeRelativePathSchema,
-  skillIdSchema,
   skillNameSchema,
   skillVersionNumberSchema,
 } from "@skillpack/core/primitives";
@@ -27,7 +26,7 @@ import {
   presentSkillSummary,
   presentSkillVersions,
 } from "./presenter";
-import type { ReadSkillFileInput, ReadSkillFileResult } from "./types";
+import type { ReadSkillFileByNameInput, ReadSkillFileResult } from "./types";
 
 const skillErrorStatus = {
   "duplicate-resolved-skill-name": 400,
@@ -47,30 +46,14 @@ const skillErrorStatus = {
 
 type SkillContext = Context<AppBindings>;
 
-const parseSkillId = (value: string | undefined) => {
-  const result = skillIdSchema.safeParse(value);
-
-  if (!result.success) {
-    throw skillErrors.invalidSkillLocator();
-  }
-
-  return result.data;
-};
-
-const numericIdentifierPattern = /^\d+$/u;
-
-const parseSkillIdentifier = (value: string | undefined) => {
-  if (value && numericIdentifierPattern.test(value)) {
-    return { skillId: parseSkillId(value), type: "id" as const };
-  }
-
+const parseSkillName = (value: string | undefined) => {
   const result = skillNameSchema.safeParse(value);
 
   if (!result.success) {
     throw skillErrors.invalidSkillLocator();
   }
 
-  return { name: result.data, type: "name" as const };
+  return result.data;
 };
 
 const parseRequiredVersion = (value: string | undefined) => {
@@ -101,9 +84,11 @@ const parseFilePath = (path: string | undefined) => {
   return pathResult.data;
 };
 
-const getRequestedSkillFileInput = (c: SkillContext): ReadSkillFileInput => ({
+const getRequestedSkillFileInput = (
+  c: SkillContext
+): ReadSkillFileByNameInput => ({
   path: parseFilePath(c.req.query("path")),
-  skillId: parseSkillId(c.req.param("skillId")),
+  skillName: parseSkillName(c.req.param("skillName")),
   version: parseVersion(c.req.query("version")),
 });
 
@@ -140,54 +125,56 @@ export const skillsRoute = new Hono<AppBindings>()
       : 422;
     return c.json(presentForkedSkills(result), status);
   })
-  .get("/:identifier", async (c) => {
-    const identifier = parseSkillIdentifier(c.req.param("identifier"));
+  .get("/:skillName", async (c) => {
+    const skillName = parseSkillName(c.req.param("skillName"));
     const version = parseVersion(c.req.query("version"));
-    const result =
-      identifier.type === "id"
-        ? await c.var.skillService.resolveSkill(identifier.skillId, version)
-        : await c.var.skillService.resolveSkillByName(identifier.name, version);
+    const result = await c.var.skillService.resolveSkillByName(
+      skillName,
+      version
+    );
     return c.json(presentSkill(result));
   })
-  .patch("/:skillId", zValidator("json", patchSkillSchema), async (c) => {
-    const result = await c.var.skillService.patchSkill(
-      parseSkillId(c.req.param("skillId")),
+  .patch("/:skillName", zValidator("json", patchSkillSchema), async (c) => {
+    const result = await c.var.skillService.patchSkillByName(
+      parseSkillName(c.req.param("skillName")),
       c.req.valid("json")
     );
     return c.json(presentPatchedSkill(result));
   })
-  .delete("/:skillId", async (c) => {
-    await c.var.skillService.deleteSkill(parseSkillId(c.req.param("skillId")));
+  .delete("/:skillName", async (c) => {
+    await c.var.skillService.deleteSkillByName(
+      parseSkillName(c.req.param("skillName"))
+    );
     return c.body(null, 204);
   })
-  .get("/:skillId/versions", async (c) => {
-    const result = await c.var.skillService.listSkillVersionsForSkill(
-      parseSkillId(c.req.param("skillId"))
+  .get("/:skillName/versions", async (c) => {
+    const result = await c.var.skillService.listSkillVersionsForSkillName(
+      parseSkillName(c.req.param("skillName"))
     );
     return c.json(
       presentSkillVersions(result.skill, result.currentVersion, result.versions)
     );
   })
   .post(
-    "/:skillId/versions/:versionNumber/restore",
+    "/:skillName/versions/:versionNumber/restore",
     zValidator("json", restoreVersionSchema),
     async (c) => {
-      const result = await c.var.skillService.restoreSkillVersion(
-        parseSkillId(c.req.param("skillId")),
+      const result = await c.var.skillService.restoreSkillVersionByName(
+        parseSkillName(c.req.param("skillName")),
         parseRequiredVersion(c.req.param("versionNumber")),
         c.req.valid("json")
       );
       return c.json(presentRestoredSkill(result));
     }
   )
-  .get("/:skillId/resources", async (c) => {
-    const result = await c.var.skillService.readSkillTextFile(
+  .get("/:skillName/resources", async (c) => {
+    const result = await c.var.skillService.readSkillTextFileByName(
       getRequestedSkillFileInput(c)
     );
     return c.json(presentSkillFile(result));
   })
-  .get("/:skillId/resources/raw", async (c) => {
-    const result = await c.var.skillService.readSkillResource(
+  .get("/:skillName/resources/raw", async (c) => {
+    const result = await c.var.skillService.readSkillResourceByName(
       getRequestedSkillFileInput(c)
     );
     return new Response(result.object.body, {

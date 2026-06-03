@@ -55,7 +55,7 @@ const demoSkillFileContent =
 const demoSkillReadResult = {
   content: "# Demo\n\nUse this.",
   description: "Demo skill",
-  location: "skill://skillpack/42",
+  location: "skill://skillpack/demo-skill",
   name: "demo-skill",
   resources: [
     {
@@ -95,7 +95,6 @@ describe("Skillpack Pi extension", () => {
           {
             currentVersion: 2,
             description: "Demo skill",
-            id: 42,
             name: "demo-skill",
           },
         ])
@@ -119,7 +118,7 @@ describe("Skillpack Pi extension", () => {
 
     expect(result).toStrictEqual({
       systemPrompt: expect.stringContaining(
-        "<location>skill://skillpack/42</location>"
+        "<location>skill://skillpack/demo-skill</location>"
       ),
     });
   });
@@ -142,14 +141,14 @@ describe("Skillpack Pi extension", () => {
       .get("skillpack_read")
       ?.execute(
         "tool-call-id",
-        { location: "skill://skillpack/42" },
+        { location: "skill://skillpack/demo-skill" },
         undefined,
         undefined,
         {}
       );
 
     expect(client.readResource).toHaveBeenCalledWith(
-      "skill://skillpack/42?version=2",
+      "skill://skillpack/demo-skill?version=2",
       "SKILL.md"
     );
     expect(result).toStrictEqual({
@@ -186,7 +185,7 @@ describe("Skillpack Pi extension", () => {
     const result = await tools.get("skillpack_read")?.execute(
       "tool-call-id",
       {
-        location: "skill://skillpack/42",
+        location: "skill://skillpack/demo-skill",
         path: "references/demo.md",
       },
       undefined,
@@ -195,7 +194,7 @@ describe("Skillpack Pi extension", () => {
     );
 
     expect(client.readResource).toHaveBeenCalledWith(
-      "skill://skillpack/42",
+      "skill://skillpack/demo-skill",
       "references/demo.md"
     );
     expect(client.readSkill).not.toHaveBeenCalled();
@@ -217,7 +216,6 @@ describe("Skillpack Pi extension", () => {
           {
             currentVersion: 2,
             description: "Demo skill",
-            id: 42,
             name: "demo-skill",
           },
         ])
@@ -231,7 +229,7 @@ describe("Skillpack Pi extension", () => {
       ui: {
         notify: vi.fn<(message: string, type?: string) => void>(),
         select: vi.fn<() => Promise<string | undefined>>(() =>
-          Promise.resolve("demo-skill  skill://skillpack/42")
+          Promise.resolve("demo-skill  skill://skillpack/demo-skill")
         ),
         setEditorText: vi.fn<(text: string) => void>(),
       },
@@ -252,7 +250,6 @@ describe("Skillpack Pi extension", () => {
           {
             currentVersion: 2,
             description: "Demo skill",
-            id: 42,
             name: "demo-skill",
           },
         ])
@@ -282,9 +279,11 @@ describe("Skillpack Pi extension", () => {
       ctx
     );
 
-    expect(client.readSkill).toHaveBeenCalledWith("skill://skillpack/42");
+    expect(client.readSkill).toHaveBeenCalledWith(
+      "skill://skillpack/demo-skill"
+    );
     expect(client.readResource).toHaveBeenCalledWith(
-      "skill://skillpack/42?version=2",
+      "skill://skillpack/demo-skill?version=2",
       "SKILL.md"
     );
     expect(result).toStrictEqual({
@@ -300,7 +299,6 @@ describe("Skillpack Pi extension", () => {
           {
             currentVersion: 2,
             description: "Demo skill",
-            id: 42,
             name: "demo-skill",
           },
         ])
@@ -365,7 +363,6 @@ describe("Skillpack Pi extension", () => {
           {
             currentVersion: 2,
             description: "Demo skill",
-            id: 42,
             name: "demo-skill",
           },
         ])
@@ -407,7 +404,6 @@ describe("Skillpack Pi extension", () => {
           {
             currentVersion: 2,
             description: "Demo skill",
-            id: 42,
             name: "demo-skill",
           },
         ])

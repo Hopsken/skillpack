@@ -6,9 +6,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { activeSkillByNameQueryOptions } from "@/features/skills/api/query-options";
+import { activeSkillQueryOptions } from "@/features/skills/api/query-options";
 import {
-  useSkillDetailByName,
+  useSkillDetail,
   useSkillVersions,
 } from "@/features/skills/api/use-skill-detail";
 import { useRestoreSkillVersion } from "@/features/skills/api/use-skill-mutations";
@@ -41,10 +41,10 @@ const SkillDetailRoute = () => {
   const navigate = Route.useNavigate();
   /* eslint-enable no-use-before-define */
   const { version } = search;
-  const skillDetail = useSkillDetailByName(skillName, version);
+  const skillDetail = useSkillDetail(skillName, version);
   const skill = skillDetail.data;
-  const skillVersions = useSkillVersions(skill?.id);
-  const restoreVersion = useRestoreSkillVersion(skill?.id);
+  const skillVersions = useSkillVersions(skillName);
+  const restoreVersion = useRestoreSkillVersion(skillName);
 
   const { tab: activeTab } = search;
   const setActiveTab = (tab: SkillDetailTab) => {
@@ -105,7 +105,7 @@ export const Route = createFileRoute("/_authenticated/skills/$skillName")({
     const { version } = deps;
 
     return context.queryClient.ensureQueryData(
-      activeSkillByNameQueryOptions(skillName, version)
+      activeSkillQueryOptions(skillName, version)
     );
   },
   validateSearch: zodValidator(skillDetailSearchSchema),

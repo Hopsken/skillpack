@@ -36,7 +36,7 @@ const isSkillpackCredential = (
   credential.baseUrl.length > 0;
 
 const formatSkillpackCommandOption = (skill: SkillpackCatalogItem) =>
-  `${skill.name}  ${toSkillpackLocation(skill.id)}`;
+  `${skill.name}  ${toSkillpackLocation(skill.name)}`;
 
 const normalizeSkillArgument = (args: string) => args.trim();
 
@@ -47,12 +47,7 @@ const findSkillByArgument = (skills: SkillpackCatalogItem[], args: string) => {
   }
 
   if (argument.startsWith("skill://skillpack/")) {
-    return skills.find((skill) => toSkillpackLocation(skill.id) === argument);
-  }
-
-  const numericId = Number(argument);
-  if (Number.isInteger(numericId) && numericId > 0) {
-    return skills.find((skill) => skill.id === numericId);
+    return skills.find((skill) => toSkillpackLocation(skill.name) === argument);
   }
 
   const normalizedArgument = argument.toLowerCase();
@@ -222,7 +217,7 @@ export const createSkillpackExtension =
       parameters: Type.Object({
         location: Type.String({
           description:
-            "Skillpack location, for example skill://skillpack/42 or skill://skillpack/42?version=3",
+            "Skillpack location, for example skill://skillpack/demo-skill or skill://skillpack/demo-skill?version=3",
         }),
         path: Type.Optional(
           Type.String({
@@ -248,7 +243,7 @@ export const createSkillpackExtension =
         const { skills } = await getCatalog();
         const normalizedPrefix = prefix.trim().toLowerCase();
         const matches = skills.filter((skill) => {
-          const location = toSkillpackLocation(skill.id);
+          const location = toSkillpackLocation(skill.name);
           return (
             skill.name.toLowerCase().startsWith(normalizedPrefix) ||
             location.startsWith(prefix.trim())
@@ -317,7 +312,7 @@ export const createSkillpackExtension =
           return { action: "handled" };
         }
 
-        const location = toSkillpackLocation(skill.id);
+        const location = toSkillpackLocation(skill.name);
         const { skill: resolvedSkill, skillFileContent } =
           await readSkillWithFile(location);
         return {

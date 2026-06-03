@@ -22,7 +22,7 @@ export const SkillRow = ({ skill }: SkillRowProps) => (
         </p>
       </div>
       <div className="shrink-0 text-xs text-muted-foreground">
-        ID {skill.id} / v{skill.currentVersion}
+        v{skill.currentVersion}
       </div>
     </Link>
   </article>

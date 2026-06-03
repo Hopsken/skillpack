@@ -4,7 +4,7 @@ Origin Comparison is deferred from the Managed Skill refactor. The current imple
 
 Open decisions:
 
-- Comparison request contract: source branch, source revision, target Skill ID, and target version.
+- Comparison request contract: source branch, source revision, target Skill Name, and target version. Internal services may resolve the Skill Name to a Skill ID.
 - Diff representation for `SKILL.md` and additional Skill Resources.
 - Review UX for accepting, rejecting, or selectively applying source changes.
 - Version creation behavior after accepting a comparison.

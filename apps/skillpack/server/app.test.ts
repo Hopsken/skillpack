@@ -142,8 +142,9 @@ describe("app OAuth bearer skills read auth", () => {
 
   it("allows bearer tokens with skills:read to read skill resources", async () => {
     const seenUserIds: string[] = [];
-    const readSkillTextFile = vi.fn<SkillService["readSkillTextFile"]>();
-    readSkillTextFile.mockResolvedValue({
+    const readSkillTextFileByName =
+      vi.fn<SkillService["readSkillTextFileByName"]>();
+    readSkillTextFileByName.mockResolvedValue({
       content: "resource body",
       resource: {
         mediaType: "text/markdown",
@@ -152,20 +153,20 @@ describe("app OAuth bearer skills read auth", () => {
         size: 13,
       },
       version: { versionNumber: 2 },
-    } as Awaited<ReturnType<SkillService["readSkillTextFile"]>>);
+    } as Awaited<ReturnType<SkillService["readSkillTextFileByName"]>>);
     const getSkillReadBearerUserId = vi
       .fn<VerifySkillReadBearerUserId>()
       .mockResolvedValue("user-oauth");
     const app = createApp({
       getSkillReadBearerUserId,
       setSkillServicesForUser: setSkillServicesForUser(
-        { readSkillTextFile },
+        { readSkillTextFileByName },
         seenUserIds
       ),
     });
 
     const response = await app.request(
-      "/api/v1/skills/42/resources?path=notes.md",
+      "/api/v1/skills/demo-skill/resources?path=notes.md",
       { headers: { authorization: "Bearer access-token" } },
       testEnv
     );
@@ -179,9 +180,9 @@ describe("app OAuth bearer skills read auth", () => {
       size: 13,
       version: 2,
     });
-    expect(readSkillTextFile).toHaveBeenCalledWith({
+    expect(readSkillTextFileByName).toHaveBeenCalledWith({
       path: "notes.md",
-      skillId: 42,
+      skillName: "demo-skill",
       version: undefined,
     });
     expect(seenUserIds).toStrictEqual(["user-oauth"]);
@@ -211,7 +212,6 @@ describe("app OAuth bearer skills read auth", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      id: 42,
       name: "demo",
     });
     expect(resolveSkillByName).toHaveBeenCalledWith("demo", undefined);
@@ -522,7 +522,7 @@ describe("app MCP auth", () => {
               {
                 currentVersion: 2,
                 description: "Demo skill",
-                location: "skill://skillpack/42",
+                location: "skill://skillpack/demo-skill",
                 name: "demo-skill",
               },
             ],
@@ -538,8 +538,8 @@ describe("app MCP auth", () => {
 
   it("returns a Skillpack activation payload from skillpack_read", async () => {
     const createdAt = new Date("2026-05-25T12:00:00.000Z");
-    const resolveSkill = vi
-      .fn<SkillService["resolveSkill"]>()
+    const resolveSkillByName = vi
+      .fn<SkillService["resolveSkillByName"]>()
       .mockResolvedValue({
         content: "# Demo\n\nUse this.",
         resources: [
@@ -583,8 +583,8 @@ describe("app MCP auth", () => {
           versionNumber: 2,
         },
       });
-    const readSkillTextFile = vi
-      .fn<SkillService["readSkillTextFile"]>()
+    const readSkillTextFileByName = vi
+      .fn<SkillService["readSkillTextFileByName"]>()
       .mockResolvedValue({
         content: "---\nname: demo-skill\n---\n\n# Demo\n\nUse this.\n",
         resource: {
@@ -594,13 +594,13 @@ describe("app MCP auth", () => {
           size: 49,
         },
         version: { versionNumber: 2 },
-      } as Awaited<ReturnType<SkillService["readSkillTextFile"]>>);
+      } as Awaited<ReturnType<SkillService["readSkillTextFileByName"]>>);
     const app = createApp({
       getSkillReadBearerUserId: vi
         .fn<VerifySkillReadBearerUserId>()
         .mockResolvedValue("user-oauth"),
       setSkillServicesForUser: setSkillServicesForUser(
-        { readSkillTextFile, resolveSkill },
+        { readSkillTextFileByName, resolveSkillByName },
         []
       ),
     });
@@ -613,7 +613,7 @@ describe("app MCP auth", () => {
           jsonrpc: "2.0",
           method: "tools/call",
           params: {
-            arguments: { location: "skill://skillpack/42?version=2" },
+            arguments: { location: "skill://skillpack/demo-skill?version=2" },
             name: "skillpack_read",
           },
         }),
@@ -637,17 +637,17 @@ describe("app MCP auth", () => {
         type: "text",
       },
     ]);
-    expect(resolveSkill).toHaveBeenCalledWith(42, 2);
-    expect(readSkillTextFile).toHaveBeenCalledWith({
+    expect(resolveSkillByName).toHaveBeenCalledWith("demo-skill", 2);
+    expect(readSkillTextFileByName).toHaveBeenCalledWith({
       path: "SKILL.md",
-      skillId: 42,
+      skillName: "demo-skill",
       version: 2,
     });
   });
 
   it("returns attached resources from skillpack_read with a path", async () => {
-    const readSkillTextFile = vi
-      .fn<SkillService["readSkillTextFile"]>()
+    const readSkillTextFileByName = vi
+      .fn<SkillService["readSkillTextFileByName"]>()
       .mockResolvedValue({
         content: "# Reference",
         resource: {
@@ -657,13 +657,13 @@ describe("app MCP auth", () => {
           size: 11,
         },
         version: { versionNumber: 2 },
-      } as Awaited<ReturnType<SkillService["readSkillTextFile"]>>);
+      } as Awaited<ReturnType<SkillService["readSkillTextFileByName"]>>);
     const app = createApp({
       getSkillReadBearerUserId: vi
         .fn<VerifySkillReadBearerUserId>()
         .mockResolvedValue("user-oauth"),
       setSkillServicesForUser: setSkillServicesForUser(
-        { readSkillTextFile },
+        { readSkillTextFileByName },
         []
       ),
     });
@@ -677,7 +677,7 @@ describe("app MCP auth", () => {
           method: "tools/call",
           params: {
             arguments: {
-              location: "skill://skillpack/42?version=2",
+              location: "skill://skillpack/demo-skill?version=2",
               path: "references/demo.md",
             },
             name: "skillpack_read",
@@ -700,21 +700,22 @@ describe("app MCP auth", () => {
     expect(body.result.content).toStrictEqual([
       { text: "# Reference", type: "text" },
     ]);
-    expect(readSkillTextFile).toHaveBeenCalledWith({
+    expect(readSkillTextFileByName).toHaveBeenCalledWith({
       path: "references/demo.md",
-      skillId: 42,
+      skillName: "demo-skill",
       version: 2,
     });
   });
 
   it("rejects unsafe skillpack_read resource paths before service lookup", async () => {
-    const readSkillTextFile = vi.fn<SkillService["readSkillTextFile"]>();
+    const readSkillTextFileByName =
+      vi.fn<SkillService["readSkillTextFileByName"]>();
     const app = createApp({
       getSkillReadBearerUserId: vi
         .fn<VerifySkillReadBearerUserId>()
         .mockResolvedValue("user-oauth"),
       setSkillServicesForUser: setSkillServicesForUser(
-        { readSkillTextFile },
+        { readSkillTextFileByName },
         []
       ),
     });
@@ -728,7 +729,7 @@ describe("app MCP auth", () => {
           method: "tools/call",
           params: {
             arguments: {
-              location: "skill://skillpack/42?version=2",
+              location: "skill://skillpack/demo-skill?version=2",
               path: "../secret.md",
             },
             name: "skillpack_read",
@@ -752,7 +753,7 @@ describe("app MCP auth", () => {
         isError: true,
       },
     });
-    expect(readSkillTextFile).not.toHaveBeenCalled();
+    expect(readSkillTextFileByName).not.toHaveBeenCalled();
   });
 
   it("lists Skillpack skills and attached resources as MCP resources", async () => {
@@ -781,8 +782,8 @@ describe("app MCP auth", () => {
         },
       },
     ] as Awaited<ReturnType<SkillService["listSkills"]>>);
-    const resolveSkill = vi
-      .fn<SkillService["resolveSkill"]>()
+    const resolveSkillByName = vi
+      .fn<SkillService["resolveSkillByName"]>()
       .mockResolvedValue({
         ...resolvedSkill(),
         resources: [
@@ -812,7 +813,7 @@ describe("app MCP auth", () => {
         .fn<VerifySkillReadBearerUserId>()
         .mockResolvedValue("user-oauth"),
       setSkillServicesForUser: setSkillServicesForUser(
-        { listSkills, resolveSkill },
+        { listSkills, resolveSkillByName },
         []
       ),
     });
@@ -843,23 +844,23 @@ describe("app MCP auth", () => {
         resources: [
           expect.objectContaining({
             name: "demo-skill",
-            uri: "skill://skillpack/42?version=2",
+            uri: "skill://skillpack/demo-skill?version=2",
           }),
           expect.objectContaining({
             mimeType: "text/markdown",
             name: "demo-skill: references/demo.md",
-            uri: "skillpack-resource://skillpack/42?version=2&path=references%2Fdemo.md",
+            uri: "skillpack-resource://skillpack/demo-skill?version=2&path=references%2Fdemo.md",
           }),
         ],
       },
     });
     expect(listSkills).toHaveBeenCalledOnce();
-    expect(resolveSkill).toHaveBeenCalledWith(42, 2);
+    expect(resolveSkillByName).toHaveBeenCalledWith("demo-skill", 2);
   });
 
   it("reads attached Skillpack MCP resources by URI", async () => {
-    const readSkillTextFile = vi
-      .fn<SkillService["readSkillTextFile"]>()
+    const readSkillTextFileByName = vi
+      .fn<SkillService["readSkillTextFileByName"]>()
       .mockResolvedValue({
         content: "# Reference",
         resource: {
@@ -869,13 +870,13 @@ describe("app MCP auth", () => {
           size: 11,
         },
         version: { versionNumber: 2 },
-      } as Awaited<ReturnType<SkillService["readSkillTextFile"]>>);
+      } as Awaited<ReturnType<SkillService["readSkillTextFileByName"]>>);
     const app = createApp({
       getSkillReadBearerUserId: vi
         .fn<VerifySkillReadBearerUserId>()
         .mockResolvedValue("user-oauth"),
       setSkillServicesForUser: setSkillServicesForUser(
-        { readSkillTextFile },
+        { readSkillTextFileByName },
         []
       ),
     });
@@ -888,7 +889,7 @@ describe("app MCP auth", () => {
           jsonrpc: "2.0",
           method: "resources/read",
           params: {
-            uri: "skillpack-resource://skillpack/42?version=2&path=references%2Fdemo.md",
+            uri: "skillpack-resource://skillpack/demo-skill?version=2&path=references%2Fdemo.md",
           },
         }),
         headers: {
@@ -910,21 +911,21 @@ describe("app MCP auth", () => {
           {
             mimeType: "text/markdown",
             text: "# Reference",
-            uri: "skillpack-resource://skillpack/42?version=2&path=references%2Fdemo.md",
+            uri: "skillpack-resource://skillpack/demo-skill?version=2&path=references%2Fdemo.md",
           },
         ],
       },
     });
-    expect(readSkillTextFile).toHaveBeenCalledWith({
+    expect(readSkillTextFileByName).toHaveBeenCalledWith({
       path: "references/demo.md",
-      skillId: 42,
+      skillName: "demo-skill",
       version: 2,
     });
   });
 
   it("reads Skillpack skill resources by skill URI", async () => {
-    const readSkillTextFile = vi
-      .fn<SkillService["readSkillTextFile"]>()
+    const readSkillTextFileByName = vi
+      .fn<SkillService["readSkillTextFileByName"]>()
       .mockResolvedValue({
         content: "---\nname: demo-skill\n---\n\n# Demo",
         resource: {
@@ -934,13 +935,13 @@ describe("app MCP auth", () => {
           size: 34,
         },
         version: { versionNumber: 2 },
-      } as Awaited<ReturnType<SkillService["readSkillTextFile"]>>);
+      } as Awaited<ReturnType<SkillService["readSkillTextFileByName"]>>);
     const app = createApp({
       getSkillReadBearerUserId: vi
         .fn<VerifySkillReadBearerUserId>()
         .mockResolvedValue("user-oauth"),
       setSkillServicesForUser: setSkillServicesForUser(
-        { readSkillTextFile },
+        { readSkillTextFileByName },
         []
       ),
     });
@@ -952,7 +953,7 @@ describe("app MCP auth", () => {
           id: 8,
           jsonrpc: "2.0",
           method: "resources/read",
-          params: { uri: "skill://skillpack/42?version=2" },
+          params: { uri: "skill://skillpack/demo-skill?version=2" },
         }),
         headers: {
           accept: "application/json",
@@ -973,14 +974,14 @@ describe("app MCP auth", () => {
           {
             mimeType: "text/markdown",
             text: "---\nname: demo-skill\n---\n\n# Demo",
-            uri: "skill://skillpack/42?version=2",
+            uri: "skill://skillpack/demo-skill?version=2",
           },
         ],
       },
     });
-    expect(readSkillTextFile).toHaveBeenCalledWith({
+    expect(readSkillTextFileByName).toHaveBeenCalledWith({
       path: "SKILL.md",
-      skillId: 42,
+      skillName: "demo-skill",
       version: 2,
     });
   });
@@ -1046,7 +1047,7 @@ describe("app MCP auth", () => {
           {
             content: {
               text: expect.stringContaining(
-                "<location>skill://skillpack/42</location>"
+                "<location>skill://skillpack/demo-skill</location>"
               ),
               type: "text",
             },

@@ -51,7 +51,7 @@ export const ManagedSkillsView = ({
         ) : (
           <div>
             {skills.map((skill) => (
-              <SkillRow key={skill.id} skill={skill} />
+              <SkillRow key={skill.name} skill={skill} />
             ))}
           </div>
         )}

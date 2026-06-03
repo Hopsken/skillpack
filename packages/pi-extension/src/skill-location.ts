@@ -1,17 +1,18 @@
 export interface SkillpackLocation {
-  skillId: number;
+  skillName: string;
   version?: number;
 }
 
 export interface SkillpackCatalogItem {
   currentVersion: number;
   description: string;
-  id: number;
   name: string;
 }
 
 const skillpackProtocol = "skill:";
 const skillpackHost = "skillpack";
+const skillNamePattern = /^(?=.*[a-z])[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const versionPattern = /^[1-9]\d*$/u;
 
 export const escapeXml = (value: string) =>
   value
@@ -21,16 +22,24 @@ export const escapeXml = (value: string) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&apos;");
 
+const parseSkillName = (value: string) => {
+  if (!skillNamePattern.test(value)) {
+    throw new Error("Expected skill://skillpack/{skillName}");
+  }
+
+  return value;
+};
+
 const parsePositiveInteger = (value: string, message: string) => {
-  if (!/^[1-9]\d*$/u.test(value)) {
+  if (!versionPattern.test(value)) {
     throw new Error(message);
   }
 
   return Number(value);
 };
 
-export const toSkillpackLocation = (skillId: number) =>
-  `skill://skillpack/${skillId}`;
+export const toSkillpackLocation = (skillName: string) =>
+  `skill://skillpack/${skillName}`;
 
 export const parseSkillpackLocation = (location: string): SkillpackLocation => {
   let url: URL;
@@ -38,21 +47,18 @@ export const parseSkillpackLocation = (location: string): SkillpackLocation => {
   try {
     url = new URL(location);
   } catch {
-    throw new Error("Expected skill://skillpack/{skillId}");
+    throw new Error("Expected skill://skillpack/{skillName}");
   }
 
   if (url.protocol !== skillpackProtocol || url.hostname !== skillpackHost) {
-    throw new Error("Expected skill://skillpack/{skillId}");
+    throw new Error("Expected skill://skillpack/{skillName}");
   }
 
-  const skillId = parsePositiveInteger(
-    url.pathname.replace(/^\//u, ""),
-    "Expected positive numeric Skill ID"
-  );
+  const skillName = parseSkillName(url.pathname.replace(/^\//u, ""));
   const rawVersion = url.searchParams.get("version");
 
   return {
-    skillId,
+    skillName,
     version:
       rawVersion === null
         ? undefined
@@ -83,7 +89,7 @@ export const formatSkillpackCatalog = (skills: SkillpackCatalogItem[]) => {
     lines.push(
       `    <description>${escapeXml(skill.description)}</description>`
     );
-    lines.push(`    <location>${toSkillpackLocation(skill.id)}</location>`);
+    lines.push(`    <location>${toSkillpackLocation(skill.name)}</location>`);
     lines.push(
       `    <current_version>${skill.currentVersion}</current_version>`
     );

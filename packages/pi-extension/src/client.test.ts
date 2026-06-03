@@ -8,7 +8,7 @@ describe(SkillpackClient, () => {
       (input: string | URL, init?: RequestInit) => Promise<Response>
     >((input, init) => {
       expect(String(input)).toBe(
-        "https://skillpack.example/api/v1/skills/42?version=7"
+        "https://skillpack.example/api/v1/skills/demo-skill?version=7"
       );
       expect(init?.headers).toMatchObject({
         authorization: "Bearer access-token",
@@ -22,7 +22,6 @@ describe(SkillpackClient, () => {
             content: "# Demo\n\nUse this.",
             createdAt: "2026-05-27T00:00:00.000Z",
             description: "Demo skill",
-            id: 42,
             license: null,
             metadata: null,
             name: "demo-skill",
@@ -49,10 +48,10 @@ describe(SkillpackClient, () => {
     });
 
     await expect(
-      client.readSkill("skill://skillpack/42?version=7")
+      client.readSkill("skill://skillpack/demo-skill?version=7")
     ).resolves.toMatchObject({
       content: "# Demo\n\nUse this.",
-      location: "skill://skillpack/42",
+      location: "skill://skillpack/demo-skill",
       name: "demo-skill",
       resources: [{ path: "references/demo.md" }],
       version: 7,
@@ -79,7 +78,7 @@ describe(SkillpackClient, () => {
     });
 
     await expect(
-      client.readResource("skill://skillpack/42", "references/demo.md")
+      client.readResource("skill://skillpack/demo-skill", "references/demo.md")
     ).resolves.toStrictEqual({
       content: "# Reference",
       encoding: "text",
@@ -108,7 +107,7 @@ describe(SkillpackClient, () => {
     });
 
     await expect(
-      client.readResource("skill://skillpack/42", "assets/logo.png")
+      client.readResource("skill://skillpack/demo-skill", "assets/logo.png")
     ).resolves.toStrictEqual({
       content: "AQID",
       encoding: "base64",

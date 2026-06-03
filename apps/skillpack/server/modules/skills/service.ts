@@ -13,6 +13,7 @@ import type {
   ForkSkillServiceResult,
   PatchSkillResult,
   PatchSkillServiceInput,
+  ReadSkillFileByNameInput,
   ReadSkillFileInput,
   ReadSkillFileResult,
   ReadSkillTextFileResult,
@@ -95,16 +96,17 @@ export class SkillService {
       throw skillErrors.skillNotFound();
     }
 
-    const currentVersion = await this.repository.findLatestSkillVersion(
-      skill.id
-    );
+    return await this.listSkillVersionsForResolvedSkill(skill);
+  }
 
-    if (!currentVersion) {
-      throw skillErrors.skillVersionNotFound();
+  async listSkillVersionsForSkillName(name: string) {
+    const skill = await this.repository.findSkillByName(name);
+
+    if (!skill) {
+      throw skillErrors.skillNotFound();
     }
 
-    const versions = await this.repository.listSkillVersions(skill.id);
-    return { currentVersion, skill, versions };
+    return await this.listSkillVersionsForResolvedSkill(skill);
   }
 
   async resolveSkill(
@@ -193,6 +195,34 @@ export class SkillService {
     };
   }
 
+  async readSkillResourceByName(
+    input: ReadSkillFileByNameInput
+  ): Promise<ReadSkillFileResult> {
+    const skill = await this.repository.findSkillByName(input.skillName);
+
+    if (!skill) {
+      throw skillErrors.skillNotFound();
+    }
+
+    return await this.readSkillResource({
+      path: input.path,
+      skillId: skill.id,
+      version: input.version,
+    });
+  }
+
+  async readSkillTextFileByName(
+    input: ReadSkillFileByNameInput
+  ): Promise<ReadSkillTextFileResult> {
+    const result = await this.readSkillResourceByName(input);
+
+    return {
+      content: await result.object.text(),
+      resource: result.resource,
+      version: result.version,
+    };
+  }
+
   async createSkill(input: CreateSkillServiceInput) {
     const now = new Date();
     const skillFileContent = serializeSkillFile(input, input.content);
@@ -222,6 +252,22 @@ export class SkillService {
     input: PatchSkillServiceInput
   ): Promise<PatchSkillResult> {
     const { skill, version } = await this.readSkillVersion(skillId);
+    return await this.patchResolvedSkill(skill, version, input);
+  }
+
+  async patchSkillByName(
+    name: string,
+    input: PatchSkillServiceInput
+  ): Promise<PatchSkillResult> {
+    const { skill, version } = await this.readSkillVersionByName(name);
+    return await this.patchResolvedSkill(skill, version, input);
+  }
+
+  private async patchResolvedSkill(
+    skill: SkillRow,
+    version: SkillVersionRow,
+    input: PatchSkillServiceInput
+  ): Promise<PatchSkillResult> {
     const currentResources = await this.repository.listResourcesByVersionId(
       version.id
     );
@@ -291,7 +337,6 @@ export class SkillService {
       compatibility: nextVersion.compatibility,
       currentVersion: nextVersion.versionNumber,
       description: nextVersion.description,
-      id: skill.id,
       license: nextVersion.license,
       metadata: nextVersion.metadata,
       name: skill.name,
@@ -307,6 +352,37 @@ export class SkillService {
       skillId,
       versionNumber
     );
+    return await this.restoreResolvedSkillVersion(
+      skill,
+      version,
+      versionNumber,
+      input
+    );
+  }
+
+  async restoreSkillVersionByName(
+    name: string,
+    versionNumber: number,
+    input: RestoreVersionServiceInput
+  ): Promise<RestoreSkillVersionResult> {
+    const { skill, version } = await this.readSkillVersionByName(
+      name,
+      versionNumber
+    );
+    return await this.restoreResolvedSkillVersion(
+      skill,
+      version,
+      versionNumber,
+      input
+    );
+  }
+
+  private async restoreResolvedSkillVersion(
+    skill: SkillRow,
+    version: SkillVersionRow,
+    versionNumber: number,
+    input: RestoreVersionServiceInput
+  ): Promise<RestoreSkillVersionResult> {
     const sourceResources = await this.repository.listResourcesByVersionId(
       version.id
     );
@@ -324,13 +400,22 @@ export class SkillService {
 
     return {
       currentVersion: nextVersion.versionNumber,
-      id: skill.id,
       restoredFromVersion: versionNumber,
     };
   }
 
   async deleteSkill(skillId: number) {
     const skill = await this.repository.findSkillById(skillId);
+
+    if (!skill) {
+      throw skillErrors.skillNotFound();
+    }
+
+    await this.repository.deleteSkillById(skill.id);
+  }
+
+  async deleteSkillByName(name: string) {
+    const skill = await this.repository.findSkillByName(name);
 
     if (!skill) {
       throw skillErrors.skillNotFound();
@@ -445,6 +530,32 @@ export class SkillService {
     }
 
     return await this.readSkillVersionBySkill(skill, requestedVersion);
+  }
+
+  private async readSkillVersionByName(
+    name: string,
+    requestedVersion?: number
+  ) {
+    const skill = await this.repository.findSkillByName(name);
+
+    if (!skill) {
+      throw skillErrors.skillNotFound();
+    }
+
+    return await this.readSkillVersionBySkill(skill, requestedVersion);
+  }
+
+  private async listSkillVersionsForResolvedSkill(skill: SkillRow) {
+    const currentVersion = await this.repository.findLatestSkillVersion(
+      skill.id
+    );
+
+    if (!currentVersion) {
+      throw skillErrors.skillVersionNotFound();
+    }
+
+    const versions = await this.repository.listSkillVersions(skill.id);
+    return { currentVersion, skill, versions };
   }
 
   private async readSkillVersionBySkill<T extends { id: number }>(

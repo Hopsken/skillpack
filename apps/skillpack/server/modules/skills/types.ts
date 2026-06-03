@@ -40,6 +40,12 @@ export interface ReadSkillFileInput {
   version?: number;
 }
 
+export interface ReadSkillFileByNameInput {
+  path: string;
+  skillName: string;
+  version?: number;
+}
+
 export interface ReadSkillFileResult {
   object: R2ObjectBody;
   resource: SkillFileResource;
@@ -70,7 +76,6 @@ export interface PatchSkillResult {
   compatibility: string | null;
   currentVersion: number;
   description: string;
-  id: number;
   license: string | null;
   metadata: Record<string, string> | null;
   name: string;
@@ -78,7 +83,6 @@ export interface PatchSkillResult {
 
 export interface RestoreSkillVersionResult {
   currentVersion: number;
-  id: number;
   restoredFromVersion: number;
 }
 

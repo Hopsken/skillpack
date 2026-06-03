@@ -1,6 +1,6 @@
 # Skill Set Design Handoff
 
-Skill Set design is deferred from the Managed Skill refactor. The current model leaves Skill Sets to reference Managed Skills by Skill ID and, when needed, numeric Managed Skill Version pins.
+Skill Set design is deferred from the Managed Skill refactor. Public Skill Set contracts should reference Managed Skills by Skill Name and, when needed, numeric Managed Skill Version pins. Internal persistence may resolve Skill Names to internal Skill IDs.
 
 Open decisions:
 
@@ -13,5 +13,5 @@ Open decisions:
 
 Constraint from the refactor:
 
-- Skill Set membership must not depend on Skill Name uniqueness.
+- Skill Set membership in public contracts must use Skill Name in the authenticated user's Library; internal persistence may use Skill ID foreign keys.
 - Skill Set delivery must not reintroduce source-qualified Managed Skill identity.

@@ -77,16 +77,16 @@ const getVersionClassName = (isCurrent: boolean) =>
   );
 
 const getRawResourceUrl = (
-  skillId: number | undefined,
+  skillName: string | undefined,
   version: number | undefined,
   path: string | undefined
 ) => {
-  if (!(skillId && version && path)) {
+  if (!(skillName && version && path)) {
     return;
   }
 
   const searchParams = new URLSearchParams({ path, version: String(version) });
-  return `/api/v1/skills/${skillId}/resources/raw?${searchParams}`;
+  return `/api/v1/skills/${skillName}/resources/raw?${searchParams}`;
 };
 
 const getResourceContentStatus = (
@@ -127,12 +127,12 @@ const ResourcesPanel = ({
   const shouldFetchFile =
     selectedResource && getSkillResourceKind(selectedResource) !== "image";
   const skillFile = useSkillFile(
-    skill?.id,
+    skill?.name,
     skill?.version,
     shouldFetchFile ? selectedResource.path : undefined
   );
   const rawUrl = getRawResourceUrl(
-    skill?.id,
+    skill?.name,
     skill?.version,
     selectedResource?.path
   );

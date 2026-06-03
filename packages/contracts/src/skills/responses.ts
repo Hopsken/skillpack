@@ -3,7 +3,6 @@ import {
   skillAllowedToolsSchema,
   skillCompatibilitySchema,
   skillDescriptionSchema,
-  skillIdSchema,
   skillLicenseSchema,
   skillMetadataSchema,
   skillNameSchema,
@@ -32,7 +31,6 @@ export const skillListItemSchema = z.object({
   createdAt: z.string().datetime(),
   currentVersion: skillVersionNumberSchema,
   description: skillDescriptionSchema,
-  id: skillIdSchema,
   license: skillLicenseSchema.nullable(),
   metadata: skillMetadataSchema.nullable(),
   name: skillNameSchema,
@@ -50,7 +48,6 @@ export const resolvedSkillSchema = z.object({
   content: z.string(),
   createdAt: z.string().datetime(),
   description: skillDescriptionSchema,
-  id: skillIdSchema,
   license: skillLicenseSchema.nullable(),
   metadata: skillMetadataSchema.nullable(),
   name: skillNameSchema,
@@ -76,7 +73,6 @@ export const skillVersionItemSchema = z.object({
 
 export const skillVersionListResponseSchema = z.object({
   currentVersion: skillVersionNumberSchema,
-  id: skillIdSchema,
   name: skillNameSchema,
   versions: z.array(skillVersionItemSchema),
 });
@@ -95,7 +91,6 @@ export const skillPatchedResponseSchema = z.object({
   compatibility: skillCompatibilitySchema.nullable(),
   currentVersion: skillVersionNumberSchema,
   description: skillDescriptionSchema,
-  id: skillIdSchema,
   license: skillLicenseSchema.nullable(),
   metadata: skillMetadataSchema.nullable(),
   name: skillNameSchema,
@@ -103,7 +98,6 @@ export const skillPatchedResponseSchema = z.object({
 
 export const restoreVersionResponseSchema = z.object({
   currentVersion: skillVersionNumberSchema,
-  id: skillIdSchema,
   restoredFromVersion: skillVersionNumberSchema,
 });
 

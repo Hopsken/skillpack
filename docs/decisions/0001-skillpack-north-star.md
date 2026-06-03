@@ -19,7 +19,7 @@ That direction conflicts with the product stance Skillpack now needs:
 - Users should be responsible for the skills they make available to agents.
 - Third-party skills should become user-owned managed copies inside Skillpack.
 - GitHub and other external systems should provide provenance and comparison targets, not primary skill identity.
-- Agent-facing locators should be stable Skillpack identities, not upstream URLs or source-qualified handles.
+- Agent-facing locators should use stable user-scoped Skill Names, not upstream URLs, source-qualified handles, or internal storage IDs.
 - A user's intended output is a managed collection of skills for an agent, project, workflow, or runtime context.
 - A user should only see and manage the skills in their own Library.
 - Skill names should be stable within a user's Library so Add to Library can update an existing Managed Skill when the same source name appears again.
@@ -55,9 +55,9 @@ Forked, user-authored, agent-created, and API-created skills all become Managed 
 
 ### Skill ID
 
-A Skill ID is the Skillpack-owned primary identity for a Managed Skill.
+A Skill ID is the Skillpack-owned internal opaque storage identity for a Managed Skill.
 
-All system operations and Skill Locations address Managed Skills by Skill ID. There is no separate handle concept. Skill Name is display and discovery metadata that is immutable and unique within one user's Library. Different users may use the same Skill Name.
+Skill IDs may be pre-generated to support storage workflows and D1 batch writes, but they are not user-facing or agent-facing operation identifiers. Public APIs, user interfaces, and Skill Locations address Managed Skills by Skill Name within an authorized user context.
 
 ### Skill Origin
 
@@ -94,7 +94,7 @@ A new version is created by durable actions such as:
 - Restoring a previous version
 - Accepting an Origin Comparison
 
-Every Managed Skill Version is a complete resource snapshot containing `SKILL.md` plus its resource manifest. Cross-version incremental patching and current R2 physical deduplication are out of scope.
+Every Managed Skill Version is a complete resource snapshot containing `SKILL.md` plus its resource manifest. Cross-version incremental patching is out of scope; R2 object storage remains content-addressed by SHA-256.
 
 Restoring a previous version creates a new version from the historical content. The timeline remains linear, and the current version is the highest committed `version_number`.
 
@@ -102,16 +102,16 @@ Managed Skill Versions do not own Skill Name. The owning Managed Skill's immutab
 
 ### Skill Location
 
-A Skill Location is an agent-facing private locator derived from Skill ID:
+A Skill Location is an agent-facing private locator derived from Skill Name within an authorized user context:
 
 ```text
-skill://skillpack/{skillId}
-skill://skillpack/{skillId}?version={versionNumber}
+skill://skillpack/{skillName}
+skill://skillpack/{skillName}?version={versionNumber}
 ```
 
 Bare Skill Locations resolve to the latest committed version. A `version` query parameter pins resolution to a specific Managed Skill Version number.
 
-Skill Locations are not fetchable content URLs. Agents and harnesses resolve them through Skillpack APIs, MCP tools, extension tools, or future delivery interfaces in an authorized user context. A user cannot resolve another user's Managed Skill by guessing its Skill ID.
+Skill Locations are not fetchable content URLs. Agents and harnesses resolve them through Skillpack APIs, MCP tools, extension tools, or future delivery interfaces in an authorized user context. The same Skill Name may exist in different users' Libraries; authorization determines which Managed Skill is resolved.
 
 ### Skill Trust
 
@@ -145,11 +145,11 @@ This approach would preserve a relationship where Skillpack follows an upstream 
 
 This approach was rejected because Skillpack is opinionated about user responsibility. Third-party content can help discovery and comparison, while the user's Managed Skill remains the object delivered to agents.
 
-### Use user-defined handles as primary identity
+### Use internal Skill IDs as public identity
 
-This approach would make names or handles part of API paths and Skill Locations.
+This approach would make internal Skill IDs part of API paths and Skill Locations.
 
-This approach was rejected because names are user-scoped display and discovery metadata, not route identity. Skill IDs provide stable system identity and simpler routing, while `(user, Skill Name)` uniqueness supports a predictable personal Library.
+This approach was rejected because public numeric or opaque IDs are harder for users and agents to reason about than Skill Names, and numeric IDs are especially vulnerable to model hallucination and enumeration concerns in a multi-user system. Skill IDs remain useful as internal storage identities, while `(user, Skill Name)` uniqueness provides the public operation identity.
 
 ### Allow duplicate names inside one user's Library
 
@@ -172,13 +172,13 @@ This approach was rejected because Skillpack versions are managed content snapsh
 ## Consequences
 
 - `skills.source_type` must be removed from Managed Skill identity.
-- `skills.handle` must be removed. Skill Name is immutable, user-scoped display and discovery metadata.
+- `skills.handle` must be removed. Skill Name is immutable, user-scoped public operation identity.
 - `skills.owner_user_id` and `skills.name` must enforce `(owner_user_id, name)` uniqueness.
 - `skill_versions.name` must be removed because versions do not own Skill Name.
-- `skills.location` is redundant because it is derived from Skill ID. It may be removed or generated by presenters.
+- `skills.location` is redundant because it is derived from Skill Name. It may be removed or generated by presenters.
 - GitHub and other external systems move into version-level origin/provenance metadata.
-- Agent-facing locators use only `skill://skillpack/{skillId}` and optional `version` pins, resolved only in an authorized user context.
-- API routes should address skills by ID, for example `/api/v1/skills/{skillId}`.
+- Agent-facing locators use only `skill://skillpack/{skillName}` and optional `version` pins, resolved only in an authorized user context.
+- Public API routes should address skills by Skill Name, for example `/api/v1/skills/{skillName}`. Public API responses should not expose Skill ID.
 - API routes must scope Managed Skill reads and writes to the authenticated user. Cross-user access returns not found.
 - Versions should use system-generated incrementing numbers and optional labels.
 - Each version is a complete resource snapshot.
@@ -196,7 +196,7 @@ This ADR does not design:
 - Full GitHub indexing, authentication, rate-limit handling, or repository traversal
 - Complex Git refs, branch tracking, merge semantics, or upstream history modeling
 - npm source support
-- R2 physical deduplication by SHA
+- Replacing content-addressed R2 storage with per-skill object paths
 - Export/package/filesystem installation modes
 - A backend draft/approval state machine for user review
 
@@ -210,17 +210,17 @@ Affected files:
 
 Implemented changes:
 
-- Replace `handle` fields with `id` fields.
+- Replace `handle` fields and public `id` fields with Skill Name as the operation identity.
 - Remove `source` from primary skill responses or move provenance into a future origin response shape.
 - Change `version` from string schema to integer version number.
 - Add optional version labels where needed.
-- Keep `location` as a response field only if generated from `id`, or remove it from stored input contracts.
+- Keep `location` as a response field only if generated from Skill Name, or remove it from stored input contracts.
 - Update create/update inputs so users do not provide version numbers.
 
 Verification:
 
-- Shared schemas expose Skill ID as primary identity.
-- Shared schemas allow duplicate names.
+- Shared schemas expose Skill Name as public operation identity and do not expose Skill ID.
+- Shared schemas validate Skill Name shape; ownership-scoped uniqueness is enforced server-side.
 - Shared schemas do not expose `sourceType` or `handle` as skill identity.
 
 ### 2. Migrate the database model
@@ -244,8 +244,8 @@ Required changes:
 
 Verification:
 
-- Managed Skills can have duplicate names.
-- Managed Skills are queryable by ID.
+- Managed Skills can have duplicate names across users but not within one user's Library.
+- Managed Skills are queryable internally by Skill ID and publicly by Skill Name within owner scope.
 - Version uniqueness is enforced by `(skill_id, version_number)`.
 - Resource uniqueness remains scoped to `(skill_version_id, path)`.
 
@@ -259,15 +259,15 @@ Affected files:
 
 Required changes:
 
-- Generate Skill Location as `skill://skillpack/{skillId}`.
-- Generate resolved locations as `skill://skillpack/{skillId}?version={versionNumber}`.
-- Parse location input by Skill ID only.
+- Generate Skill Location as `skill://skillpack/{skillName}`.
+- Generate resolved locations as `skill://skillpack/{skillName}?version={versionNumber}`.
+- Parse location input by Skill Name only in an authorized user context.
 - Remove source-qualified parsing and unsupported source branches from managed-skill resolution.
 
 Verification:
 
-- `skill://skillpack/1` resolves skill ID `1`.
-- `skill://skillpack/1?version=2` resolves version number `2`.
+- `skill://skillpack/demo-skill` resolves Skill Name `demo-skill` in the authorized user's Library.
+- `skill://skillpack/demo-skill?version=2` resolves version number `2` for Skill Name `demo-skill`.
 - `skill://github/...` is not part of agent-facing managed skill resolution.
 
 ### 4. Update backend routes and services
@@ -282,24 +282,23 @@ Affected files:
 
 Required changes:
 
-- Replace `/:sourceType/:locator` with ID-based routes.
-- Resolve, list versions, read resources, and delete by Skill ID.
+- Replace `/:sourceType/:locator` with Skill Name routes.
+- Public routes resolve, list versions, read resources, and delete by Skill Name.
 - On create, generate version number `1`.
 - On save/update, create version number `N + 1` and set it as current.
 - On restore, create version number `N + 1` from the selected historical snapshot and set it as current.
-- Store objects under ID and version-number paths, for example:
+- Store resource content in content-addressed R2 objects, with D1 recording the ownership, version, resource path, and SHA-256 relationship:
 
 ```text
-skills/{skillId}/versions/{versionNumber}/SKILL.md
-skills/{skillId}/versions/{versionNumber}/resources/{path}
+objects/sha256/{sha256}
 ```
 
 Verification:
 
-- `GET /api/v1/skills/{skillId}` returns the current version.
-- `GET /api/v1/skills/{skillId}?version={versionNumber}` returns the pinned version.
-- `GET /api/v1/skills/{skillId}/versions` lists numeric versions.
-- Resource reads use Skill ID and version number.
+- `GET /api/v1/skills/{skillName}` returns the current version.
+- `GET /api/v1/skills/{skillName}?version={versionNumber}` returns the pinned version.
+- `GET /api/v1/skills/{skillName}/versions` lists numeric versions.
+- Resource reads use Skill Name and version number in public APIs, then resolve to internal Skill ID before D1/R2 access.
 
 ### 5. Update frontend routing and skill feature usage
 
@@ -314,17 +313,17 @@ Affected files:
 
 Required changes:
 
-- Navigate by Skill ID rather than source type and handle.
-- Treat `name` as display text only.
+- Navigate by Skill Name rather than source type, handle, or Skill ID.
+- Treat `name` as the public operation identity and display text.
 - Display version numbers and optional labels.
-- Generate resource and version links using Skill ID.
+- Generate resource and version links using Skill Name.
 - Keep review UX concerns in frontend flows; do not require backend draft approval for this pivot.
 
 Verification:
 
-- Skill list links route to `/skills/{skillId}` or the chosen ID-based client route.
-- Detail pages load by ID.
-- Duplicate skill names remain navigable because URLs use IDs.
+- Skill list links route to `/skills/{skillName}`.
+- Detail pages load by Skill Name.
+- Duplicate Skill Names remain valid across different users because resolution is scoped to the authenticated user.
 
 ### 6. Design Skill Set separately
 
@@ -347,10 +346,10 @@ Verification:
 
 - [ ] `CONTEXT.md` uses Managed Skill, Skill Origin, Fork, Origin Comparison, Skill ID, Managed Skill Version, Skill Set, and Skill Delivery consistently.
 - [ ] No primary skill API depends on `source_type` or `handle`.
-- [ ] Skill Location generation uses `skill://skillpack/{skillId}`.
+- [ ] Skill Location generation uses `skill://skillpack/{skillName}`.
 - [ ] Skill Location version pins use numeric version numbers.
 - [ ] Create/save/restore workflows generate system version numbers.
-- [ ] Managed Skill names can duplicate.
+- [ ] Managed Skill names can duplicate across users but not within one user's Library.
 - [ ] Resource storage and resource manifests are scoped to a complete Managed Skill Version snapshot.
 - [ ] GitHub-origin functionality is modeled as fork/provenance/comparison rather than sync/import/mirror.
 - [ ] Skill Set implementation waits for a separate design pass.
@@ -360,9 +359,9 @@ Verification:
 ## Follow-up Actions
 
 - Redesign and implement the Managed Skill database migration.
-- Redesign shared schemas and API routes around Skill ID.
-- Update frontend routes and API hooks to use Skill ID.
+- Redesign shared schemas and API routes around Skill Name as public operation identity and Skill ID as internal storage identity.
+- Update frontend routes and API hooks to use Skill Name.
 - Add fork/provenance modeling for GitHub-origin skills.
 - Add simple Origin Comparison against the GitHub repository default branch.
 - Create a separate Skill Set design.
-- Defer R2 SHA-based physical deduplication as a future optimization.
+- Keep R2 storage content-addressed by SHA-256 unless a future ADR chooses per-skill object paths.

@@ -37,16 +37,16 @@ A lightweight review workflow that compares a Managed Skill with the current con
 _Avoid_: Sync, pull, merge, version-control history
 
 **Skill ID**:
-The Skillpack-owned primary identity for a Managed Skill. All system operations and Skill Locations address Managed Skills by Skill ID.
-_Avoid_: Handle, source identity, Skill Name as identity
+The Skillpack-owned internal opaque storage identity for a Managed Skill. A Skill ID may be pre-generated for storage workflows, but it is not a user-facing or agent-facing operation identifier and is not exposed by public API responses.
+_Avoid_: Public handle, user-facing identifier, agent-facing locator, source identity, auto-increment number as product identity
 
 **Skill Name**:
-The lowercase-hyphen name used for display and discovery inside one user's Skill Library. A Skill Name is immutable after creation and must be unique within that user's Library; different users may use the same Skill Name.
-_Avoid_: Handle, global name, version name, primary identity
+The lowercase-hyphen operation name for a Managed Skill inside one user's Skill Library. A Skill Name is immutable after creation, must be unique within that user's Library, and is the only public operation identity for user-facing interfaces, APIs, and agent-facing delivery. Different Skill Names identify different Managed Skills; changing a Skill Name means creating a new Managed Skill.
+_Avoid_: Global name, version name, display-only label, numeric Skill ID as user-facing identity, public UUID as skill identity
 
 **Skill Location**:
-An agent-facing private `skill://skillpack/{skillId}` locator derived from Skill ID. Agents and harnesses resolve Skill Locations through Skillpack APIs, MCP tools, or extension tools in an authorized user context to obtain `SKILL.md`, resources, and access metadata; the URI itself is not a fetchable content URL.
-_Avoid_: Source-qualified locator, GitHub locator, handle locator, raw URL, direct download URL
+An agent-facing private `skill://skillpack/{skillName}` locator derived from Skill Name within an authorized user context. Agents and harnesses resolve Skill Locations through Skillpack APIs, MCP tools, or extension tools to obtain `SKILL.md`, resources, and access metadata; the URI itself is not a fetchable content URL.
+_Avoid_: Numeric ID locator, source-qualified locator, GitHub locator, raw URL, direct download URL
 
 **Skill Location Pin**:
 An optional qualifier on a Skill Location that binds resolution to a Managed Skill Version number. Bare Skill Locations resolve to the current version.
@@ -57,12 +57,12 @@ A Skillpack-owned complete content snapshot for a Managed Skill, identified by a
 _Avoid_: Semver requirement, every keystroke as version, incremental patch, current R2 deduplication, Git ref, Git revision, version name
 
 **Resolved Skill**:
-The concrete content view produced by resolving a Skill Location at a point in time. A Resolved Skill includes `content` for the `SKILL.md` body, a resource manifest, resolved Skill ID, provenance, and access metadata.
-_Avoid_: Managed Skill, raw file
+The concrete content view produced by resolving a Skill Location at a point in time. A Resolved Skill includes `content` for the `SKILL.md` body, a resource manifest, resolved Skill Name, provenance, and access metadata.
+_Avoid_: Managed Skill, raw file, internal Skill ID in public resolved output
 
 **Resource Manifest**:
-The complete list of non-`SKILL.md` resources attached to a Managed Skill Version, including paths and metadata needed to request each resource through Skillpack. A Resource Manifest has no independent product identity or version line; its identity comes from the owning Managed Skill Version.
-_Avoid_: Cross-version resource state, resource content bundle, resource patch as storage model, SKILL.md manifest item, independent resource version
+The complete list of non-`SKILL.md` resources attached to a Managed Skill Version, including paths and metadata needed to request each resource through Skillpack. A Resource Manifest has no independent product identity or version line; its identity comes from the owning Managed Skill Version, not from an R2 object path.
+_Avoid_: Cross-version resource state, resource content bundle, resource patch as storage model, SKILL.md manifest item, independent resource version, R2 path as resource identity
 
 **Resource Path**:
 A safe relative path for a Resource Manifest item, resolved from the directory containing `SKILL.md` and following agent skills conventions. A Resource Path may include `/` for nested files, is unique within one Resource Manifest, and is not an origin repository path.

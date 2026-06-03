@@ -45,13 +45,6 @@ export const fetchSkillList = async (): Promise<SkillListResponse> => {
 };
 
 export const fetchLatestSkill = async (
-  skillId: number
-): Promise<ResolvedSkill> => {
-  const data = await api.get(`skills/${skillId}`).json();
-  return resolvedSkillSchema.parse(data);
-};
-
-export const fetchLatestSkillByName = async (
   skillName: string
 ): Promise<ResolvedSkill> => {
   const data = await api.get(`skills/${skillName}`).json();
@@ -59,16 +52,6 @@ export const fetchLatestSkillByName = async (
 };
 
 export const fetchSkillDetail = async (
-  skillId: number,
-  version: number
-): Promise<ResolvedSkill> => {
-  const data = await api
-    .get(`skills/${skillId}`, { searchParams: { version } })
-    .json();
-  return resolvedSkillSchema.parse(data);
-};
-
-export const fetchSkillDetailByName = async (
   skillName: string,
   version: number
 ): Promise<ResolvedSkill> => {
@@ -79,19 +62,19 @@ export const fetchSkillDetailByName = async (
 };
 
 export const fetchSkillVersions = async (
-  skillId: number
+  skillName: string
 ): Promise<SkillVersionListResponse> => {
-  const data = await api.get(`skills/${skillId}/versions`).json();
+  const data = await api.get(`skills/${skillName}/versions`).json();
   return skillVersionListResponseSchema.parse(data);
 };
 
 export const fetchSkillFile = async (
-  skillId: number,
+  skillName: string,
   version: number,
   path: string
 ): Promise<SkillResourceResponse> => {
   const data = await api
-    .get(`skills/${skillId}/resources`, {
+    .get(`skills/${skillName}/resources`, {
       searchParams: { path, version },
     })
     .json();
@@ -124,20 +107,20 @@ export const readSkillDefinitions = async (
 };
 
 export const patchManagedSkill = async (
-  skillId: number,
+  skillName: string,
   input: PatchSkillInput
 ): Promise<SkillPatchedResponse> => {
-  const data = await api.patch(`skills/${skillId}`, { json: input }).json();
+  const data = await api.patch(`skills/${skillName}`, { json: input }).json();
   return skillPatchedResponseSchema.parse(data);
 };
 
 export const restoreManagedSkillVersion = async (
-  skillId: number,
+  skillName: string,
   version: number,
   input: RestoreVersionInput
 ) => {
   const data = await api
-    .post(`skills/${skillId}/versions/${version}/restore`, { json: input })
+    .post(`skills/${skillName}/versions/${version}/restore`, { json: input })
     .json();
   return restoreVersionResponseSchema.parse(data);
 };

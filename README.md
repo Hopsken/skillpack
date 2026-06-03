@@ -121,8 +121,8 @@ pnpm db:migrate:local
 pnpm db:migrate:remote
 ```
 
-The current development migration resets Managed Skill tables to the Skill ID
-model and drops old skill rows. Auth tables are not reset.
+The current development migration resets Managed Skill tables to the Managed
+Skill model and drops old skill rows. Auth tables are not reset.
 
 Seed local development data while `pnpm dev` is running. The skills API is protected, so pass a session cookie from a local browser login:
 
@@ -142,16 +142,16 @@ pnpm deploy
 GET  /api/health
 POST /mcp
 GET  /api/v1/skills
-GET  /api/v1/skills/:identifier
-GET  /api/v1/skills/:identifier?version=
-GET  /api/v1/skills/:skillId/versions
-GET  /api/v1/skills/:skillId/resources?version=&path=
-GET  /api/v1/skills/:skillId/resources/raw?version=&path=
+GET  /api/v1/skills/:skillName
+GET  /api/v1/skills/:skillName?version=
+GET  /api/v1/skills/:skillName/versions
+GET  /api/v1/skills/:skillName/resources?version=&path=
+GET  /api/v1/skills/:skillName/resources/raw?version=&path=
 POST /api/v1/skills
 POST /api/v1/skills/fork
-PATCH /api/v1/skills/:skillId
-POST /api/v1/skills/:skillId/versions/:versionNumber/restore
-DELETE /api/v1/skills/:skillId
+PATCH /api/v1/skills/:skillName
+POST /api/v1/skills/:skillName/versions/:versionNumber/restore
+DELETE /api/v1/skills/:skillName
 ```
 
 Create a skill:
@@ -179,10 +179,9 @@ curl -X POST http://localhost:5173/api/v1/skills \
   }'
 ```
 
-Created Skillpack-managed skills can be resolved by Skill ID or Skill Name:
+Created Skillpack-managed skills are resolved by Skill Name in public APIs:
 
 ```text
-/api/v1/skills/1
 /api/v1/skills/demo
 ```
 
@@ -194,7 +193,7 @@ Call it with an OAuth Bearer token that has `skills:read`.
 The MCP server exposes:
 
 - `skillpack_list` — list the authenticated user's Managed Skill catalog.
-- `skillpack_read` — read a `skill://skillpack/{skillId}` location or one
+- `skillpack_read` — read a `skill://skillpack/{skillName}` location or one
   attached resource path.
 - MCP resources — list and read current Skill versions plus attached resources.
 - `use_skillpack_skills` — prompt guidance for agents.

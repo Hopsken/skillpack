@@ -103,24 +103,24 @@ State management rule: TanStack Query owns server state from APIs; Zustand owns 
 
 ## Data Model Notes
 
-- Skillpack-managed skills are addressed by Skill ID.
-- Skill names are user-scoped, immutable display metadata and are unique for each user.
-- Skill content is stored at `skills/skillpack/{skillId}/{versionNumber}/SKILL.md` in R2.
-- `skill_versions` keeps version metadata, object keys, SHA-256 values, resolved locations, and version labels.
+- Skillpack-managed skills are addressed publicly by Skill Name; Skill ID is internal storage identity only.
+- Skill names are user-scoped, immutable operation names and are unique for each user.
+- Skill resource content is stored in content-addressed R2 objects at `objects/sha256/{sha256}`.
+- `skill_versions` keeps version metadata, SHA-256 values, resolved locations, and version labels.
 
 ## API
 
 ```text
 GET  /api/health
 GET  /api/v1/skills
-GET  /api/v1/skills/:identifier
-GET  /api/v1/skills/:identifier?version=:version
-GET  /api/v1/skills/:skillId/resources?version=:version&path=:path
-GET  /api/v1/skills/:skillId/resources/raw?version=:version&path=:path
+GET  /api/v1/skills/:skillName
+GET  /api/v1/skills/:skillName?version=:version
+GET  /api/v1/skills/:skillName/resources?version=:version&path=:path
+GET  /api/v1/skills/:skillName/resources/raw?version=:version&path=:path
 POST /api/v1/skills
 POST /api/v1/skills/fork
-PATCH /api/v1/skills/:skillId
-DELETE /api/v1/skills/:skillId
+PATCH /api/v1/skills/:skillName
+DELETE /api/v1/skills/:skillName
 ```
 
 Create a skill locally:

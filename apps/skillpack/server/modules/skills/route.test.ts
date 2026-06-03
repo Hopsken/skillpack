@@ -48,36 +48,37 @@ const resolvedSkill = (input?: {
 };
 
 describe("skillsRoute owner scope", () => {
-  it("lists skills through the request-scoped skill service", async () => {
-    const listSkills = vi
-      .fn<SkillService["listSkills"]>()
-      .mockResolvedValue([]);
+  it("lists skills without exposing internal Skill IDs", async () => {
+    const listSkills = vi.fn<SkillService["listSkills"]>().mockResolvedValue([
+      {
+        skill: resolvedSkill({ id: 123, name: "demo" }).skill,
+        version: resolvedSkill({ id: 123, name: "demo" }).version,
+      },
+    ] as Awaited<ReturnType<SkillService["listSkills"]>>);
     const app = createApp({ listSkills });
 
     const response = await app.request("/skills");
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toStrictEqual({ skills: [] });
+    await expect(response.json()).resolves.toStrictEqual({
+      skills: [
+        {
+          allowedTools: "Read",
+          compatibility: null,
+          createdAt: "2026-05-25T12:00:00.000Z",
+          currentVersion: 1,
+          description: "Demo description",
+          license: null,
+          metadata: null,
+          name: "demo",
+          updatedAt: "2026-05-25T12:00:00.000Z",
+        },
+      ],
+    });
     expect(listSkills).toHaveBeenCalledWith();
   });
 
-  it("resolves a numeric skill identifier by Skill ID", async () => {
-    const resolveSkill = vi
-      .fn<SkillService["resolveSkill"]>()
-      .mockResolvedValue(resolvedSkill({ id: 123 }));
-    const app = createApp({ resolveSkill });
-
-    const response = await app.request("/skills/123?version=2");
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
-      id: 123,
-      version: 1,
-    });
-    expect(resolveSkill).toHaveBeenCalledWith(123, 2);
-  });
-
-  it("resolves a non-numeric skill identifier by Skill Name", async () => {
+  it("resolves Skill Names as the public operation identity", async () => {
     const resolveSkillByName = vi
       .fn<SkillService["resolveSkillByName"]>()
       .mockResolvedValue(resolvedSkill({ name: "demo-skill", version: 2 }));
@@ -91,5 +92,43 @@ describe("skillsRoute owner scope", () => {
       version: 2,
     });
     expect(resolveSkillByName).toHaveBeenCalledWith("demo-skill", 2);
+  });
+
+  it("rejects numeric Skill IDs at the public API boundary", async () => {
+    const resolveSkillByName = vi.fn<SkillService["resolveSkillByName"]>();
+    const app = createApp({ resolveSkillByName });
+
+    const response = await app.request("/skills/123?version=2");
+
+    expect(response.status).toBe(400);
+    expect(resolveSkillByName).not.toHaveBeenCalled();
+  });
+
+  it("reads resources by Skill Name", async () => {
+    const readSkillTextFileByName = vi
+      .fn<SkillService["readSkillTextFileByName"]>()
+      .mockResolvedValue({
+        content: "notes",
+        resource: {
+          mediaType: "text/plain",
+          path: "references/notes.txt",
+          sha256: "abc123",
+          size: 5,
+        },
+        version: resolvedSkill({ name: "demo" }).version,
+      });
+    const app = createApp({ readSkillTextFileByName });
+
+    const response = await app.request(
+      "/skills/demo/resources?version=2&path=references%2Fnotes.txt"
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ content: "notes" });
+    expect(readSkillTextFileByName).toHaveBeenCalledWith({
+      path: "references/notes.txt",
+      skillName: "demo",
+      version: 2,
+    });
   });
 });

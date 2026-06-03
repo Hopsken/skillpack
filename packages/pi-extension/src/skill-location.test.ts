@@ -6,29 +6,31 @@ import {
 } from "./skill-location";
 
 describe("Skillpack Skill Locations", () => {
-  it("parses current and pinned Skillpack locations", () => {
-    expect(parseSkillpackLocation("skill://skillpack/42")).toStrictEqual({
-      skillId: 42,
+  it("parses current and pinned Skillpack locations by Skill Name", () => {
+    expect(
+      parseSkillpackLocation("skill://skillpack/demo-skill")
+    ).toStrictEqual({
+      skillName: "demo-skill",
       version: undefined,
     });
 
     expect(
-      parseSkillpackLocation("skill://skillpack/42?version=7")
+      parseSkillpackLocation("skill://skillpack/demo-skill?version=7")
     ).toStrictEqual({
-      skillId: 42,
+      skillName: "demo-skill",
       version: 7,
     });
   });
 
   it("rejects non-Skillpack or malformed locations", () => {
     expect(() => parseSkillpackLocation("skill://github/acme/demo")).toThrow(
-      "Expected skill://skillpack/{skillId}"
+      "Expected skill://skillpack/{skillName}"
     );
-    expect(() => parseSkillpackLocation("skill://skillpack/nope")).toThrow(
-      "Expected positive numeric Skill ID"
+    expect(() => parseSkillpackLocation("skill://skillpack/42")).toThrow(
+      "Expected skill://skillpack/{skillName}"
     );
     expect(() =>
-      parseSkillpackLocation("skill://skillpack/42?version=0")
+      parseSkillpackLocation("skill://skillpack/demo-skill?version=0")
     ).toThrow("Expected positive numeric Skill version");
   });
 
@@ -38,17 +40,15 @@ describe("Skillpack Skill Locations", () => {
         {
           currentVersion: 3,
           description: "Use when checking <xml> escaping.",
-          id: 42,
           name: "demo-skill",
         },
       ])
-    ).toContain("<location>skill://skillpack/42</location>");
+    ).toContain("<location>skill://skillpack/demo-skill</location>");
     expect(
       formatSkillpackCatalog([
         {
           currentVersion: 3,
           description: "Use when checking <xml> escaping.",
-          id: 42,
           name: "demo-skill",
         },
       ])

@@ -10,7 +10,7 @@ Each catalog entry contains:
 
 - Skill name
 - Description
-- `skill://skillpack/{skillId}` locator
+- `skill://skillpack/{skillName}` locator
 - Current numeric version
 
 When the agent needs the full skill instructions, it calls `skillpack_read` with the `skill://` locator and no `path`. That result includes the raw `SKILL.md` content with frontmatter plus the attached resource paths inside the same `<skill>` wrapper. Attached resources are read with the same tool by passing a resource `path`.
@@ -30,23 +30,23 @@ Responsibilities:
 - Register `skillpack_read` for the skill activation payload, preserving `SKILL.md` frontmatter and listing attached resources.
 - Register `/skillpack` for listing, selecting, and activating Skillpack skills.
 
-The `/skillpack` command accepts a skill ID, skill name, or `skill://skillpack/{skillId}` location. With no arguments, it opens a selector. Selecting a skill pre-fills `/skillpack:{name} ` in the editor so the user can add task prompt text before sending.
+The `/skillpack` command accepts a Skill Name or `skill://skillpack/{skillName}` location. With no arguments, it opens a selector. Selecting a skill pre-fills `/skillpack:{name} ` in the editor so the user can add task prompt text before sending.
 
 ## Locator
 
 Current version:
 
 ```text
-skill://skillpack/{skillId}
+skill://skillpack/{skillName}
 ```
 
 Pinned version:
 
 ```text
-skill://skillpack/{skillId}?version={versionNumber}
+skill://skillpack/{skillName}?version={versionNumber}
 ```
 
-Delivery identity is always Skill ID plus optional numeric version. GitHub URLs, source-qualified paths, and display names are not delivery identity.
+Delivery identity is always Skill Name plus optional numeric version in an authorized user context. GitHub URLs, source-qualified paths, and internal Skill IDs are not delivery identity.
 
 ## API Reuse
 
@@ -54,10 +54,10 @@ The Pi extension uses the existing authenticated Skillpack API:
 
 ```text
 GET /api/v1/skills
-GET /api/v1/skills/:skillId
-GET /api/v1/skills/:skillId?version=:version
-GET /api/v1/skills/:skillId/resources?version=:version&path=:path
-GET /api/v1/skills/:skillId/resources/raw?version=:version&path=:path
+GET /api/v1/skills/:skillName
+GET /api/v1/skills/:skillName?version=:version
+GET /api/v1/skills/:skillName/resources?version=:version&path=:path
+GET /api/v1/skills/:skillName/resources/raw?version=:version&path=:path
 ```
 
 ## MCP Endpoint
@@ -74,7 +74,7 @@ resource remains the Skillpack base URL rather than `/mcp`.
 MCP capabilities:
 
 - `skillpack_list` lists the authenticated user's Managed Skill catalog.
-- `skillpack_read` reads `skill://skillpack/{skillId}` locations and attached
+- `skillpack_read` reads `skill://skillpack/{skillName}` locations and attached
   resource paths.
 - MCP resources expose current Skill versions and attached resources for clients
   that prefer resource discovery.

@@ -22,20 +22,20 @@ import {
 
 const invalidateSkillQueries = async (
   queryClient: ReturnType<typeof useQueryClient>,
-  skillId: number | undefined
+  skillName: string | undefined
 ) => {
   await queryClient.invalidateQueries({ queryKey: skillQueryPrefix });
   await queryClient.invalidateQueries({
-    queryKey: latestSkillQueryKey(skillId),
+    queryKey: latestSkillQueryKey(skillName),
   });
   await queryClient.invalidateQueries({
-    queryKey: skillDetailQueryPrefix(skillId),
+    queryKey: skillDetailQueryPrefix(skillName),
   });
   await queryClient.invalidateQueries({
-    queryKey: skillFileQueryPrefix(skillId),
+    queryKey: skillFileQueryPrefix(skillName),
   });
   await queryClient.invalidateQueries({
-    queryKey: skillVersionsQueryKey(skillId),
+    queryKey: skillVersionsQueryKey(skillName),
   });
 };
 
@@ -50,24 +50,24 @@ export const useCreateSkill = () => {
   });
 };
 
-export const usePatchSkill = (skillId: number | undefined) => {
+export const usePatchSkill = (skillName: string | undefined) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (input: PatchSkillInput) => {
-      if (!skillId) {
-        throw new Error("Missing Skill ID");
+      if (!skillName) {
+        throw new Error("Missing Skill Name");
       }
 
-      return patchManagedSkill(skillId, input);
+      return patchManagedSkill(skillName, input);
     },
     onSuccess: async () => {
-      await invalidateSkillQueries(queryClient, skillId);
+      await invalidateSkillQueries(queryClient, skillName);
     },
   });
 };
 
-export const useRestoreSkillVersion = (skillId: number | undefined) => {
+export const useRestoreSkillVersion = (skillName: string | undefined) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -78,14 +78,14 @@ export const useRestoreSkillVersion = (skillId: number | undefined) => {
       input: RestoreVersionInput;
       version: number;
     }) => {
-      if (!skillId) {
-        throw new Error("Missing Skill ID");
+      if (!skillName) {
+        throw new Error("Missing Skill Name");
       }
 
-      return restoreManagedSkillVersion(skillId, version, input);
+      return restoreManagedSkillVersion(skillName, version, input);
     },
     onSuccess: async () => {
-      await invalidateSkillQueries(queryClient, skillId);
+      await invalidateSkillQueries(queryClient, skillName);
     },
   });
 };
