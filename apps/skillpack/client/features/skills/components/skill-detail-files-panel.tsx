@@ -202,8 +202,7 @@ const DeletedResourcePanel = ({
       <Undo2Icon />
       <AlertTitle>File marked for deletion</AlertTitle>
       <AlertDescription>
-        Undo the deletion to keep this file in the current Managed Skill
-        version.
+        Undo the deletion to keep this file in the current Managed Skill.
       </AlertDescription>
       <div className="pt-3">
         <Button
@@ -289,7 +288,6 @@ const useSelectedResourceViewModel = ({
   });
   const resourceFile = useSkillFile(
     skill?.name,
-    skill?.version,
     shouldFetchFile && selectedFile ? selectedFile.path : undefined
   );
   const skillFile = getSelectedSkillFile(skill, selectedFile);
@@ -302,11 +300,7 @@ const useSelectedResourceViewModel = ({
   const value = selectedFile
     ? (draftsByPath[selectedFile.path] ?? file?.content ?? "")
     : "";
-  const rawUrl = getRawResourceUrl(
-    skill?.name,
-    skill?.version,
-    selectedFile?.path
-  );
+  const rawUrl = getRawResourceUrl(skill?.name, selectedFile?.path);
   const viewerStatus = getViewerStatus({
     file,
     isDeleted: Boolean(selectedFile && deletedPaths.has(selectedFile.path)),

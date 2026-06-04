@@ -38,7 +38,7 @@ For v1:
 - the MCP server exposes:
   - `skillpack_list`;
   - `skillpack_read`;
-  - MCP resources for current Skill versions and attached resources;
+  - MCP resources for current Skills and attached resources;
   - `use_skillpack_skills` prompt guidance.
 
 The Worker static asset configuration must run the Worker first for `/mcp` so
@@ -52,6 +52,8 @@ the SPA fallback cannot intercept MCP requests.
   already documented for Skillpack access.
 - Skill Sets and delivery policy remain deferred; v1 exposes the authenticated
   user's whole Skill Library.
+- The current Skill-centric model removes stable version pins from Skill
+  Delivery; MCP reads resolve current Managed Skill state by Skill Name.
 - Stateful MCP features require a later decision because Worker-global memory is
   not durable request state.
 

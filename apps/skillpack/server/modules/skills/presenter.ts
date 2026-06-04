@@ -1,26 +1,26 @@
 import {
-  resolvedSkillSchema,
   forkSkillResponseSchema,
-  restoreVersionResponseSchema,
+  resolvedSkillSchema,
+  restoreSnapshotResponseSchema,
   skillListItemSchema,
   skillListResponseSchema,
   skillPatchedResponseSchema,
   skillResourceResponseSchema,
-  skillVersionListResponseSchema,
+  skillSnapshotListResponseSchema,
 } from "@skillpack/contracts/skills/responses";
 
 import type {
-  PatchSkillResult,
   ForkSkillServiceResult,
+  PatchSkillResult,
   ReadSkillTextFileResult,
   ResolvedSkillResult,
-  RestoreSkillVersionResult,
-  SkillOriginRow,
-  SkillVersionRow,
-  SkillWithCurrentVersion,
+  RestoreSkillSnapshotResult,
+  SkillOrigin,
+  SkillSnapshotRow,
+  SkillWithCurrentState,
 } from "./types";
 
-const presentOrigin = (origin?: SkillOriginRow | null) => {
+const presentOrigin = (origin?: SkillOrigin | null) => {
   if (!origin || origin.kind !== "github") {
     return;
   }
@@ -32,33 +32,32 @@ const presentOrigin = (origin?: SkillOriginRow | null) => {
   };
 };
 
-export const presentSkillList = (skills: SkillWithCurrentVersion[]) =>
+export const presentSkillList = (skills: SkillWithCurrentState[]) =>
   skillListResponseSchema.parse({
-    skills: skills.map(({ origin, skill, version }) => ({
-      allowedTools: version.allowedTools,
-      compatibility: version.compatibility,
+    skills: skills.map(({ skill }) => ({
+      allowedTools: skill.allowedTools,
+      compatibility: skill.compatibility,
       createdAt: skill.createdAt.toISOString(),
-      currentVersion: version.versionNumber,
-      description: version.description,
-      license: version.license,
-      metadata: version.metadata,
+      description: skill.description,
+      license: skill.license,
+      metadata: skill.metadata,
       name: skill.name,
-      origin: presentOrigin(origin),
+      origin: presentOrigin(skill.origin),
       updatedAt: skill.updatedAt.toISOString(),
     })),
   });
 
 export const presentSkill = (result: ResolvedSkillResult) =>
   resolvedSkillSchema.parse({
-    allowedTools: result.version.allowedTools,
-    compatibility: result.version.compatibility,
+    allowedTools: result.skill.allowedTools,
+    compatibility: result.skill.compatibility,
     content: result.content,
     createdAt: result.skill.createdAt.toISOString(),
-    description: result.version.description,
-    license: result.version.license,
-    metadata: result.version.metadata,
+    description: result.skill.description,
+    license: result.skill.license,
+    metadata: result.skill.metadata,
     name: result.skill.name,
-    origin: presentOrigin(result.origin),
+    origin: presentOrigin(result.skill.origin),
     resources: result.resources.map((resource) => ({
       mediaType: resource.mediaType,
       path: resource.path,
@@ -66,21 +65,18 @@ export const presentSkill = (result: ResolvedSkillResult) =>
       size: resource.size,
     })),
     updatedAt: result.skill.updatedAt.toISOString(),
-    version: result.version.versionNumber,
-    versionLabel: result.version.label,
   });
 
 export const presentSkillSummary = (result: ResolvedSkillResult) =>
   skillListItemSchema.parse({
-    allowedTools: result.version.allowedTools,
-    compatibility: result.version.compatibility,
+    allowedTools: result.skill.allowedTools,
+    compatibility: result.skill.compatibility,
     createdAt: result.skill.createdAt.toISOString(),
-    currentVersion: result.version.versionNumber,
-    description: result.version.description,
-    license: result.version.license,
-    metadata: result.version.metadata,
+    description: result.skill.description,
+    license: result.skill.license,
+    metadata: result.skill.metadata,
     name: result.skill.name,
-    origin: presentOrigin(result.origin),
+    origin: presentOrigin(result.skill.origin),
     updatedAt: result.skill.updatedAt.toISOString(),
   });
 
@@ -99,25 +95,18 @@ export const presentForkedSkills = (result: ForkSkillServiceResult) =>
     }),
   });
 
-export const presentSkillVersions = (
+export const presentSkillSnapshots = (
   skill: { name: string },
-  currentVersion: SkillVersionRow | undefined,
-  versions: SkillVersionRow[]
+  snapshots: SkillSnapshotRow[]
 ) =>
-  skillVersionListResponseSchema.parse({
-    currentVersion: currentVersion?.versionNumber ?? 0,
+  skillSnapshotListResponseSchema.parse({
     name: skill.name,
-    versions: versions.map((version) => ({
-      allowedTools: version.allowedTools,
-      changeSummary: version.changeSummary,
-      compatibility: version.compatibility,
-      createdAt: version.createdAt.toISOString(),
-      description: version.description,
-      label: version.label,
-      license: version.license,
-      metadata: version.metadata,
-      name: skill.name,
-      version: version.versionNumber,
+    snapshots: snapshots.map((snapshot) => ({
+      createdAt: snapshot.createdAt.toISOString(),
+      label: snapshot.label,
+      name: snapshot.stateJson.name,
+      note: snapshot.note,
+      snapshotNumber: snapshot.snapshotNumber,
     })),
   });
 
@@ -128,11 +117,10 @@ export const presentSkillFile = (result: ReadSkillTextFileResult) =>
     path: result.resource.path,
     sha256: result.resource.sha256,
     size: result.resource.size,
-    version: result.version.versionNumber,
   });
 
 export const presentPatchedSkill = (result: PatchSkillResult) =>
   skillPatchedResponseSchema.parse(result);
 
-export const presentRestoredSkill = (result: RestoreSkillVersionResult) =>
-  restoreVersionResponseSchema.parse(result);
+export const presentRestoredSkill = (result: RestoreSkillSnapshotResult) =>
+  restoreSnapshotResponseSchema.parse(result);

@@ -1,10 +1,8 @@
 export interface SkillpackLocation {
   skillName: string;
-  version?: number;
 }
 
 export interface SkillpackCatalogItem {
-  currentVersion: number;
   description: string;
   name: string;
 }
@@ -12,7 +10,6 @@ export interface SkillpackCatalogItem {
 const skillpackProtocol = "skill:";
 const skillpackHost = "skillpack";
 const skillNamePattern = /^(?=.*[a-z])[a-z0-9]+(?:-[a-z0-9]+)*$/u;
-const versionPattern = /^[1-9]\d*$/u;
 
 export const escapeXml = (value: string) =>
   value
@@ -30,14 +27,6 @@ const parseSkillName = (value: string) => {
   return value;
 };
 
-const parsePositiveInteger = (value: string, message: string) => {
-  if (!versionPattern.test(value)) {
-    throw new Error(message);
-  }
-
-  return Number(value);
-};
-
 export const toSkillpackLocation = (skillName: string) =>
   `skill://skillpack/${skillName}`;
 
@@ -50,22 +39,16 @@ export const parseSkillpackLocation = (location: string): SkillpackLocation => {
     throw new Error("Expected skill://skillpack/{skillName}");
   }
 
-  if (url.protocol !== skillpackProtocol || url.hostname !== skillpackHost) {
+  if (
+    url.protocol !== skillpackProtocol ||
+    url.hostname !== skillpackHost ||
+    url.search !== ""
+  ) {
     throw new Error("Expected skill://skillpack/{skillName}");
   }
 
-  const skillName = parseSkillName(url.pathname.replace(/^\//u, ""));
-  const rawVersion = url.searchParams.get("version");
-
   return {
-    skillName,
-    version:
-      rawVersion === null
-        ? undefined
-        : parsePositiveInteger(
-            rawVersion,
-            "Expected positive numeric Skill version"
-          ),
+    skillName: parseSkillName(url.pathname.replace(/^\//u, "")),
   };
 };
 
@@ -90,9 +73,6 @@ export const formatSkillpackCatalog = (skills: SkillpackCatalogItem[]) => {
       `    <description>${escapeXml(skill.description)}</description>`
     );
     lines.push(`    <location>${toSkillpackLocation(skill.name)}</location>`);
-    lines.push(
-      `    <current_version>${skill.currentVersion}</current_version>`
-    );
     lines.push("  </skill>");
   }
 

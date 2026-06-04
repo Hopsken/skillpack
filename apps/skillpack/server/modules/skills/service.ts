@@ -9,6 +9,7 @@ import type { SkillRepository } from "./repository";
 import { ResourceManifest } from "./resource-manifest";
 import type {
   CreateSkillServiceInput,
+  CreateSkillSnapshotServiceInput,
   ForkSkillServiceInput,
   ForkSkillServiceResult,
   PatchSkillResult,
@@ -18,23 +19,18 @@ import type {
   ReadSkillFileResult,
   ReadSkillTextFileResult,
   ResolvedSkillResult,
-  RestoreSkillVersionResult,
-  RestoreVersionServiceInput,
-  SkillRow,
+  RestoreSkillSnapshotResult,
   SkillResourceRow,
-  SkillVersionRow,
+  SkillRow,
   StoredResourceObject,
 } from "./types";
 
-const getVersionSkillFileMetadata = (
-  skill: { name: string },
-  version: SkillVersionRow
-) => ({
-  allowedTools: version.allowedTools,
-  compatibility: version.compatibility,
-  description: version.description,
-  license: version.license,
-  metadata: version.metadata,
+const getSkillFileMetadata = (skill: SkillRow): SkillFileMetadata => ({
+  allowedTools: skill.allowedTools,
+  compatibility: skill.compatibility,
+  description: skill.description,
+  license: skill.license,
+  metadata: skill.metadata,
   name: skill.name,
 });
 
@@ -68,6 +64,15 @@ const skillFileMetadataEquals = (
   metadataEquals(left.metadata, right.metadata) &&
   left.name === right.name;
 
+const toResourceObjects = (
+  resources: {
+    mediaType: string;
+    path: string;
+    sha256: string;
+    size: number;
+  }[]
+): StoredResourceObject[] => resources.map((resource) => ({ ...resource }));
+
 export class SkillService {
   private readonly repository: SkillRepository;
 
@@ -89,88 +94,65 @@ export class SkillService {
     return this.repository.listSkills();
   }
 
-  async listSkillVersionsForSkill(skillId: number) {
+  async listSkillSnapshotsForSkillName(name: string) {
+    const skill = await this.repository.findSkillByName(name);
+
+    if (!skill) {
+      throw skillErrors.skillNotFound();
+    }
+
+    const snapshots = await this.repository.listSkillSnapshots(skill.id);
+    return { skill, snapshots };
+  }
+
+  async resolveSkill(skillId: number): Promise<ResolvedSkillResult> {
     const skill = await this.repository.findSkillById(skillId);
 
     if (!skill) {
       throw skillErrors.skillNotFound();
     }
 
-    return await this.listSkillVersionsForResolvedSkill(skill);
+    return await this.resolveCurrentSkill(skill);
   }
 
-  async listSkillVersionsForSkillName(name: string) {
+  async resolveSkillByName(name: string): Promise<ResolvedSkillResult> {
     const skill = await this.repository.findSkillByName(name);
 
     if (!skill) {
       throw skillErrors.skillNotFound();
     }
 
-    return await this.listSkillVersionsForResolvedSkill(skill);
+    return await this.resolveCurrentSkill(skill);
   }
 
-  async resolveSkill(
-    skillId: number,
-    requestedVersion?: number
+  private async resolveCurrentSkill(
+    skill: SkillRow
   ): Promise<ResolvedSkillResult> {
-    const { origin, skill, version } = await this.readSkillVersion(
-      skillId,
-      requestedVersion
-    );
-    return await this.resolveSkillVersion(skill, version, origin);
-  }
-
-  async resolveSkillByName(
-    name: string,
-    requestedVersion?: number
-  ): Promise<ResolvedSkillResult> {
-    const skill = await this.repository.findSkillByName(name);
-
-    if (!skill) {
-      throw skillErrors.skillNotFound();
-    }
-
-    const { origin, version } = await this.readSkillVersionBySkill(
-      skill,
-      requestedVersion
-    );
-
-    return await this.resolveSkillVersion(skill, version, origin);
-  }
-
-  private async resolveSkillVersion(
-    skill: SkillRow,
-    version: SkillVersionRow,
-    origin: Awaited<ReturnType<SkillRepository["findSkillOrigin"]>>
-  ): Promise<ResolvedSkillResult> {
-    const resources = await this.repository.listResourcesByVersionId(
-      version.id
-    );
+    const resources = await this.repository.listResourcesBySkillId(skill.id);
     const manifest = ResourceManifest.resolveSnapshot(resources);
-    const skillFile = await this.readVersionSkillFile(
-      skill.name,
+    const skillFile = await this.readCurrentSkillFile(
+      skill,
       manifest.resources
     );
 
     return {
       content: skillFile.body,
-      origin,
       resources: manifest.resources,
       skill,
-      version,
     };
   }
 
   async readSkillResource(
     input: ReadSkillFileInput
   ): Promise<ReadSkillFileResult> {
-    const { version } = await this.readSkillVersion(
-      input.skillId,
-      input.version
-    );
+    const skill = await this.repository.findSkillById(input.skillId);
+
+    if (!skill) {
+      throw skillErrors.skillNotFound();
+    }
 
     const resource = await this.repository.findResourceByPath(
-      version.id,
+      skill.id,
       input.path
     );
 
@@ -180,7 +162,7 @@ export class SkillService {
 
     const object = await this.resourceManifest.getResourceObject(resource);
 
-    return { object, resource, version };
+    return { object, resource };
   }
 
   async readSkillTextFile(
@@ -191,7 +173,6 @@ export class SkillService {
     return {
       content: await result.object.text(),
       resource: result.resource,
-      version: result.version,
     };
   }
 
@@ -207,7 +188,6 @@ export class SkillService {
     return await this.readSkillResource({
       path: input.path,
       skillId: skill.id,
-      version: input.version,
     });
   }
 
@@ -219,7 +199,6 @@ export class SkillService {
     return {
       content: await result.object.text(),
       resource: result.resource,
-      version: result.version,
     };
   }
 
@@ -235,8 +214,6 @@ export class SkillService {
 
     const { skill } = await this.repository.createSkill(
       {
-        changeSummary: input.changeSummary,
-        label: input.versionLabel,
         name: input.name,
         resources,
         skillFileMetadata: input,
@@ -251,45 +228,46 @@ export class SkillService {
     skillId: number,
     input: PatchSkillServiceInput
   ): Promise<PatchSkillResult> {
-    const { skill, version } = await this.readSkillVersion(skillId);
-    return await this.patchResolvedSkill(skill, version, input);
+    const skill = await this.repository.findSkillById(skillId);
+
+    if (!skill) {
+      throw skillErrors.skillNotFound();
+    }
+
+    return await this.patchResolvedSkill(skill, input);
   }
 
   async patchSkillByName(
     name: string,
     input: PatchSkillServiceInput
   ): Promise<PatchSkillResult> {
-    const { skill, version } = await this.readSkillVersionByName(name);
-    return await this.patchResolvedSkill(skill, version, input);
+    const skill = await this.repository.findSkillByName(name);
+
+    if (!skill) {
+      throw skillErrors.skillNotFound();
+    }
+
+    return await this.patchResolvedSkill(skill, input);
   }
 
   private async patchResolvedSkill(
     skill: SkillRow,
-    version: SkillVersionRow,
     input: PatchSkillServiceInput
   ): Promise<PatchSkillResult> {
-    const currentResources = await this.repository.listResourcesByVersionId(
-      version.id
+    const currentResources = await this.repository.listResourcesBySkillId(
+      skill.id
     );
-    const currentSkillFile = await this.readVersionSkillFile(
-      skill.name,
+    const currentSkillFile = await this.readCurrentSkillFile(
+      skill,
       currentResources
     );
     const nextMetadata = {
-      allowedTools: patchValue(
-        input,
-        "allowedTools",
-        currentSkillFile.allowedTools
-      ),
-      compatibility: patchValue(
-        input,
-        "compatibility",
-        currentSkillFile.compatibility
-      ),
-      description: input.description ?? currentSkillFile.description,
-      license: patchValue(input, "license", currentSkillFile.license),
-      metadata: patchValue(input, "metadata", currentSkillFile.metadata),
-      name: skill.name,
+      allowedTools: patchValue(input, "allowedTools", skill.allowedTools),
+      compatibility: patchValue(input, "compatibility", skill.compatibility),
+      description: input.description ?? skill.description,
+      license: patchValue(input, "license", skill.license),
+      metadata: patchValue(input, "metadata", skill.metadata),
+      name: input.name ?? skill.name,
     };
     const nextBody = input.content ?? currentSkillFile.body;
     const hasResourceChanges =
@@ -298,7 +276,7 @@ export class SkillService {
     if (
       !hasResourceChanges &&
       nextBody === currentSkillFile.body &&
-      skillFileMetadataEquals(nextMetadata, currentSkillFile)
+      skillFileMetadataEquals(nextMetadata, getSkillFileMetadata(skill))
     ) {
       throw skillErrors.emptySkillPatch();
     }
@@ -321,10 +299,10 @@ export class SkillService {
       ),
     ];
     const now = new Date();
-    const nextVersion = await this.createVersionSnapshot(
+    const updatedSkill = await this.repository.updateSkillState(
       {
-        changeSummary: input.changeSummary,
-        label: input.versionLabel,
+        name: nextMetadata.name,
+        origin: skill.origin,
         resources,
         skillFileMetadata: nextMetadata,
         skillId: skill.id,
@@ -333,74 +311,74 @@ export class SkillService {
     );
 
     return {
-      allowedTools: nextVersion.allowedTools,
-      compatibility: nextVersion.compatibility,
-      currentVersion: nextVersion.versionNumber,
-      description: nextVersion.description,
-      license: nextVersion.license,
-      metadata: nextVersion.metadata,
-      name: skill.name,
+      allowedTools: updatedSkill.allowedTools,
+      compatibility: updatedSkill.compatibility,
+      description: updatedSkill.description,
+      license: updatedSkill.license,
+      metadata: updatedSkill.metadata,
+      name: updatedSkill.name,
     };
   }
 
-  async restoreSkillVersion(
-    skillId: number,
-    versionNumber: number,
-    input: RestoreVersionServiceInput
-  ): Promise<RestoreSkillVersionResult> {
-    const { skill, version } = await this.readSkillVersion(
-      skillId,
-      versionNumber
-    );
-    return await this.restoreResolvedSkillVersion(
-      skill,
-      version,
-      versionNumber,
-      input
-    );
-  }
-
-  async restoreSkillVersionByName(
+  async createSkillSnapshotByName(
     name: string,
-    versionNumber: number,
-    input: RestoreVersionServiceInput
-  ): Promise<RestoreSkillVersionResult> {
-    const { skill, version } = await this.readSkillVersionByName(
-      name,
-      versionNumber
-    );
-    return await this.restoreResolvedSkillVersion(
-      skill,
-      version,
-      versionNumber,
-      input
-    );
+    input: CreateSkillSnapshotServiceInput
+  ) {
+    const skill = await this.repository.findSkillByName(name);
+
+    if (!skill) {
+      throw skillErrors.skillNotFound();
+    }
+
+    return await this.createSnapshotForSkill(skill, input);
   }
 
-  private async restoreResolvedSkillVersion(
-    skill: SkillRow,
-    version: SkillVersionRow,
-    versionNumber: number,
-    input: RestoreVersionServiceInput
-  ): Promise<RestoreSkillVersionResult> {
-    const sourceResources = await this.repository.listResourcesByVersionId(
-      version.id
+  async restoreSkillSnapshotByName(
+    name: string,
+    snapshotNumber: number
+  ): Promise<RestoreSkillSnapshotResult> {
+    const skill = await this.repository.findSkillByName(name);
+
+    if (!skill) {
+      throw skillErrors.skillNotFound();
+    }
+
+    const snapshot = await this.repository.findSkillSnapshotByNumber(
+      skill.id,
+      snapshotNumber
     );
-    const now = new Date();
-    const nextVersion = await this.createVersionSnapshot(
+
+    if (!snapshot) {
+      throw skillErrors.skillSnapshotNotFound();
+    }
+
+    const state = snapshot.stateJson;
+    const conflictingSkill = await this.repository.findSkillByName(state.name);
+
+    if (conflictingSkill && conflictingSkill.id !== skill.id) {
+      throw skillErrors.duplicateSkillName();
+    }
+
+    await this.repository.updateSkillState(
       {
-        changeSummary: input.changeSummary,
-        label: input.versionLabel,
-        resources: ResourceManifest.restoreSnapshot(sourceResources),
-        skillFileMetadata: getVersionSkillFileMetadata(skill, version),
+        name: state.name,
+        origin: state.origin,
+        resources: toResourceObjects(state.resources),
+        skillFileMetadata: {
+          allowedTools: state.allowedTools,
+          compatibility: state.compatibility,
+          description: state.description,
+          license: state.license,
+          metadata: state.metadata,
+        },
         skillId: skill.id,
       },
-      now
+      new Date()
     );
 
     return {
-      currentVersion: nextVersion.versionNumber,
-      restoredFromVersion: versionNumber,
+      name: state.name,
+      restoredFromSnapshot: snapshotNumber,
     };
   }
 
@@ -456,7 +434,7 @@ export class SkillService {
           selection: definitionResult.definition.selection,
           skill: await this.forkSkillDefinition(
             definitionResult.definition,
-            input.versionLabel
+            input.snapshotLabel
           ),
           status: "forked",
         });
@@ -474,7 +452,7 @@ export class SkillService {
 
   private async forkSkillDefinition(
     definition: OriginSkillDefinition,
-    versionLabel: string | undefined
+    snapshotLabel: string | undefined
   ) {
     const now = new Date();
     const existingSkill = await this.repository.findSkillByName(
@@ -487,16 +465,23 @@ export class SkillService {
       definition.resources
     );
     const resources = [skillFile, ...resourceManifest];
-
     const origin = {
       kind: definition.provenance.kind,
       metadata: definition.provenance.metadata,
       url: definition.provenance.url,
     };
+
     if (existingSkill) {
-      await this.createVersionSnapshot(
+      const currentResources = await this.repository.listResourcesBySkillId(
+        existingSkill.id
+      );
+      await this.createSnapshotForSkill(existingSkill, {
+        label: snapshotLabel,
+        note: "Pre-update snapshot created by Add to Library.",
+      });
+      await this.repository.updateSkillState(
         {
-          label: versionLabel,
+          name: definition.name,
           origin,
           resources,
           skillFileMetadata: definition,
@@ -504,13 +489,13 @@ export class SkillService {
         },
         now
       );
+      void currentResources;
 
       return this.resolveSkill(existingSkill.id);
     }
 
     const { skill } = await this.repository.createSkill(
       {
-        label: versionLabel,
         name: definition.name,
         origin,
         resources,
@@ -522,63 +507,25 @@ export class SkillService {
     return this.resolveSkill(skill.id);
   }
 
-  private async readSkillVersion(skillId: number, requestedVersion?: number) {
-    const skill = await this.repository.findSkillById(skillId);
-
-    if (!skill) {
-      throw skillErrors.skillNotFound();
-    }
-
-    return await this.readSkillVersionBySkill(skill, requestedVersion);
-  }
-
-  private async readSkillVersionByName(
-    name: string,
-    requestedVersion?: number
+  private async createSnapshotForSkill(
+    skill: SkillRow,
+    input: CreateSkillSnapshotServiceInput
   ) {
-    const skill = await this.repository.findSkillByName(name);
-
-    if (!skill) {
-      throw skillErrors.skillNotFound();
-    }
-
-    return await this.readSkillVersionBySkill(skill, requestedVersion);
-  }
-
-  private async listSkillVersionsForResolvedSkill(skill: SkillRow) {
-    const currentVersion = await this.repository.findLatestSkillVersion(
-      skill.id
+    const resources = await this.repository.listResourcesBySkillId(skill.id);
+    return await this.repository.createSkillSnapshot(
+      {
+        label: input.label,
+        note: input.note,
+        resources,
+        skill,
+        skillId: skill.id,
+      },
+      new Date()
     );
-
-    if (!currentVersion) {
-      throw skillErrors.skillVersionNotFound();
-    }
-
-    const versions = await this.repository.listSkillVersions(skill.id);
-    return { currentVersion, skill, versions };
   }
 
-  private async readSkillVersionBySkill<T extends { id: number }>(
-    skill: T,
-    requestedVersion?: number
-  ) {
-    const version = requestedVersion
-      ? await this.repository.findSkillVersionByNumber(
-          skill.id,
-          requestedVersion
-        )
-      : await this.repository.findLatestSkillVersion(skill.id);
-
-    if (!version) {
-      throw skillErrors.skillVersionNotFound();
-    }
-
-    const origin = await this.repository.findSkillOrigin(version.id);
-    return { origin, skill, version };
-  }
-
-  private async readVersionSkillFile(
-    skillName: string,
+  private async readCurrentSkillFile(
+    skill: SkillRow,
     resources: SkillResourceRow[]
   ) {
     const skillFileResource = resources.find(
@@ -591,32 +538,16 @@ export class SkillService {
 
     const object =
       await this.resourceManifest.getResourceObject(skillFileResource);
+    const parsed = parseSkillFile(await object.text());
 
-    return { ...parseSkillFile(await object.text()), name: skillName };
-  }
-
-  private createVersionSnapshot(
-    input: {
-      changeSummary?: string | null;
-      label?: string;
-      origin?: {
-        kind: "github";
-        metadata: Record<string, unknown> | null;
-        url: string;
-      };
-      resources: StoredResourceObject[];
-      skillFileMetadata: {
-        allowedTools?: string | null;
-        compatibility?: string | null;
-        description: string;
-        license?: string | null;
-        metadata?: Record<string, string> | null;
-        name: string;
-      };
-      skillId: number;
-    },
-    now: Date
-  ) {
-    return this.repository.commitSkillVersion(input, now);
+    return {
+      ...parsed,
+      allowedTools: skill.allowedTools,
+      compatibility: skill.compatibility,
+      description: skill.description,
+      license: skill.license,
+      metadata: skill.metadata,
+      name: skill.name,
+    };
   }
 }

@@ -58,7 +58,6 @@ describe("resource draft helpers", () => {
         },
       })
     ).toMatchObject({
-      changeSummary: "Edit 1 item",
       deleteResourcePaths: ["references/old.md"],
       upsertResources: [
         {
@@ -87,7 +86,6 @@ describe("resource draft helpers", () => {
         ]),
       })
     ).toStrictEqual({
-      changeSummary: "Edit 4 items",
       content: "# Updated\n",
       deleteResourcePaths: ["references/old.md"],
       description: "Updated description",

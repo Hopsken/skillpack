@@ -6,7 +6,7 @@ import {
   skillLicenseSchema,
   skillMetadataSchema,
   skillNameSchema,
-  skillVersionNumberSchema,
+  skillSnapshotNumberSchema,
 } from "@skillpack/core/primitives";
 import { z } from "zod";
 
@@ -29,7 +29,6 @@ export const skillListItemSchema = z.object({
   allowedTools: skillAllowedToolsSchema.nullable(),
   compatibility: skillCompatibilitySchema.nullable(),
   createdAt: z.string().datetime(),
-  currentVersion: skillVersionNumberSchema,
   description: skillDescriptionSchema,
   license: skillLicenseSchema.nullable(),
   metadata: skillMetadataSchema.nullable(),
@@ -54,27 +53,19 @@ export const resolvedSkillSchema = z.object({
   origin: skillOriginSummarySchema.optional(),
   resources: z.array(resourceManifestItemSchema),
   updatedAt: z.string().datetime(),
-  version: skillVersionNumberSchema,
-  versionLabel: z.string().nullable(),
 });
 
-export const skillVersionItemSchema = z.object({
-  allowedTools: skillAllowedToolsSchema.nullable(),
-  changeSummary: z.string().nullable(),
-  compatibility: skillCompatibilitySchema.nullable(),
+export const skillSnapshotItemSchema = z.object({
   createdAt: z.string().datetime(),
-  description: skillDescriptionSchema,
   label: z.string().nullable(),
-  license: skillLicenseSchema.nullable(),
-  metadata: skillMetadataSchema.nullable(),
   name: skillNameSchema,
-  version: skillVersionNumberSchema,
+  note: z.string().nullable(),
+  snapshotNumber: skillSnapshotNumberSchema,
 });
 
-export const skillVersionListResponseSchema = z.object({
-  currentVersion: skillVersionNumberSchema,
+export const skillSnapshotListResponseSchema = z.object({
   name: skillNameSchema,
-  versions: z.array(skillVersionItemSchema),
+  snapshots: z.array(skillSnapshotItemSchema),
 });
 
 export const skillResourceResponseSchema = z.object({
@@ -83,22 +74,20 @@ export const skillResourceResponseSchema = z.object({
   path: safeRelativePathSchema,
   sha256: z.string().min(1),
   size: z.number().int().nonnegative(),
-  version: skillVersionNumberSchema,
 });
 
 export const skillPatchedResponseSchema = z.object({
   allowedTools: skillAllowedToolsSchema.nullable(),
   compatibility: skillCompatibilitySchema.nullable(),
-  currentVersion: skillVersionNumberSchema,
   description: skillDescriptionSchema,
   license: skillLicenseSchema.nullable(),
   metadata: skillMetadataSchema.nullable(),
   name: skillNameSchema,
 });
 
-export const restoreVersionResponseSchema = z.object({
-  currentVersion: skillVersionNumberSchema,
-  restoredFromVersion: skillVersionNumberSchema,
+export const restoreSnapshotResponseSchema = z.object({
+  name: skillNameSchema,
+  restoredFromSnapshot: skillSnapshotNumberSchema,
 });
 
 export const forkSkillResultSchema = z.discriminatedUnion("status", [
@@ -125,7 +114,7 @@ export type SkillListItem = z.infer<typeof skillListItemSchema>;
 export type SkillListResponse = z.infer<typeof skillListResponseSchema>;
 export type SkillPatchedResponse = z.infer<typeof skillPatchedResponseSchema>;
 export type SkillResourceResponse = z.infer<typeof skillResourceResponseSchema>;
-export type SkillVersionItem = z.infer<typeof skillVersionItemSchema>;
-export type SkillVersionListResponse = z.infer<
-  typeof skillVersionListResponseSchema
+export type SkillSnapshotItem = z.infer<typeof skillSnapshotItemSchema>;
+export type SkillSnapshotListResponse = z.infer<
+  typeof skillSnapshotListResponseSchema
 >;

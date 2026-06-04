@@ -1,7 +1,7 @@
 import type { PatchSkillInput } from "@skillpack/contracts/skills/requests";
 import type {
   ResolvedSkill,
-  SkillVersionItem,
+  SkillSnapshotItem,
 } from "@skillpack/contracts/skills/responses";
 import { useEffect, useMemo, useState } from "react";
 
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { SkillDetailFilesPanel } from "../components/skill-detail-files-panel";
-import { SkillVersionsSheet } from "../components/skill-versions-sheet";
+import { SkillSnapshotsSheet } from "../components/skill-snapshots-sheet";
 import { getChangeCount } from "../lib/resource-draft-session";
 import {
   buildResourcePatchInput,
@@ -24,26 +24,24 @@ import {
 
 interface SkillDetailViewProps {
   skill: ResolvedSkill | undefined;
-  skillName: string;
-  versions: SkillVersionItem[];
-  versionsStatus: string;
+  snapshots: SkillSnapshotItem[];
+  snapshotsStatus: string;
   selectedPath: string | undefined;
   onPathChange: (path: string | undefined) => void;
-  onRestoreVersion: (version: number) => Promise<void>;
+  onRestoreSnapshot: (snapshotNumber: number) => Promise<void>;
   onSaveChanges: (input: PatchSkillInput) => Promise<void>;
 }
 
 export const SkillDetailView = ({
   skill,
-  skillName,
-  versions,
-  versionsStatus,
+  snapshots,
+  snapshotsStatus,
   selectedPath,
   onPathChange,
-  onRestoreVersion,
+  onRestoreSnapshot,
   onSaveChanges,
 }: SkillDetailViewProps) => {
-  const [versionSheetOpen, setVersionSheetOpen] = useState(false);
+  const [snapshotSheetOpen, setSnapshotSheetOpen] = useState(false);
   const {
     addedPaths,
     addPath: addPathDraft,
@@ -103,7 +101,7 @@ export const SkillDetailView = ({
 
   useEffect(() => {
     resetForSkill();
-  }, [resetForSkill, skill?.name, skill?.version]);
+  }, [resetForSkill, skill?.name, skill?.updatedAt]);
 
   useEffect(() => {
     if (skill && !selectedFile) {
@@ -211,9 +209,9 @@ export const SkillDetailView = ({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setVersionSheetOpen(true)}
+                  onClick={() => setSnapshotSheetOpen(true)}
                 >
-                  {skill ? `v${skill.version}` : "Version"}
+                  Snapshots
                 </Button>
               </>
             )}
@@ -241,15 +239,13 @@ export const SkillDetailView = ({
         />
       </div>
 
-      <SkillVersionsSheet
-        open={versionSheetOpen}
-        selectedPath={selectedFile?.path}
+      <SkillSnapshotsSheet
+        open={snapshotSheetOpen}
         skill={skill}
-        skillName={skillName}
-        versions={versions}
-        versionsStatus={versionsStatus}
-        onOpenChange={setVersionSheetOpen}
-        onRestoreVersion={onRestoreVersion}
+        snapshots={snapshots}
+        snapshotsStatus={snapshotsStatus}
+        onOpenChange={setSnapshotSheetOpen}
+        onRestoreSnapshot={onRestoreSnapshot}
       />
     </>
   );

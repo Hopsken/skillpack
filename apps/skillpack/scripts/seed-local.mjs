@@ -41,7 +41,6 @@ This reference is loaded from an R2-backed skill resource.
         path: "scripts/greet.ts",
       },
     ],
-    versionLabel: "local seed",
   },
   {
     content: `# Cloudflare Worker Review
@@ -58,7 +57,6 @@ Use this skill when reviewing a Cloudflare Worker before local testing or deploy
     description:
       "Review Cloudflare Worker code for bindings, routing, and deployment readiness.",
     name: "cloudflare-worker-review",
-    versionLabel: "local seed",
   },
   {
     content: `# Frontend Structure Check
@@ -76,7 +74,6 @@ Use this skill when adding or moving frontend files.
     description:
       "Check frontend files against the pages, features, domain, components, and shared structure.",
     name: "frontend-structure-check",
-    versionLabel: "local seed",
   },
   {
     content: `# Skill Authoring Guide
@@ -93,7 +90,6 @@ Use this skill when writing a new Agent Skill.
     description:
       "Draft concise Agent Skills with clear triggers, workflows, and references.",
     name: "skill-authoring-guide",
-    versionLabel: "local seed",
   },
   {
     content: `# API Debugging Helper
@@ -110,7 +106,6 @@ Use this skill when a local API endpoint behaves unexpectedly.
     description:
       "Debug local Hono API behavior from request shape to response validation.",
     name: "api-debugging-helper",
-    versionLabel: "local seed",
   },
 ];
 

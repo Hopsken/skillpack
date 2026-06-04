@@ -5,7 +5,7 @@ export const Route = createFileRoute("/_authenticated/skills/$skillName/edit")({
     throw redirect({
       params: { skillName: params.skillName },
       replace: true,
-      search: { path: undefined, version: undefined },
+      search: { path: undefined },
       to: "/skills/$skillName",
     });
   },

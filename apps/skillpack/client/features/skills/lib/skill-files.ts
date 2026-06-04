@@ -38,14 +38,13 @@ export const getSkillFiles = (
 
 export const getRawResourceUrl = (
   skillName: string | undefined,
-  version: number | undefined,
   path: string | undefined
 ) => {
-  if (!(skillName && version && path && path !== skillFilePath)) {
+  if (!(skillName && path && path !== skillFilePath)) {
     return;
   }
 
-  const searchParams = new URLSearchParams({ path, version: String(version) });
+  const searchParams = new URLSearchParams({ path });
   return `/api/v1/skills/${skillName}/resources/raw?${searchParams}`;
 };
 

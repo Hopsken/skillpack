@@ -8,7 +8,7 @@ informed: Future Skillpack maintainers and coding agents
 
 # ADR-0002: Separate Skill Origin Adapters from Managed Skill Lifecycle
 
-Skill Origin discovery and definition retrieval will live in a dedicated `origins` backend module. The `skills` module will keep ownership of Managed Skill persistence, versions, resources, Fork, and attached origin provenance.
+Skill Origin discovery and definition retrieval will live in a dedicated `origins` backend module. The `skills` module will keep ownership of Managed Skill persistence, current resources, Snapshots, Fork, and attached origin provenance on Skill state.
 
 ## Context
 
@@ -32,12 +32,12 @@ The `origins` module owns:
 
 The `skills` module owns:
 
-- Managed Skill creation, editing, versioning, restore, deletion, and resolution.
-- R2 resource snapshot storage.
-- D1 rows for Managed Skills, versions, resources, and attached origin provenance.
-- Fork as the workflow that creates Managed Skills from resolved origin definitions.
+- Managed Skill creation, editing, Snapshot creation, Snapshot restore, deletion, and resolution.
+- R2 resource storage for current Skill state and Snapshots.
+- D1 rows for Managed Skills, current resources, Snapshots, and attached origin JSON.
+- Fork as the workflow that creates or updates Managed Skills from resolved origin definitions.
 
-`skill_origins` remains in the `skills` module for now. It is attached provenance for a Managed Skill, not independent Origin Adapter state.
+Origin provenance remains owned by the `skills` module. Under ADR-0001's Skill-centric model, origin is nullable structured JSON on the Managed Skill state and is captured inside Snapshot state JSON.
 
 ## API Shape
 
@@ -58,7 +58,7 @@ type ForkSkillRequest = {
     | { kind: "github"; repoUrl: string; branch?: string }
     | { kind: "npm"; packageName: string; version?: string };
   selections: Array<{ skillName: string }>;
-  versionLabel?: string;
+  snapshotLabel?: string;
 };
 ```
 
@@ -77,7 +77,7 @@ Batch Fork uses partial success. One selected Skill failing to Fork does not pre
 - `originsRoute` should be registered separately from `skillsRoute` and protected by the same authentication boundary.
 - Shared contracts need origin discovery request/response schemas and an origin-generic batch Fork schema.
 - Fork responses need per-selection success or failure results.
-- `skill_origins.kind` should eventually allow more than `"github"` once additional Origin Adapters ship.
+- Origin JSON should eventually allow more than `"github"` once additional Origin Adapters ship.
 
 ## Alternatives Considered
 
@@ -96,7 +96,7 @@ type ForkSkillRequest = {
   repoUrl: string;
   branch?: string;
   skillName: string;
-  versionLabel?: string;
+  snapshotLabel?: string;
 };
 ```
 
@@ -114,6 +114,6 @@ Rejected because partial success is more honest and avoids fragile compensating 
 
 - Designing npm adapter details.
 - Designing Origin Comparison storage or diff representation.
-- Moving `skill_origins` into the `origins` module.
+- Moving persisted origin provenance into the `origins` module.
 - Supporting multiple origins in one Fork request.
 - Guaranteeing transactional all-or-nothing Fork across D1, R2, and external origin reads.

@@ -1,23 +1,23 @@
 import type {
   CreateSkillInput,
+  CreateSkillSnapshotInput,
   ForkSkillInput,
   PatchSkillInput,
-  RestoreVersionInput,
 } from "@skillpack/contracts/skills/requests";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
-  latestSkillQueryKey,
   skillQueryPrefix,
-  skillDetailQueryPrefix,
+  skillDetailQueryKey,
   skillFileQueryPrefix,
-  skillVersionsQueryKey,
+  skillSnapshotsQueryKey,
 } from "./query-keys";
 import {
   createManagedSkill,
+  createManagedSkillSnapshot,
   forkManagedSkill,
   patchManagedSkill,
-  restoreManagedSkillVersion,
+  restoreManagedSkillSnapshot,
 } from "./requests";
 
 const invalidateSkillQueries = async (
@@ -26,16 +26,13 @@ const invalidateSkillQueries = async (
 ) => {
   await queryClient.invalidateQueries({ queryKey: skillQueryPrefix });
   await queryClient.invalidateQueries({
-    queryKey: latestSkillQueryKey(skillName),
-  });
-  await queryClient.invalidateQueries({
-    queryKey: skillDetailQueryPrefix(skillName),
+    queryKey: skillDetailQueryKey(skillName),
   });
   await queryClient.invalidateQueries({
     queryKey: skillFileQueryPrefix(skillName),
   });
   await queryClient.invalidateQueries({
-    queryKey: skillVersionsQueryKey(skillName),
+    queryKey: skillSnapshotsQueryKey(skillName),
   });
 };
 
@@ -67,22 +64,33 @@ export const usePatchSkill = (skillName: string | undefined) => {
   });
 };
 
-export const useRestoreSkillVersion = (skillName: string | undefined) => {
+export const useCreateSkillSnapshot = (skillName: string | undefined) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      input,
-      version,
-    }: {
-      input: RestoreVersionInput;
-      version: number;
-    }) => {
+    mutationFn: (input: CreateSkillSnapshotInput) => {
       if (!skillName) {
         throw new Error("Missing Skill Name");
       }
 
-      return restoreManagedSkillVersion(skillName, version, input);
+      return createManagedSkillSnapshot(skillName, input);
+    },
+    onSuccess: async () => {
+      await invalidateSkillQueries(queryClient, skillName);
+    },
+  });
+};
+
+export const useRestoreSkillSnapshot = (skillName: string | undefined) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (snapshotNumber: number) => {
+      if (!skillName) {
+        throw new Error("Missing Skill Name");
+      }
+
+      return restoreManagedSkillSnapshot(skillName, snapshotNumber);
     },
     onSuccess: async () => {
       await invalidateSkillQueries(queryClient, skillName);

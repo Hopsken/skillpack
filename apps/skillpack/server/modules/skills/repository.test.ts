@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { createDb } from "@server/db/client";
-import { skillOriginsTable, skillResourcesTable } from "@server/db/schema";
+import { skillResourcesTable } from "@server/db/schema";
 import { eq } from "drizzle-orm";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -39,25 +39,12 @@ const resources = (suffix: string): StoredResourceObject[] => [
   },
 ];
 
-const versionInput = (
-  skillId: number,
-  suffix: string,
-  input?: {
-    changeSummary?: string;
-    description?: string;
-    resources?: StoredResourceObject[];
-  }
-) => ({
-  changeSummary: input?.changeSummary,
-  resources: input?.resources ?? resources(suffix),
-  skillFileMetadata: {
-    allowedTools: "Read",
-    compatibility: "Requires git",
-    description: input?.description ?? "First version",
-    license: "Apache-2.0",
-    metadata: { author: "acme" },
-  },
-  skillId,
+const skillMetadata = (description = "First state") => ({
+  allowedTools: "Read",
+  compatibility: "Requires git",
+  description,
+  license: "Apache-2.0",
+  metadata: { author: "acme" },
 });
 
 const createSkill = async (
@@ -68,13 +55,7 @@ const createSkill = async (
     {
       name: input?.name ?? "demo",
       resources: resources(input?.name ?? "demo"),
-      skillFileMetadata: {
-        allowedTools: "Read",
-        compatibility: "Requires git",
-        description: "First version",
-        license: "Apache-2.0",
-        metadata: { author: "acme" },
-      },
+      skillFileMetadata: skillMetadata(),
     },
     new Date("2026-05-25T12:00:00.000Z")
   );
@@ -108,128 +89,128 @@ describe("skill repository persistence", () => {
     await mf.dispose();
   });
 
-  it("creates a skill with the first version and resource manifest", async () => {
+  it("creates a current Skill state and resource manifest", async () => {
     const now = new Date("2026-05-25T12:00:00.000Z");
 
-    const { version } = await repository.createSkill(
-      { ...versionInput(0, "v1"), label: "initial", name: "demo" },
+    const { skill } = await repository.createSkill(
+      {
+        name: "demo",
+        resources: resources("v1"),
+        skillFileMetadata: skillMetadata(),
+      },
       now
     );
 
-    const committedResources = await repository.listResourcesByVersionId(
-      version.id
+    const committedResources = await repository.listResourcesBySkillId(
+      skill.id
     );
 
-    expect(version).toMatchObject({
+    expect(skill).toMatchObject({
       allowedTools: "Read",
-      description: "First version",
+      description: "First state",
       metadata: { author: "acme" },
-      versionNumber: 1,
+      name: "demo",
     });
     expect(committedResources).toHaveLength(2);
     expect(
-      committedResources.map((resource) => resource.skillVersionId)
-    ).toStrictEqual([version.id, version.id]);
+      committedResources.map((resource) => resource.skillId)
+    ).toStrictEqual([skill.id, skill.id]);
   });
 
-  it("allocates the next version number in D1 and derives latest version by max version number", async () => {
+  it("updates current Skill state without creating a snapshot", async () => {
     const skill = await createSkill(repository);
 
-    const nextVersion = await repository.commitSkillVersion(
-      versionInput(skill.id, "v2", {
-        description: "Second version",
-      }),
+    const updatedSkill = await repository.updateSkillState(
+      {
+        name: "demo-next",
+        origin: null,
+        resources: resources("v2"),
+        skillFileMetadata: skillMetadata("Second state"),
+        skillId: skill.id,
+      },
       new Date("2026-05-25T12:01:00.000Z")
     );
-    const latestVersion = await repository.findLatestSkillVersion(skill.id);
-
-    expect(nextVersion.versionNumber).toBe(2);
-    expect(nextVersion.description).toBe("Second version");
-    expect(latestVersion?.id).toBe(nextVersion.id);
-  });
-
-  it("commits restored resource rows as a new current version", async () => {
-    const skill = await createSkill(repository);
-    const firstVersion = await repository.findLatestSkillVersion(skill.id);
-    if (!firstVersion) {
-      throw new Error("Expected first version");
-    }
-    const sourceRows = await repository.listResourcesByVersionId(
-      firstVersion.id
-    );
-    const restoredResources = sourceRows.map((resource) => ({
-      mediaType: resource.mediaType,
-      path: resource.path,
-      sha256: resource.sha256,
-      size: resource.size,
-    }));
-
-    const restoredVersion = await repository.commitSkillVersion(
-      versionInput(skill.id, "v1", {
-        changeSummary: "Restore v1",
-        resources: restoredResources,
-      }),
-      new Date("2026-05-25T12:02:00.000Z")
-    );
-
-    const restoredRows = await db
+    const currentResources = await db
       .select()
       .from(skillResourcesTable)
-      .where(eq(skillResourcesTable.skillVersionId, restoredVersion.id));
+      .where(eq(skillResourcesTable.skillId, skill.id));
 
-    expect(restoredVersion.versionNumber).toBe(2);
+    expect(updatedSkill).toMatchObject({
+      description: "Second state",
+      name: "demo-next",
+    });
     expect(
-      new Set(restoredRows.map((resource) => resource.sha256))
-    ).toStrictEqual(new Set(sourceRows.map((resource) => resource.sha256)));
+      new Set(currentResources.map((resource) => resource.sha256))
+    ).toStrictEqual(new Set(["skill-v2", "notes-v2"]));
+    await expect(repository.listSkillSnapshots(skill.id)).resolves.toHaveLength(
+      0
+    );
   });
 
-  it("commits version-level origin provenance with the version snapshot", async () => {
+  it("creates whole-state snapshots with incrementing snapshot numbers", async () => {
+    const skill = await createSkill(repository);
+    const currentResources = await repository.listResourcesBySkillId(skill.id);
+
+    const firstSnapshot = await repository.createSkillSnapshot(
+      {
+        label: "before edit",
+        resources: currentResources,
+        skill,
+        skillId: skill.id,
+      },
+      new Date("2026-05-25T12:02:00.000Z")
+    );
+    const secondSnapshot = await repository.createSkillSnapshot(
+      {
+        note: "checkpoint",
+        resources: currentResources,
+        skill,
+        skillId: skill.id,
+      },
+      new Date("2026-05-25T12:03:00.000Z")
+    );
+
+    expect(firstSnapshot.snapshotNumber).toBe(1);
+    expect(secondSnapshot.snapshotNumber).toBe(2);
+    expect(firstSnapshot.stateJson).toMatchObject({
+      description: "First state",
+      name: "demo",
+      resources: expect.arrayContaining([
+        expect.objectContaining({ path: "SKILL.md", sha256: "skill-demo" }),
+      ]),
+    });
+  });
+
+  it("stores nullable origin JSON on current Skill state", async () => {
     const now = new Date("2026-05-25T12:00:00.000Z");
 
-    const { version } = await repository.createSkill(
+    const { skill } = await repository.createSkill(
       {
-        ...versionInput(0, "v1"),
         name: "demo",
         origin: {
           kind: "github",
           metadata: { resolvedSkillPath: "skills/demo/SKILL.md" },
           url: "https://github.com/example/skills",
         },
+        resources: resources("v1"),
+        skillFileMetadata: skillMetadata(),
       },
       now
     );
 
-    const origins = await db
-      .select()
-      .from(skillOriginsTable)
-      .where(eq(skillOriginsTable.skillVersionId, version.id));
-
-    expect(origins).toHaveLength(1);
-    expect(origins[0]).toMatchObject({
+    expect(skill.origin).toStrictEqual({
       kind: "github",
       metadata: { resolvedSkillPath: "skills/demo/SKILL.md" },
-      skillVersionId: version.id,
       url: "https://github.com/example/skills",
     });
   });
 
   it("scopes unique skill names and list results to one owner", async () => {
-    const now = new Date("2026-05-25T12:00:00.000Z");
     const otherUserRepository = new SkillRepository(db, "user-b");
-    const userSkill = await createSkill(repository, {
-      name: "shared-name",
-    });
+    const userSkill = await createSkill(repository, { name: "shared-name" });
     const otherUserSkill = await createSkill(otherUserRepository, {
       name: "shared-name",
     });
-    await repository.commitSkillVersion(
-      versionInput(userSkill.id, "user-a"),
-      now
-    );
-    await repository.commitSkillVersion(
-      versionInput(otherUserSkill.id, "user-b"),
-      now
-    );
 
     await expect(
       createSkill(repository, { name: "shared-name" })

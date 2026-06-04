@@ -4,71 +4,6 @@
   "id": "35a56545-f95c-41f1-b377-19b95c4c82b6",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
-    "skill_origins": {
-      "name": "skill_origins",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "skill_version_id": {
-          "name": "skill_version_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "metadata": {
-          "name": "metadata",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "url": {
-          "name": "url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "skill_origins_version_unique": {
-          "name": "skill_origins_version_unique",
-          "columns": ["skill_version_id"],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "skill_resources": {
       "name": "skill_resources",
       "columns": {
@@ -79,8 +14,8 @@
           "notNull": true,
           "autoincrement": true
         },
-        "skill_version_id": {
-          "name": "skill_version_id",
+        "created_at": {
+          "name": "created_at",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -114,8 +49,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "created_at": {
-          "name": "created_at",
+        "skill_id": {
+          "name": "skill_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -128,14 +63,14 @@
           "columns": ["sha256"],
           "isUnique": false
         },
-        "skill_resources_version_idx": {
-          "name": "skill_resources_version_idx",
-          "columns": ["skill_version_id"],
+        "skill_resources_skill_idx": {
+          "name": "skill_resources_skill_idx",
+          "columns": ["skill_id"],
           "isUnique": false
         },
-        "skill_resources_version_path_unique": {
-          "name": "skill_resources_version_path_unique",
-          "columns": ["skill_version_id", "path"],
+        "skill_resources_skill_path_unique": {
+          "name": "skill_resources_skill_path_unique",
+          "columns": ["skill_id", "path"],
           "isUnique": true
         }
       },
@@ -144,8 +79,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "skill_versions": {
-      "name": "skill_versions",
+    "skill_snapshots": {
+      "name": "skill_snapshots",
       "columns": {
         "id": {
           "name": "id",
@@ -154,44 +89,9 @@
           "notNull": true,
           "autoincrement": true
         },
-        "skill_id": {
-          "name": "skill_id",
+        "created_at": {
+          "name": "created_at",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "version_number": {
-          "name": "version_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "allowed_tools": {
-          "name": "allowed_tools",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "change_summary": {
-          "name": "change_summary",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "compatibility": {
-          "name": "compatibility",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -203,22 +103,36 @@
           "notNull": false,
           "autoincrement": false
         },
-        "license": {
-          "name": "license",
+        "note": {
+          "name": "note",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "metadata": {
-          "name": "metadata",
-          "type": "text",
+        "skill_id": {
+          "name": "skill_id",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
-        "created_at": {
-          "name": "created_at",
+        "snapshot_number": {
+          "name": "snapshot_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "state_json": {
+          "name": "state_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "state_version": {
+          "name": "state_version",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -226,14 +140,14 @@
         }
       },
       "indexes": {
-        "skill_versions_skill_idx": {
-          "name": "skill_versions_skill_idx",
+        "skill_snapshots_skill_idx": {
+          "name": "skill_snapshots_skill_idx",
           "columns": ["skill_id"],
           "isUnique": false
         },
-        "skill_versions_skill_version_unique": {
-          "name": "skill_versions_skill_version_unique",
-          "columns": ["skill_id", "version_number"],
+        "skill_snapshots_skill_number_unique": {
+          "name": "skill_snapshots_skill_number_unique",
+          "columns": ["skill_id", "snapshot_number"],
           "isUnique": true
         }
       },
@@ -252,11 +166,46 @@
           "notNull": true,
           "autoincrement": true
         },
-        "owner_user_id": {
-          "name": "owner_user_id",
+        "allowed_tools": {
+          "name": "allowed_tools",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "compatibility": {
+          "name": "compatibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "license": {
+          "name": "license",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "name": {
@@ -266,9 +215,16 @@
           "notNull": true,
           "autoincrement": false
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
+        "origin": {
+          "name": "origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "owner_user_id": {
+          "name": "owner_user_id",
+          "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false

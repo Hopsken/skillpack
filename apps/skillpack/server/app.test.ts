@@ -35,24 +35,17 @@ const resolvedSkill = (): ResolvedSkillResult => {
     content: "# Demo\n",
     resources: [],
     skill: {
-      createdAt,
-      id: 42,
-      name: "demo",
-      ownerUserId: "user-oauth",
-      updatedAt: createdAt,
-    },
-    version: {
       allowedTools: null,
-      changeSummary: null,
       compatibility: null,
       createdAt,
       description: "Demo description",
-      id: 7,
-      label: null,
+      id: 42,
       license: null,
       metadata: null,
-      skillId: 42,
-      versionNumber: 1,
+      name: "demo",
+      origin: null,
+      ownerUserId: "user-oauth",
+      updatedAt: createdAt,
     },
   };
 };
@@ -152,7 +145,6 @@ describe("app OAuth bearer skills read auth", () => {
         sha256: "abc123",
         size: 13,
       },
-      version: { versionNumber: 2 },
     } as Awaited<ReturnType<SkillService["readSkillTextFileByName"]>>);
     const getSkillReadBearerUserId = vi
       .fn<VerifySkillReadBearerUserId>()
@@ -178,12 +170,10 @@ describe("app OAuth bearer skills read auth", () => {
       path: "notes.md",
       sha256: "abc123",
       size: 13,
-      version: 2,
     });
     expect(readSkillTextFileByName).toHaveBeenCalledWith({
       path: "notes.md",
       skillName: "demo-skill",
-      version: undefined,
     });
     expect(seenUserIds).toStrictEqual(["user-oauth"]);
   });
@@ -214,7 +204,7 @@ describe("app OAuth bearer skills read auth", () => {
     await expect(response.json()).resolves.toMatchObject({
       name: "demo",
     });
-    expect(resolveSkillByName).toHaveBeenCalledWith("demo", undefined);
+    expect(resolveSkillByName).toHaveBeenCalledWith("demo");
     expect(seenUserIds).toStrictEqual(["user-oauth"]);
   });
 
@@ -463,24 +453,17 @@ describe("app MCP auth", () => {
     const listSkills = vi.fn<SkillService["listSkills"]>().mockResolvedValue([
       {
         skill: {
-          createdAt,
-          id: 42,
-          name: "demo-skill",
-          ownerUserId: "user-oauth",
-          updatedAt: createdAt,
-        },
-        version: {
           allowedTools: null,
-          changeSummary: null,
           compatibility: null,
           createdAt,
           description: "Demo skill",
-          id: 7,
-          label: null,
+          id: 42,
           license: null,
           metadata: null,
-          skillId: 42,
-          versionNumber: 2,
+          name: "demo-skill",
+          origin: null,
+          ownerUserId: "user-oauth",
+          updatedAt: createdAt,
         },
       },
     ] as Awaited<ReturnType<SkillService["listSkills"]>>);
@@ -520,7 +503,6 @@ describe("app MCP auth", () => {
           {
             skills: [
               {
-                currentVersion: 2,
                 description: "Demo skill",
                 location: "skill://skillpack/demo-skill",
                 name: "demo-skill",
@@ -550,7 +532,7 @@ describe("app MCP auth", () => {
             path: "SKILL.md",
             sha256: "skill-md",
             size: 48,
-            skillVersionId: 7,
+            skillId: 42,
           },
           {
             createdAt,
@@ -559,28 +541,21 @@ describe("app MCP auth", () => {
             path: "references/demo.md",
             sha256: "abc123",
             size: 12,
-            skillVersionId: 7,
+            skillId: 42,
           },
         ],
         skill: {
-          createdAt,
-          id: 42,
-          name: "demo-skill",
-          ownerUserId: "user-oauth",
-          updatedAt: createdAt,
-        },
-        version: {
           allowedTools: null,
-          changeSummary: null,
           compatibility: null,
           createdAt,
           description: "Demo skill",
-          id: 7,
-          label: null,
+          id: 42,
           license: null,
           metadata: null,
-          skillId: 42,
-          versionNumber: 2,
+          name: "demo-skill",
+          origin: null,
+          ownerUserId: "user-oauth",
+          updatedAt: createdAt,
         },
       });
     const readSkillTextFileByName = vi
@@ -593,7 +568,6 @@ describe("app MCP auth", () => {
           sha256: "skill-md",
           size: 49,
         },
-        version: { versionNumber: 2 },
       } as Awaited<ReturnType<SkillService["readSkillTextFileByName"]>>);
     const app = createApp({
       getSkillReadBearerUserId: vi
@@ -613,7 +587,7 @@ describe("app MCP auth", () => {
           jsonrpc: "2.0",
           method: "tools/call",
           params: {
-            arguments: { location: "skill://skillpack/demo-skill?version=2" },
+            arguments: { location: "skill://skillpack/demo-skill" },
             name: "skillpack_read",
           },
         }),
@@ -637,11 +611,10 @@ describe("app MCP auth", () => {
         type: "text",
       },
     ]);
-    expect(resolveSkillByName).toHaveBeenCalledWith("demo-skill", 2);
+    expect(resolveSkillByName).toHaveBeenCalledWith("demo-skill");
     expect(readSkillTextFileByName).toHaveBeenCalledWith({
       path: "SKILL.md",
       skillName: "demo-skill",
-      version: 2,
     });
   });
 
@@ -656,7 +629,6 @@ describe("app MCP auth", () => {
           sha256: "abc123",
           size: 11,
         },
-        version: { versionNumber: 2 },
       } as Awaited<ReturnType<SkillService["readSkillTextFileByName"]>>);
     const app = createApp({
       getSkillReadBearerUserId: vi
@@ -677,7 +649,7 @@ describe("app MCP auth", () => {
           method: "tools/call",
           params: {
             arguments: {
-              location: "skill://skillpack/demo-skill?version=2",
+              location: "skill://skillpack/demo-skill",
               path: "references/demo.md",
             },
             name: "skillpack_read",
@@ -703,7 +675,6 @@ describe("app MCP auth", () => {
     expect(readSkillTextFileByName).toHaveBeenCalledWith({
       path: "references/demo.md",
       skillName: "demo-skill",
-      version: 2,
     });
   });
 
@@ -729,7 +700,7 @@ describe("app MCP auth", () => {
           method: "tools/call",
           params: {
             arguments: {
-              location: "skill://skillpack/demo-skill?version=2",
+              location: "skill://skillpack/demo-skill",
               path: "../secret.md",
             },
             name: "skillpack_read",
@@ -761,24 +732,17 @@ describe("app MCP auth", () => {
     const listSkills = vi.fn<SkillService["listSkills"]>().mockResolvedValue([
       {
         skill: {
-          createdAt,
-          id: 42,
-          name: "demo-skill",
-          ownerUserId: "user-oauth",
-          updatedAt: createdAt,
-        },
-        version: {
           allowedTools: null,
-          changeSummary: null,
           compatibility: null,
           createdAt,
           description: "Demo skill",
-          id: 7,
-          label: null,
+          id: 42,
           license: null,
           metadata: null,
-          skillId: 42,
-          versionNumber: 2,
+          name: "demo-skill",
+          origin: null,
+          ownerUserId: "user-oauth",
+          updatedAt: createdAt,
         },
       },
     ] as Awaited<ReturnType<SkillService["listSkills"]>>);
@@ -794,7 +758,7 @@ describe("app MCP auth", () => {
             path: "SKILL.md",
             sha256: "skill-md",
             size: 48,
-            skillVersionId: 7,
+            skillId: 42,
           },
           {
             createdAt,
@@ -803,10 +767,9 @@ describe("app MCP auth", () => {
             path: "references/demo.md",
             sha256: "abc123",
             size: 12,
-            skillVersionId: 7,
+            skillId: 42,
           },
         ],
-        version: { ...resolvedSkill().version, versionNumber: 2 },
       });
     const app = createApp({
       getSkillReadBearerUserId: vi
@@ -844,18 +807,18 @@ describe("app MCP auth", () => {
         resources: [
           expect.objectContaining({
             name: "demo-skill",
-            uri: "skill://skillpack/demo-skill?version=2",
+            uri: "skill://skillpack/demo-skill",
           }),
           expect.objectContaining({
             mimeType: "text/markdown",
             name: "demo-skill: references/demo.md",
-            uri: "skillpack-resource://skillpack/demo-skill?version=2&path=references%2Fdemo.md",
+            uri: "skillpack-resource://skillpack/demo-skill?path=references%2Fdemo.md",
           }),
         ],
       },
     });
     expect(listSkills).toHaveBeenCalledOnce();
-    expect(resolveSkillByName).toHaveBeenCalledWith("demo-skill", 2);
+    expect(resolveSkillByName).toHaveBeenCalledWith("demo-skill");
   });
 
   it("reads attached Skillpack MCP resources by URI", async () => {
@@ -869,7 +832,6 @@ describe("app MCP auth", () => {
           sha256: "abc123",
           size: 11,
         },
-        version: { versionNumber: 2 },
       } as Awaited<ReturnType<SkillService["readSkillTextFileByName"]>>);
     const app = createApp({
       getSkillReadBearerUserId: vi
@@ -889,7 +851,7 @@ describe("app MCP auth", () => {
           jsonrpc: "2.0",
           method: "resources/read",
           params: {
-            uri: "skillpack-resource://skillpack/demo-skill?version=2&path=references%2Fdemo.md",
+            uri: "skillpack-resource://skillpack/demo-skill?path=references%2Fdemo.md",
           },
         }),
         headers: {
@@ -911,7 +873,7 @@ describe("app MCP auth", () => {
           {
             mimeType: "text/markdown",
             text: "# Reference",
-            uri: "skillpack-resource://skillpack/demo-skill?version=2&path=references%2Fdemo.md",
+            uri: "skillpack-resource://skillpack/demo-skill?path=references%2Fdemo.md",
           },
         ],
       },
@@ -919,7 +881,6 @@ describe("app MCP auth", () => {
     expect(readSkillTextFileByName).toHaveBeenCalledWith({
       path: "references/demo.md",
       skillName: "demo-skill",
-      version: 2,
     });
   });
 
@@ -934,7 +895,6 @@ describe("app MCP auth", () => {
           sha256: "skill-md",
           size: 34,
         },
-        version: { versionNumber: 2 },
       } as Awaited<ReturnType<SkillService["readSkillTextFileByName"]>>);
     const app = createApp({
       getSkillReadBearerUserId: vi
@@ -953,7 +913,7 @@ describe("app MCP auth", () => {
           id: 8,
           jsonrpc: "2.0",
           method: "resources/read",
-          params: { uri: "skill://skillpack/demo-skill?version=2" },
+          params: { uri: "skill://skillpack/demo-skill" },
         }),
         headers: {
           accept: "application/json",
@@ -974,7 +934,7 @@ describe("app MCP auth", () => {
           {
             mimeType: "text/markdown",
             text: "---\nname: demo-skill\n---\n\n# Demo",
-            uri: "skill://skillpack/demo-skill?version=2",
+            uri: "skill://skillpack/demo-skill",
           },
         ],
       },
@@ -982,7 +942,6 @@ describe("app MCP auth", () => {
     expect(readSkillTextFileByName).toHaveBeenCalledWith({
       path: "SKILL.md",
       skillName: "demo-skill",
-      version: 2,
     });
   });
 
@@ -991,24 +950,17 @@ describe("app MCP auth", () => {
     const listSkills = vi.fn<SkillService["listSkills"]>().mockResolvedValue([
       {
         skill: {
-          createdAt,
-          id: 42,
-          name: "demo-skill",
-          ownerUserId: "user-oauth",
-          updatedAt: createdAt,
-        },
-        version: {
           allowedTools: null,
-          changeSummary: null,
           compatibility: null,
           createdAt,
           description: "Demo skill",
-          id: 7,
-          label: null,
+          id: 42,
           license: null,
           metadata: null,
-          skillId: 42,
-          versionNumber: 2,
+          name: "demo-skill",
+          origin: null,
+          ownerUserId: "user-oauth",
+          updatedAt: createdAt,
         },
       },
     ] as Awaited<ReturnType<SkillService["listSkills"]>>);

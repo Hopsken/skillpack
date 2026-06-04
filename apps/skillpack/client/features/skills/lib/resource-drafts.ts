@@ -60,58 +60,18 @@ export const validateNewResourcePath = (
   return null;
 };
 
-const getPatchChangeCount = ({
-  deletedPaths,
-  descriptionDraft,
-  draftsByPath,
-  renamedFromByPath = {},
-}: Pick<
-  BuildResourcePatchInputParams,
-  "deletedPaths" | "descriptionDraft" | "draftsByPath" | "renamedFromByPath"
->) => {
-  const changedPaths = new Set<string>(
-    Object.keys(draftsByPath).filter((path) => !deletedPaths.has(path))
-  );
-
-  for (const path of deletedPaths) {
-    if (path !== skillFilePath) {
-      changedPaths.add(path);
-    }
-  }
-
-  for (const [nextPath, previousPath] of Object.entries(renamedFromByPath)) {
-    changedPaths.delete(nextPath);
-    changedPaths.delete(previousPath);
-    changedPaths.add(`${previousPath}\0${nextPath}`);
-  }
-
-  if (descriptionDraft !== undefined) {
-    changedPaths.add("description");
-  }
-
-  return changedPaths.size;
-};
-
 export const buildResourcePatchInput = ({
   deletedPaths,
   descriptionDraft,
   draftsByPath,
   filesByPath,
-  renamedFromByPath = {},
+  renamedFromByPath: _renamedFromByPath = {},
 }: BuildResourcePatchInputParams): PatchSkillInput => {
   const upsertResources: NonNullable<PatchSkillInput["upsertResources"]> = [];
   const deleteResourcePaths = [...deletedPaths].filter(
     (path) => path !== skillFilePath
   );
-  const changeCount = getPatchChangeCount({
-    deletedPaths,
-    descriptionDraft,
-    draftsByPath,
-    renamedFromByPath,
-  });
   const input: PatchSkillInput = {
-    changeSummary:
-      changeCount === 1 ? "Edit 1 item" : `Edit ${changeCount} items`,
     deleteResourcePaths,
     upsertResources,
   };

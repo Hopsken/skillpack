@@ -2,7 +2,7 @@ export type SkillErrorCode =
   | "duplicate-resource-path"
   | "duplicate-resolved-skill-name"
   | "duplicate-skill-name"
-  | "duplicate-skill-version"
+  | "duplicate-skill-snapshot"
   | "empty-skill-patch"
   | "invalid-file-path"
   | "invalid-skill-locator"
@@ -11,7 +11,7 @@ export type SkillErrorCode =
   | "skill-file-not-found"
   | "skill-not-found"
   | "skill-object-not-found"
-  | "skill-version-not-found";
+  | "skill-snapshot-not-found";
 
 export class SkillModuleError extends Error {
   code: SkillErrorCode;
@@ -36,15 +36,15 @@ export const skillErrors = {
     ),
   duplicateSkillName: () =>
     new SkillModuleError("duplicate-skill-name", "Skill name already exists"),
-  duplicateSkillVersion: () =>
+  duplicateSkillSnapshot: () =>
     new SkillModuleError(
-      "duplicate-skill-version",
-      "Skill version already exists"
+      "duplicate-skill-snapshot",
+      "Skill snapshot already exists"
     ),
   emptySkillPatch: () =>
     new SkillModuleError(
       "empty-skill-patch",
-      "PATCH must change SKILL.md content or resources"
+      "PATCH must change Skill state or resources"
     ),
   invalidFilePath: () =>
     new SkillModuleError("invalid-file-path", "Valid file path is required"),
@@ -66,6 +66,9 @@ export const skillErrors = {
     new SkillModuleError("skill-not-found", "Skill not found"),
   skillObjectNotFound: () =>
     new SkillModuleError("skill-object-not-found", "Skill object not found"),
-  skillVersionNotFound: () =>
-    new SkillModuleError("skill-version-not-found", "Skill version not found"),
+  skillSnapshotNotFound: () =>
+    new SkillModuleError(
+      "skill-snapshot-not-found",
+      "Skill snapshot not found"
+    ),
 };

@@ -22,14 +22,10 @@ export interface SkillpackResolvedSkill {
   location: string;
   name: string;
   resources: ResourceManifestItem[];
-  version: number;
 }
 
 export type SkillpackResource =
-  | (Pick<
-      SkillResourceResponse,
-      "mediaType" | "path" | "sha256" | "size" | "version"
-    > & {
+  | (Pick<SkillResourceResponse, "mediaType" | "path" | "sha256" | "size"> & {
       content: string;
       encoding: "text";
     })
@@ -40,7 +36,6 @@ export type SkillpackResource =
       path: string;
       sha256: string;
       size: number;
-      version: number;
     };
 
 const textMediaTypePattern =
@@ -83,7 +78,6 @@ const readRawResource = async (
       path,
       sha256: response.headers.get("x-skill-resource-sha256") ?? "",
       size: bytes.byteLength,
-      version: Number(response.headers.get("x-skill-version") ?? 0),
     };
   }
 
@@ -94,7 +88,6 @@ const readRawResource = async (
     path,
     sha256: response.headers.get("x-skill-resource-sha256") ?? "",
     size: bytes.byteLength,
-    version: Number(response.headers.get("x-skill-version") ?? 0),
   };
 };
 
@@ -104,11 +97,10 @@ const isJsonResponse = (response: Response) =>
 const getRawResourceUrl = (
   baseUrl: string,
   skillName: string,
-  path: string,
-  version: number | undefined
+  path: string
 ) => {
   const rawUrl = new URL(`${baseUrl}/api/v1/skills/${skillName}/resources/raw`);
-  appendSearchParams(rawUrl, { path, version });
+  appendSearchParams(rawUrl, { path });
   return rawUrl;
 };
 
@@ -149,11 +141,9 @@ export class SkillpackClient {
 
   async readSkill(location: string): Promise<SkillpackResolvedSkill> {
     const parsed = parseSkillpackLocation(location);
-    const response = await this.request((baseUrl) => {
-      const url = new URL(`${baseUrl}/api/v1/skills/${parsed.skillName}`);
-      appendSearchParams(url, { version: parsed.version });
-      return url;
-    });
+    const response = await this.request(
+      (baseUrl) => new URL(`${baseUrl}/api/v1/skills/${parsed.skillName}`)
+    );
     const body = (await response.json()) as ResolvedSkill;
 
     return {
@@ -162,7 +152,6 @@ export class SkillpackClient {
       location: toSkillpackLocation(body.name),
       name: body.name,
       resources: body.resources,
-      version: body.version,
     };
   }
 
@@ -175,7 +164,7 @@ export class SkillpackClient {
       const textUrl = new URL(
         `${baseUrl}/api/v1/skills/${parsed.skillName}/resources`
       );
-      appendSearchParams(textUrl, { path, version: parsed.version });
+      appendSearchParams(textUrl, { path });
       return textUrl;
     });
 
@@ -186,7 +175,7 @@ export class SkillpackClient {
       }
 
       const rawResponse = await this.request((baseUrl) =>
-        getRawResourceUrl(baseUrl, parsed.skillName, path, parsed.version)
+        getRawResourceUrl(baseUrl, parsed.skillName, path)
       );
       return readRawResource(rawResponse, path);
     }

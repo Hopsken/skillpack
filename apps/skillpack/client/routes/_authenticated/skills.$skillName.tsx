@@ -1,7 +1,6 @@
 import {
   safeRelativePathSchema,
   skillNameSchema,
-  skillVersionNumberSchema,
 } from "@skillpack/core/primitives";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
@@ -10,11 +9,11 @@ import { z } from "zod";
 import { activeSkillQueryOptions } from "@/features/skills/api/query-options";
 import {
   useSkillDetail,
-  useSkillVersions,
+  useSkillSnapshots,
 } from "@/features/skills/api/use-skill-detail";
 import {
   usePatchSkill,
-  useRestoreSkillVersion,
+  useRestoreSkillSnapshot,
 } from "@/features/skills/api/use-skill-mutations";
 import { SkillDetailSkeleton } from "@/features/skills/components/skill-page-skeletons";
 import { skillFilePath } from "@/features/skills/lib/resource-drafts";
@@ -22,7 +21,6 @@ import { SkillDetailView } from "@/features/skills/views/skill-detail-view";
 
 const skillDetailSearchSchema = z.object({
   path: safeRelativePathSchema.optional(),
-  version: skillVersionNumberSchema.optional(),
 });
 
 const skillRouteParamsSchema = z.object({
@@ -40,52 +38,46 @@ const SkillDetailRoute = () => {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   /* eslint-enable no-use-before-define */
-  const { path, version } = search;
-  const skillDetail = useSkillDetail(skillName, version);
+  const { path } = search;
+  const skillDetail = useSkillDetail(skillName);
   const skill = skillDetail.data;
-  const skillVersions = useSkillVersions(skillName);
-  const restoreVersion = useRestoreSkillVersion(skillName);
+  const skillSnapshots = useSkillSnapshots(skillName);
+  const restoreSnapshot = useRestoreSkillSnapshot(skillName);
   const patchSkill = usePatchSkill(skillName);
 
   const setSelectedPath = (nextPath: string | undefined) => {
     void navigate({
       params: { skillName },
-      search: {
-        path: nextPath === skillFilePath ? undefined : nextPath,
-        version,
-      },
+      search: { path: nextPath === skillFilePath ? undefined : nextPath },
       to: "/skills/$skillName",
     });
   };
 
-  const restore = async (versionNumber: number) => {
-    await restoreVersion.mutateAsync({
-      input: {
-        changeSummary: `Restore version ${versionNumber}`,
-      },
-      version: versionNumber,
-    });
+  const restore = async (snapshotNumber: number) => {
+    await restoreSnapshot.mutateAsync(snapshotNumber);
+    await skillDetail.refetch();
   };
 
   const saveChanges: Parameters<
     typeof SkillDetailView
   >[0]["onSaveChanges"] = async (input) => {
-    await patchSkill.mutateAsync(input);
+    const result = await patchSkill.mutateAsync(input);
+    const nextSkillName = result.name;
     await skillDetail.refetch();
 
-    if (search.version) {
+    if (nextSkillName !== skillName) {
       await navigate({
-        params: { skillName },
-        search: { path, version: undefined },
+        params: { skillName: nextSkillName },
+        search: { path },
         to: "/skills/$skillName",
       });
     }
   };
-  const versions = skillVersions.data ?? [];
-  const versionCount = versions.length;
-  const versionsStatus = skillVersions.isPending
-    ? "Loading versions..."
-    : `${versionCount} versions loaded`;
+  const snapshots = skillSnapshots.data ?? [];
+  const snapshotCount = snapshots.length;
+  const snapshotsStatus = skillSnapshots.isPending
+    ? "Loading snapshots..."
+    : `${snapshotCount} snapshots loaded`;
 
   if (skillDetail.isPending && !skill) {
     return <SkillDetailSkeleton />;
@@ -94,12 +86,11 @@ const SkillDetailRoute = () => {
   return (
     <SkillDetailView
       skill={skill}
-      skillName={skillName}
-      versions={versions}
-      versionsStatus={versionsStatus}
+      snapshots={snapshots}
+      snapshotsStatus={snapshotsStatus}
       selectedPath={path}
       onPathChange={setSelectedPath}
-      onRestoreVersion={restore}
+      onRestoreSnapshot={restore}
       onSaveChanges={saveChanges}
     />
   );
@@ -107,22 +98,16 @@ const SkillDetailRoute = () => {
 
 export const Route = createFileRoute("/_authenticated/skills/$skillName")({
   component: SkillDetailRoute,
+  loader: ({ context, params }) => {
+    const { skillName } = params;
+
+    return context.queryClient.ensureQueryData(
+      activeSkillQueryOptions(skillName)
+    );
+  },
   params: {
     parse: parseSkillRouteParams,
     stringify: ({ skillName }) => ({ skillName }),
-  },
-
-  loaderDeps: ({ search }) => ({
-    version: search.version,
-  }),
-
-  loader: ({ context, deps, params }) => {
-    const { skillName } = params;
-    const { version } = deps;
-
-    return context.queryClient.ensureQueryData(
-      activeSkillQueryOptions(skillName, version)
-    );
   },
   validateSearch: zodValidator(skillDetailSearchSchema),
 });

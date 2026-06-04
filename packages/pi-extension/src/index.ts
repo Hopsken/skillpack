@@ -162,9 +162,8 @@ export const createSkillpackExtension =
     };
     const readSkillWithFile = async (location: string) => {
       const skill = await client.readSkill(location);
-      const pinnedLocation = `${skill.location}?version=${skill.version}`;
       const skillFile = await client.readResource(
-        pinnedLocation,
+        skill.location,
         skillFilePath
       );
       const skillFileContent =
@@ -217,7 +216,7 @@ export const createSkillpackExtension =
       parameters: Type.Object({
         location: Type.String({
           description:
-            "Skillpack location, for example skill://skillpack/demo-skill or skill://skillpack/demo-skill?version=3",
+            "Skillpack location, for example skill://skillpack/demo-skill",
         }),
         path: Type.Optional(
           Type.String({

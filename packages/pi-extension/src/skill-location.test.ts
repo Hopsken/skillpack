@@ -6,23 +6,15 @@ import {
 } from "./skill-location";
 
 describe("Skillpack Skill Locations", () => {
-  it("parses current and pinned Skillpack locations by Skill Name", () => {
+  it("parses current Skillpack locations by Skill Name", () => {
     expect(
       parseSkillpackLocation("skill://skillpack/demo-skill")
     ).toStrictEqual({
       skillName: "demo-skill",
-      version: undefined,
-    });
-
-    expect(
-      parseSkillpackLocation("skill://skillpack/demo-skill?version=7")
-    ).toStrictEqual({
-      skillName: "demo-skill",
-      version: 7,
     });
   });
 
-  it("rejects non-Skillpack or malformed locations", () => {
+  it("rejects non-Skillpack, malformed, or pinned locations", () => {
     expect(() => parseSkillpackLocation("skill://github/acme/demo")).toThrow(
       "Expected skill://skillpack/{skillName}"
     );
@@ -30,15 +22,14 @@ describe("Skillpack Skill Locations", () => {
       "Expected skill://skillpack/{skillName}"
     );
     expect(() =>
-      parseSkillpackLocation("skill://skillpack/demo-skill?version=0")
-    ).toThrow("Expected positive numeric Skill version");
+      parseSkillpackLocation("skill://skillpack/demo-skill?version=7")
+    ).toThrow("Expected skill://skillpack/{skillName}");
   });
 
   it("formats catalog entries for system prompt injection", () => {
     expect(
       formatSkillpackCatalog([
         {
-          currentVersion: 3,
           description: "Use when checking <xml> escaping.",
           name: "demo-skill",
         },
@@ -47,7 +38,6 @@ describe("Skillpack Skill Locations", () => {
     expect(
       formatSkillpackCatalog([
         {
-          currentVersion: 3,
           description: "Use when checking <xml> escaping.",
           name: "demo-skill",
         },

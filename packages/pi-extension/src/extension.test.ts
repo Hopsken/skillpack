@@ -93,7 +93,6 @@ describe("Skillpack Pi extension", () => {
       listSkills: vi.fn<() => Promise<unknown>>(() =>
         Promise.resolve([
           {
-            currentVersion: 2,
             description: "Demo skill",
             name: "demo-skill",
           },
@@ -148,7 +147,7 @@ describe("Skillpack Pi extension", () => {
       );
 
     expect(client.readResource).toHaveBeenCalledWith(
-      "skill://skillpack/demo-skill?version=2",
+      "skill://skillpack/demo-skill",
       "SKILL.md"
     );
     expect(result).toStrictEqual({
@@ -214,7 +213,6 @@ describe("Skillpack Pi extension", () => {
       listSkills: vi.fn<() => Promise<unknown>>(() =>
         Promise.resolve([
           {
-            currentVersion: 2,
             description: "Demo skill",
             name: "demo-skill",
           },
@@ -248,7 +246,6 @@ describe("Skillpack Pi extension", () => {
       listSkills: vi.fn<() => Promise<unknown>>(() =>
         Promise.resolve([
           {
-            currentVersion: 2,
             description: "Demo skill",
             name: "demo-skill",
           },
@@ -283,7 +280,7 @@ describe("Skillpack Pi extension", () => {
       "skill://skillpack/demo-skill"
     );
     expect(client.readResource).toHaveBeenCalledWith(
-      "skill://skillpack/demo-skill?version=2",
+      "skill://skillpack/demo-skill",
       "SKILL.md"
     );
     expect(result).toStrictEqual({
@@ -297,7 +294,6 @@ describe("Skillpack Pi extension", () => {
       listSkills: vi.fn<() => Promise<unknown>>(() =>
         Promise.resolve([
           {
-            currentVersion: 2,
             description: "Demo skill",
             name: "demo-skill",
           },
@@ -361,7 +357,6 @@ describe("Skillpack Pi extension", () => {
       listSkills: vi.fn<() => Promise<unknown>>(() =>
         Promise.resolve([
           {
-            currentVersion: 2,
             description: "Demo skill",
             name: "demo-skill",
           },
@@ -402,7 +397,6 @@ describe("Skillpack Pi extension", () => {
       listSkills: vi.fn<() => Promise<unknown>>(() =>
         Promise.resolve([
           {
-            currentVersion: 2,
             description: "Demo skill",
             name: "demo-skill",
           },

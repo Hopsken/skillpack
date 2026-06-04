@@ -7,15 +7,14 @@ import { skillNameSchema } from "@skillpack/core/primitives";
 import { describe, expect, it } from "vitest";
 
 describe("skill request contracts", () => {
-  it("does not allow PATCH to rename a skill", () => {
+  it("allows PATCH to rename a skill in place", () => {
     const result = patchSkillSchema.safeParse({
       deleteResourcePaths: [],
-      description: "Updated description",
       name: "renamed",
       upsertResources: [],
     });
 
-    expect(result.success).toBeFalsy();
+    expect(result.success).toBeTruthy();
   });
 
   it("rejects duplicate selections in one fork request", () => {
@@ -32,12 +31,11 @@ describe("skill request contracts", () => {
     expect(skillNameSchema.safeParse("demo-123").success).toBeTruthy();
   });
 
-  it("does not require public Skill responses to expose internal Skill IDs", () => {
+  it("does not require public Skill responses to expose internal Skill IDs or versions", () => {
     const result = skillListItemSchema.safeParse({
       allowedTools: null,
       compatibility: null,
       createdAt: "2026-05-25T12:00:00.000Z",
-      currentVersion: 1,
       description: "Demo description",
       license: null,
       metadata: null,

@@ -58,32 +58,21 @@ CREATE TABLE `skills` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   `owner_user_id` text NOT NULL,
   `name` text NOT NULL,
+  `description` text NOT NULL,
+  `license` text,
+  `compatibility` text,
+  `allowed_tools` text,
+  `metadata` text,
+  `origin` text,
   `created_at` integer NOT NULL,
   `updated_at` integer NOT NULL
 );
 
 CREATE UNIQUE INDEX `skills_owner_name_unique` ON `skills` (`owner_user_id`, `name`);
 
-CREATE TABLE `skill_versions` (
-  `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  `skill_id` integer NOT NULL,
-  `version_number` integer NOT NULL,
-  `description` text NOT NULL,
-  `license` text,
-  `compatibility` text,
-  `allowed_tools` text,
-  `metadata` text,
-  `label` text,
-  `change_summary` text,
-  `created_at` integer NOT NULL
-);
-
-CREATE INDEX `skill_versions_skill_idx` ON `skill_versions` (`skill_id`);
-CREATE UNIQUE INDEX `skill_versions_skill_version_unique` ON `skill_versions` (`skill_id`, `version_number`);
-
 CREATE TABLE `skill_resources` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  `skill_version_id` integer NOT NULL,
+  `skill_id` integer NOT NULL,
   `path` text NOT NULL,
   `sha256` text NOT NULL,
   `media_type` text NOT NULL,
@@ -92,17 +81,20 @@ CREATE TABLE `skill_resources` (
 );
 
 CREATE INDEX `skill_resources_sha_idx` ON `skill_resources` (`sha256`);
-CREATE INDEX `skill_resources_version_idx` ON `skill_resources` (`skill_version_id`);
-CREATE UNIQUE INDEX `skill_resources_version_path_unique` ON `skill_resources` (`skill_version_id`, `path`);
+CREATE INDEX `skill_resources_skill_idx` ON `skill_resources` (`skill_id`);
+CREATE UNIQUE INDEX `skill_resources_skill_path_unique` ON `skill_resources` (`skill_id`, `path`);
 
-CREATE TABLE `skill_origins` (
+CREATE TABLE `skill_snapshots` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  `skill_version_id` integer NOT NULL,
-  `kind` text NOT NULL,
-  `url` text NOT NULL,
-  `metadata` text,
-  `created_at` integer NOT NULL,
-  `updated_at` integer NOT NULL
+  `skill_id` integer NOT NULL,
+  `snapshot_number` integer NOT NULL,
+  `label` text,
+  `note` text,
+  `state_version` integer NOT NULL,
+  `state_json` text NOT NULL,
+  `created_at` integer NOT NULL
 );
 
-CREATE UNIQUE INDEX `skill_origins_version_unique` ON `skill_origins` (`skill_version_id`);
+CREATE INDEX `skill_snapshots_skill_idx` ON `skill_snapshots` (`skill_id`);
+CREATE UNIQUE INDEX `skill_snapshots_skill_number_unique` ON `skill_snapshots` (`skill_id`, `snapshot_number`);
+

@@ -1,41 +1,86 @@
 import {
-  skillOriginsTable,
   skillResourcesTable,
   skillsTable,
-  skillVersionsTable,
+  skillSnapshotsTable,
 } from "@server/db/schema";
 import type { SkillFileMetadata } from "@server/shared/skill-file";
 import type { Database } from "@server/types";
-import { eq as sqlEq, inArray, sql } from "drizzle-orm";
+import type {
+  SkillOriginJson,
+  SkillSnapshotStateJson,
+} from "@skillpack/contracts/skills/state";
+import { eq as sqlEq, sql } from "drizzle-orm";
 
 import { skillErrors } from "./errors";
-import type { StoredResourceObject } from "./types";
+import type { SkillResourceRow, StoredResourceObject } from "./types";
 
-interface CommitSkillVersionOriginInput {
+interface SkillOriginInput {
   kind: "github";
   metadata: Record<string, unknown> | null;
   url: string;
 }
 
 interface CreateSkillInput {
-  changeSummary?: string | null;
-  label?: string;
   name: string;
-  origin?: CommitSkillVersionOriginInput;
+  origin?: SkillOriginInput;
   resources: StoredResourceObject[];
   skillFileMetadata: Omit<SkillFileMetadata, "name">;
 }
 
+interface UpdateSkillStateInput {
+  name: string;
+  origin?: SkillOriginInput | null;
+  resources: StoredResourceObject[];
+  skillFileMetadata: Omit<SkillFileMetadata, "name">;
+  skillId: number;
+}
+
+interface CreateSkillSnapshotInput {
+  label?: string;
+  note?: string;
+  resources: SkillResourceRow[];
+  skill: {
+    allowedTools: string | null;
+    compatibility: string | null;
+    description: string;
+    license: string | null;
+    metadata: Record<string, string> | null;
+    name: string;
+    origin: SkillOriginJson | null;
+  };
+  skillId: number;
+}
+
+const snapshotStateVersion = 1;
+
 const isUniqueConstraintError = (error: unknown): error is Error =>
   error instanceof Error && error.message.includes("UNIQUE constraint failed");
 
-const isUniqueSkillVersionError = (error: unknown) =>
-  isUniqueConstraintError(error) && error.message.includes("skill_versions");
+const isUniqueSkillSnapshotError = (error: unknown) =>
+  isUniqueConstraintError(error) && error.message.includes("skill_snapshots");
 
 const isUniqueSkillNameError = (error: unknown) =>
   isUniqueConstraintError(error) && error.message.includes("skills");
 
-const isDefined = <T>(value: T | undefined): value is T => value !== undefined;
+const toOriginJson = (
+  origin?: SkillOriginInput | null
+): SkillOriginJson | null =>
+  origin
+    ? {
+        kind: origin.kind,
+        metadata: origin.metadata,
+        url: origin.url,
+      }
+    : null;
+
+const toSnapshotResource = (
+  resource: SkillResourceRow | StoredResourceObject
+) => ({
+  mediaType: resource.mediaType,
+  path: resource.path,
+  sha256: resource.sha256,
+  size: resource.size,
+});
 
 export class SkillRepository {
   private readonly db: Database;
@@ -51,24 +96,9 @@ export class SkillRepository {
     const rows = await this.db.query.skillsTable.findMany({
       orderBy: (skills, { desc }) => [desc(skills.updatedAt)],
       where: (skills, { eq }) => eq(skills.ownerUserId, this.ownerUserId),
-      with: {
-        versions: {
-          limit: 1,
-          orderBy: (versions, { desc }) => [desc(versions.versionNumber)],
-          with: { origins: true },
-        },
-      },
     });
 
-    return rows.flatMap((row) => {
-      const [version] = row.versions;
-
-      if (!version) {
-        return [];
-      }
-
-      return [{ origin: version.origins.at(0), skill: row, version }];
-    });
+    return rows.map((skill) => ({ skill }));
   }
 
   async findSkillById(skillId: number) {
@@ -85,50 +115,33 @@ export class SkillRepository {
     });
   }
 
-  async findLatestSkillVersion(skillId: number) {
-    return await this.db.query.skillVersionsTable.findFirst({
-      orderBy: (versions, { desc }) => [desc(versions.versionNumber)],
-      where: (versions, { eq }) => eq(versions.skillId, skillId),
+  async listSkillSnapshots(skillId: number) {
+    return await this.db.query.skillSnapshotsTable.findMany({
+      orderBy: (snapshots, { desc }) => [desc(snapshots.snapshotNumber)],
+      where: (snapshots, { eq }) => eq(snapshots.skillId, skillId),
     });
   }
 
-  async findSkillVersionByNumber(skillId: number, versionNumber: number) {
-    return await this.db.query.skillVersionsTable.findFirst({
-      where: (versions, { and, eq }) =>
+  async findSkillSnapshotByNumber(skillId: number, snapshotNumber: number) {
+    return await this.db.query.skillSnapshotsTable.findFirst({
+      where: (snapshots, { and, eq }) =>
         and(
-          eq(versions.skillId, skillId),
-          eq(versions.versionNumber, versionNumber)
+          eq(snapshots.skillId, skillId),
+          eq(snapshots.snapshotNumber, snapshotNumber)
         ),
     });
   }
 
-  async findSkillOrigin(skillVersionId: number) {
-    return await this.db.query.skillOriginsTable.findFirst({
-      where: (origins, { eq }) => eq(origins.skillVersionId, skillVersionId),
-    });
-  }
-
-  async listSkillVersions(skillId: number) {
-    return await this.db.query.skillVersionsTable.findMany({
-      orderBy: (versions, { desc }) => [desc(versions.versionNumber)],
-      where: (versions, { eq }) => eq(versions.skillId, skillId),
-    });
-  }
-
-  async listResourcesByVersionId(skillVersionId: number) {
+  async listResourcesBySkillId(skillId: number) {
     return await this.db.query.skillResourcesTable.findMany({
-      where: (resources, { eq }) =>
-        eq(resources.skillVersionId, skillVersionId),
+      where: (resources, { eq }) => eq(resources.skillId, skillId),
     });
   }
 
-  async findResourceByPath(skillVersionId: number, path: string) {
+  async findResourceByPath(skillId: number, path: string) {
     return await this.db.query.skillResourcesTable.findFirst({
       where: (resources, { and, eq }) =>
-        and(
-          eq(resources.skillVersionId, skillVersionId),
-          eq(resources.path, path)
-        ),
+        and(eq(resources.skillId, skillId), eq(resources.path, path)),
     });
   }
 
@@ -140,47 +153,21 @@ export class SkillRepository {
         and ${skillsTable.name} = ${input.name}
       limit 1
     )`;
-    const createdVersionId = sql<number>`(
-      select ${skillVersionsTable.id}
-      from ${skillVersionsTable}
-      where ${skillVersionsTable.skillId} = ${createdSkillId}
-        and ${skillVersionsTable.versionNumber} = 1
-      limit 1
-    )`;
     const skillInsert = this.db
       .insert(skillsTable)
       .values({
+        allowedTools: input.skillFileMetadata.allowedTools ?? null,
+        compatibility: input.skillFileMetadata.compatibility ?? null,
         createdAt: now,
+        description: input.skillFileMetadata.description,
+        license: input.skillFileMetadata.license ?? null,
+        metadata: input.skillFileMetadata.metadata ?? null,
         name: input.name,
+        origin: toOriginJson(input.origin),
         ownerUserId: this.ownerUserId,
         updatedAt: now,
       })
       .returning();
-    const versionInsert = this.db
-      .insert(skillVersionsTable)
-      .values({
-        allowedTools: input.skillFileMetadata.allowedTools ?? null,
-        changeSummary: input.changeSummary ?? null,
-        compatibility: input.skillFileMetadata.compatibility ?? null,
-        createdAt: now,
-        description: input.skillFileMetadata.description,
-        label: input.label ?? null,
-        license: input.skillFileMetadata.license ?? null,
-        metadata: input.skillFileMetadata.metadata ?? null,
-        skillId: createdSkillId,
-        versionNumber: 1,
-      })
-      .returning();
-    const originInsert = input.origin
-      ? this.db.insert(skillOriginsTable).values({
-          createdAt: now,
-          kind: input.origin.kind,
-          metadata: input.origin.metadata,
-          skillVersionId: createdVersionId,
-          updatedAt: now,
-          url: input.origin.url,
-        })
-      : undefined;
     const resourceInsert =
       input.resources.length > 0
         ? this.db.insert(skillResourcesTable).values(
@@ -190,97 +177,49 @@ export class SkillRepository {
               path: resource.path,
               sha256: resource.sha256,
               size: resource.size,
-              skillVersionId: createdVersionId,
+              skillId: createdSkillId,
             }))
           )
         : undefined;
-    const batchStatements = [
-      skillInsert,
-      versionInsert,
-      ...[resourceInsert, originInsert].filter(isDefined),
-    ] as const;
 
     try {
-      const [skillRows, versionRows] = await this.db.batch(batchStatements);
+      const [skillRows] = await this.db.batch(
+        resourceInsert ? [skillInsert, resourceInsert] : [skillInsert]
+      );
       const [skill] = skillRows;
-      const [version] = versionRows;
 
-      if (!(skill && version)) {
+      if (!skill) {
         throw new Error("Skill was not created");
       }
 
-      return { skill, version };
+      return { skill };
     } catch (error) {
       if (isUniqueSkillNameError(error)) {
         throw skillErrors.duplicateSkillName();
-      }
-
-      if (isUniqueSkillVersionError(error)) {
-        throw skillErrors.duplicateSkillVersion();
       }
 
       throw error;
     }
   }
 
-  async commitSkillVersion(
-    input: {
-      changeSummary?: string | null;
-      label?: string;
-      origin?: CommitSkillVersionOriginInput;
-      resources: StoredResourceObject[];
-      skillFileMetadata: Omit<SkillFileMetadata, "name">;
-      skillId: number;
-    },
-    now: Date
-  ) {
-    // D1 batch statements are submitted together, so later statements cannot
-    // await the inserted version id in JS. Resolve the just-inserted version
-    // inside SQL while keeping version/resources/skill update in one batch.
-    const committedVersionId = sql<number>`(
-      select ${skillVersionsTable.id}
-      from ${skillVersionsTable}
-      where ${skillVersionsTable.skillId} = ${input.skillId}
-        and ${skillVersionsTable.versionNumber} = (
-          select max(${skillVersionsTable.versionNumber})
-          from ${skillVersionsTable}
-          where ${skillVersionsTable.skillId} = ${input.skillId}
-        )
-      limit 1
-    )`;
-    const versionInsert = this.db
-      .insert(skillVersionsTable)
-      .values({
-        allowedTools: input.skillFileMetadata.allowedTools ?? null,
-        changeSummary: input.changeSummary ?? null,
-        compatibility: input.skillFileMetadata.compatibility ?? null,
-        createdAt: now,
-        description: input.skillFileMetadata.description,
-        label: input.label ?? null,
-        license: input.skillFileMetadata.license ?? null,
-        metadata: input.skillFileMetadata.metadata ?? null,
-        skillId: input.skillId,
-        versionNumber: sql<number>`(
-          select coalesce(max(${skillVersionsTable.versionNumber}), 0) + 1
-          from ${skillVersionsTable}
-          where ${skillVersionsTable.skillId} = ${input.skillId}
-        )`,
-      })
-      .returning();
+  async updateSkillState(input: UpdateSkillStateInput, now: Date) {
     const skillUpdate = this.db
       .update(skillsTable)
-      .set({ updatedAt: now })
-      .where(sqlEq(skillsTable.id, input.skillId));
-    const originInsert = input.origin
-      ? this.db.insert(skillOriginsTable).values({
-          createdAt: now,
-          kind: input.origin.kind,
-          metadata: input.origin.metadata,
-          skillVersionId: committedVersionId,
-          updatedAt: now,
-          url: input.origin.url,
-        })
-      : undefined;
+      .set({
+        allowedTools: input.skillFileMetadata.allowedTools ?? null,
+        compatibility: input.skillFileMetadata.compatibility ?? null,
+        description: input.skillFileMetadata.description,
+        license: input.skillFileMetadata.license ?? null,
+        metadata: input.skillFileMetadata.metadata ?? null,
+        name: input.name,
+        origin: toOriginJson(input.origin),
+        updatedAt: now,
+      })
+      .where(sqlEq(skillsTable.id, input.skillId))
+      .returning();
+    const resourceDelete = this.db
+      .delete(skillResourcesTable)
+      .where(sqlEq(skillResourcesTable.skillId, input.skillId));
     const resourceInsert =
       input.resources.length > 0
         ? this.db.insert(skillResourcesTable).values(
@@ -290,29 +229,71 @@ export class SkillRepository {
               path: resource.path,
               sha256: resource.sha256,
               size: resource.size,
-              skillVersionId: committedVersionId,
+              skillId: input.skillId,
             }))
           )
         : undefined;
-    const batchStatements = [
-      versionInsert,
-      ...[resourceInsert, originInsert].filter(isDefined),
-      skillUpdate,
-    ] as const;
 
     try {
-      const [versionRows] = await this.db.batch(batchStatements);
+      const [skillRows] = await this.db.batch(
+        resourceInsert
+          ? [skillUpdate, resourceDelete, resourceInsert]
+          : [skillUpdate, resourceDelete]
+      );
+      const [skill] = skillRows;
 
-      const [version] = versionRows;
-
-      if (!version) {
-        throw new Error("Skill version was not created");
+      if (!skill) {
+        throw skillErrors.skillNotFound();
       }
 
-      return version;
+      return skill;
     } catch (error) {
-      if (isUniqueSkillVersionError(error)) {
-        throw skillErrors.duplicateSkillVersion();
+      if (isUniqueSkillNameError(error)) {
+        throw skillErrors.duplicateSkillName();
+      }
+
+      throw error;
+    }
+  }
+
+  async createSkillSnapshot(input: CreateSkillSnapshotInput, now: Date) {
+    const stateJson: SkillSnapshotStateJson = {
+      allowedTools: input.skill.allowedTools,
+      compatibility: input.skill.compatibility,
+      description: input.skill.description,
+      license: input.skill.license,
+      metadata: input.skill.metadata,
+      name: input.skill.name,
+      origin: input.skill.origin,
+      resources: input.resources.map(toSnapshotResource),
+    };
+
+    try {
+      const [snapshot] = await this.db
+        .insert(skillSnapshotsTable)
+        .values({
+          createdAt: now,
+          label: input.label ?? null,
+          note: input.note ?? null,
+          skillId: input.skillId,
+          snapshotNumber: sql<number>`(
+            select coalesce(max(${skillSnapshotsTable.snapshotNumber}), 0) + 1
+            from ${skillSnapshotsTable}
+            where ${skillSnapshotsTable.skillId} = ${input.skillId}
+          )`,
+          stateJson,
+          stateVersion: snapshotStateVersion,
+        })
+        .returning();
+
+      if (!snapshot) {
+        throw new Error("Skill snapshot was not created");
+      }
+
+      return snapshot;
+    } catch (error) {
+      if (isUniqueSkillSnapshotError(error)) {
+        throw skillErrors.duplicateSkillSnapshot();
       }
 
       throw error;
@@ -326,24 +307,12 @@ export class SkillRepository {
       return;
     }
 
-    const versions = await this.db.query.skillVersionsTable.findMany({
-      columns: { id: true },
-      where: (version, { eq }) => eq(version.skillId, skillId),
-    });
-    const versionIds = versions.map((version) => version.id);
-
-    if (versionIds.length > 0) {
-      await this.db
-        .delete(skillResourcesTable)
-        .where(inArray(skillResourcesTable.skillVersionId, versionIds));
-      await this.db
-        .delete(skillOriginsTable)
-        .where(inArray(skillOriginsTable.skillVersionId, versionIds));
-    }
-
     await this.db
-      .delete(skillVersionsTable)
-      .where(sqlEq(skillVersionsTable.skillId, skillId));
+      .delete(skillResourcesTable)
+      .where(sqlEq(skillResourcesTable.skillId, skillId));
+    await this.db
+      .delete(skillSnapshotsTable)
+      .where(sqlEq(skillSnapshotsTable.skillId, skillId));
     await this.db.delete(skillsTable).where(sqlEq(skillsTable.id, skillId));
   }
 }

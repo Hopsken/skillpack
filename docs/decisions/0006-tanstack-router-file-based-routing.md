@@ -29,7 +29,7 @@ Route loaders will call TanStack Query `ensureQueryData` for critical first-rend
 - login provider configuration;
 - OAuth client preview.
 
-Non-critical or slower reads remain component-level TanStack Query hooks, including Managed Skill Versions, resource file content, Fork discovery, and origin definition previews.
+Non-critical or slower reads remain component-level TanStack Query hooks, including Skill Snapshots, resource file content, Fork discovery, and origin definition previews.
 
 Protected routes use a pathless authenticated route with `beforeLoad` so unauthenticated users are redirected before protected loaders run.
 

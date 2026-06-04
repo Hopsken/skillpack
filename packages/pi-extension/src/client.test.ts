@@ -8,7 +8,7 @@ describe(SkillpackClient, () => {
       (input: string | URL, init?: RequestInit) => Promise<Response>
     >((input, init) => {
       expect(String(input)).toBe(
-        "https://skillpack.example/api/v1/skills/demo-skill?version=7"
+        "https://skillpack.example/api/v1/skills/demo-skill"
       );
       expect(init?.headers).toMatchObject({
         authorization: "Bearer access-token",
@@ -34,8 +34,6 @@ describe(SkillpackClient, () => {
               },
             ],
             updatedAt: "2026-05-27T00:00:00.000Z",
-            version: 7,
-            versionLabel: "release",
           },
           { status: 200 }
         )
@@ -48,13 +46,12 @@ describe(SkillpackClient, () => {
     });
 
     await expect(
-      client.readSkill("skill://skillpack/demo-skill?version=7")
+      client.readSkill("skill://skillpack/demo-skill")
     ).resolves.toMatchObject({
       content: "# Demo\n\nUse this.",
       location: "skill://skillpack/demo-skill",
       name: "demo-skill",
       resources: [{ path: "references/demo.md" }],
-      version: 7,
     });
   });
 
@@ -67,7 +64,6 @@ describe(SkillpackClient, () => {
           path: "references/demo.md",
           sha256: "abc",
           size: 11,
-          version: 3,
         })
       )
     );
@@ -86,7 +82,6 @@ describe(SkillpackClient, () => {
       path: "references/demo.md",
       sha256: "abc",
       size: 11,
-      version: 3,
     });
   });
 
@@ -115,7 +110,6 @@ describe(SkillpackClient, () => {
       path: "assets/logo.png",
       sha256: "abc",
       size: 3,
-      version: 3,
     });
   });
 });

@@ -1,9 +1,9 @@
 import {
   optionalSkillAllowedToolsSchema,
-  optionalSkillChangeSummarySchema,
   optionalSkillCompatibilitySchema,
   optionalSkillLicenseSchema,
-  optionalSkillVersionLabelSchema,
+  optionalSkillSnapshotLabelSchema,
+  optionalSkillSnapshotNoteSchema,
   safeRelativePathSchema,
   skillDescriptionSchema,
   skillMetadataSchema,
@@ -21,7 +21,6 @@ const createSkillResourceSchema = z.object({
 
 export const createSkillSchema = z.object({
   allowedTools: optionalSkillAllowedToolsSchema.nullable(),
-  changeSummary: optionalSkillChangeSummarySchema,
   compatibility: optionalSkillCompatibilitySchema.nullable(),
   content: z.string().min(1),
   description: skillDescriptionSchema,
@@ -29,21 +28,19 @@ export const createSkillSchema = z.object({
   metadata: skillMetadataSchema.nullable().optional(),
   name: skillNameSchema,
   resources: z.array(createSkillResourceSchema).default([]),
-  versionLabel: optionalSkillVersionLabelSchema,
 });
 
 export const patchSkillSchema = z
   .object({
     allowedTools: optionalSkillAllowedToolsSchema.nullable(),
-    changeSummary: optionalSkillChangeSummarySchema,
     compatibility: optionalSkillCompatibilitySchema.nullable(),
     content: z.string().min(1).optional(),
     deleteResourcePaths: z.array(safeRelativePathSchema).default([]),
     description: skillDescriptionSchema.optional(),
     license: optionalSkillLicenseSchema.nullable(),
     metadata: skillMetadataSchema.nullable().optional(),
+    name: skillNameSchema.optional(),
     upsertResources: z.array(createSkillResourceSchema).default([]),
-    versionLabel: optionalSkillVersionLabelSchema,
   })
   .strict()
   .refine(
@@ -55,20 +52,21 @@ export const patchSkillSchema = z
       input.description !== undefined ||
       input.license !== undefined ||
       input.metadata !== undefined ||
+      input.name !== undefined ||
       input.upsertResources.length > 0,
-    "PATCH must change SKILL.md content or resources"
+    "PATCH must change Skill state or resources"
   );
 
-export const restoreVersionSchema = z.object({
-  changeSummary: optionalSkillChangeSummarySchema,
-  versionLabel: optionalSkillVersionLabelSchema,
+export const createSkillSnapshotSchema = z.object({
+  label: optionalSkillSnapshotLabelSchema,
+  note: optionalSkillSnapshotNoteSchema,
 });
 
 export const forkSkillSchema = z
   .object({
     origin: skillOriginSchema,
     selections: z.array(originSelectionSchema).min(1),
-    versionLabel: optionalSkillVersionLabelSchema,
+    snapshotLabel: optionalSkillSnapshotLabelSchema,
   })
   .superRefine((input, context) => {
     const seen = new Set<string>();
@@ -87,6 +85,8 @@ export const forkSkillSchema = z
   });
 
 export type CreateSkillInput = z.infer<typeof createSkillSchema>;
+export type CreateSkillSnapshotInput = z.infer<
+  typeof createSkillSnapshotSchema
+>;
 export type ForkSkillInput = z.infer<typeof forkSkillSchema>;
 export type PatchSkillInput = z.infer<typeof patchSkillSchema>;
-export type RestoreVersionInput = z.infer<typeof restoreVersionSchema>;

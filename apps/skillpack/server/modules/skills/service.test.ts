@@ -4,13 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { SkillRepository } from "./repository";
 import type { ResourceManifest } from "./resource-manifest";
 import { SkillService } from "./service";
-import type {
-  SkillResourceRow,
-  SkillOriginRow,
-  SkillRow,
-  SkillVersionRow,
-  StoredResourceObject,
-} from "./types";
+import type { SkillResourceRow, SkillRow, StoredResourceObject } from "./types";
 
 const createdAt = new Date("2026-05-25T12:00:00.000Z");
 const updatedAt = new Date("2026-05-25T12:01:00.000Z");
@@ -28,30 +22,17 @@ allowed-tools: Read
 `;
 
 const skillRow = (input?: Partial<SkillRow>): SkillRow => ({
+  allowedTools: input?.allowedTools ?? "Read",
+  compatibility: input?.compatibility ?? null,
   createdAt,
+  description: input?.description ?? "Demo description",
   id: input?.id ?? 1,
+  license: input?.license ?? "Apache-2.0",
+  metadata: input?.metadata ?? { author: "acme" },
   name: input?.name ?? "demo",
+  origin: input?.origin ?? null,
   ownerUserId: input?.ownerUserId ?? "user-a",
   updatedAt,
-});
-
-const baseVersionRow: SkillVersionRow = {
-  allowedTools: "Read",
-  changeSummary: null,
-  compatibility: null,
-  createdAt,
-  description: "Demo description",
-  id: 10,
-  label: null,
-  license: "Apache-2.0",
-  metadata: { author: "acme" },
-  skillId: 1,
-  versionNumber: 1,
-};
-
-const versionRow = (input?: Partial<SkillVersionRow>): SkillVersionRow => ({
-  ...baseVersionRow,
-  ...input,
 });
 
 const resourceRow = (input?: Partial<SkillResourceRow>): SkillResourceRow => ({
@@ -61,17 +42,7 @@ const resourceRow = (input?: Partial<SkillResourceRow>): SkillResourceRow => ({
   path: input?.path ?? "SKILL.md",
   sha256: input?.sha256 ?? "skill-md",
   size: input?.size ?? 120,
-  skillVersionId: input?.skillVersionId ?? 10,
-});
-
-const originRow = (input?: Partial<SkillOriginRow>): SkillOriginRow => ({
-  createdAt,
-  id: input?.id ?? 1,
-  kind: input?.kind ?? "github",
-  metadata: input?.metadata ?? null,
-  skillVersionId: input?.skillVersionId ?? 10,
-  updatedAt,
-  url: input?.url ?? "https://github.com/example/skills",
+  skillId: input?.skillId ?? 1,
 });
 
 const storedResource = (
@@ -98,8 +69,12 @@ const originDefinition = (input?: {
   name?: string;
   selectionName?: string;
 }) => ({
+  allowedTools: "Read",
+  compatibility: null,
   content: input?.content ?? skillFileContent,
   description: "Forked description",
+  license: null,
+  metadata: null,
   name: input?.name ?? "demo",
   provenance: {
     kind: "github" as const,
@@ -112,17 +87,17 @@ const originDefinition = (input?: {
 
 const createService = () => {
   const repository = {
-    commitSkillVersion: vi.fn<SkillRepository["commitSkillVersion"]>(),
     createSkill: vi.fn<SkillRepository["createSkill"]>(),
-    findLatestSkillVersion: vi.fn<SkillRepository["findLatestSkillVersion"]>(),
+    createSkillSnapshot: vi.fn<SkillRepository["createSkillSnapshot"]>(),
+    deleteSkillById: vi.fn<SkillRepository["deleteSkillById"]>(),
     findResourceByPath: vi.fn<SkillRepository["findResourceByPath"]>(),
     findSkillById: vi.fn<SkillRepository["findSkillById"]>(),
     findSkillByName: vi.fn<SkillRepository["findSkillByName"]>(),
-    findSkillOrigin: vi.fn<SkillRepository["findSkillOrigin"]>(),
-    findSkillVersionByNumber:
-      vi.fn<SkillRepository["findSkillVersionByNumber"]>(),
-    listResourcesByVersionId:
-      vi.fn<SkillRepository["listResourcesByVersionId"]>(),
+    findSkillSnapshotByNumber:
+      vi.fn<SkillRepository["findSkillSnapshotByNumber"]>(),
+    listResourcesBySkillId: vi.fn<SkillRepository["listResourcesBySkillId"]>(),
+    listSkillSnapshots: vi.fn<SkillRepository["listSkillSnapshots"]>(),
+    updateSkillState: vi.fn<SkillRepository["updateSkillState"]>(),
   };
   const resourceManifest = {
     createSnapshot: vi.fn<ResourceManifest["createSnapshot"]>(),
@@ -147,7 +122,7 @@ const createService = () => {
   };
 };
 
-describe("SkillService version commit handoff", () => {
+describe("SkillService current-state lifecycle", () => {
   it("treats skills outside the owner scope as not found", async () => {
     const { repository, service } = createService();
 
@@ -162,50 +137,26 @@ describe("SkillService version commit handoff", () => {
   it("resolves a skill by the owner's Skill Name", async () => {
     const { repository, resourceManifest, service } = createService();
     const skill = skillRow({ id: 9, name: "demo-skill" });
-    const committedVersion = versionRow({
-      id: 19,
-      skillId: skill.id,
-      versionNumber: 2,
-    });
 
     repository.findSkillByName.mockResolvedValue(skill);
-    repository.findSkillVersionByNumber.mockResolvedValue(committedVersion);
-    repository.findSkillOrigin.mockResolvedValue(
-      originRow({ skillVersionId: 19 })
-    );
-    repository.listResourcesByVersionId.mockResolvedValue([resourceRow()]);
+    repository.listResourcesBySkillId.mockResolvedValue([resourceRow()]);
     resourceManifest.getResourceObject.mockResolvedValue(
       objectWithText(skillFileContent)
     );
 
-    const result = await service.resolveSkillByName("demo-skill", 2);
+    const result = await service.resolveSkillByName("demo-skill");
 
     expect(result.skill).toBe(skill);
-    expect(result.version).toBe(committedVersion);
     expect(repository.findSkillByName).toHaveBeenCalledWith("demo-skill");
-    expect(repository.findSkillVersionByNumber).toHaveBeenCalledWith(9, 2);
+    expect(repository.listResourcesBySkillId).toHaveBeenCalledWith(9);
   });
 
-  it("treats a missing Skill Name as not found", async () => {
-    const { repository, service } = createService();
-
-    repository.findSkillByName.mockResolvedValue(missingSkill);
-
-    await expect(service.resolveSkillByName("missing")).rejects.toMatchObject({
-      code: "skill-not-found",
-    });
-  });
-
-  it("serializes canonical SKILL.md before committing the first version", async () => {
+  it("serializes canonical SKILL.md before creating current Skill state", async () => {
     const { repository, resourceManifest, service } = createService();
     const skill = skillRow();
-    const committedVersion = versionRow();
     const manifest = [storedResource()];
 
-    repository.createSkill.mockResolvedValue({
-      skill,
-      version: committedVersion,
-    });
+    repository.createSkill.mockResolvedValue({ skill });
     resourceManifest.storeSkillFile.mockResolvedValue({
       mediaType: "text/markdown; charset=utf-8",
       path: "SKILL.md",
@@ -214,15 +165,14 @@ describe("SkillService version commit handoff", () => {
     });
     resourceManifest.createSnapshot.mockResolvedValue(manifest);
     repository.findSkillById.mockResolvedValue(skill);
-    repository.findLatestSkillVersion.mockResolvedValue(committedVersion);
-    repository.findSkillOrigin.mockResolvedValue(originRow());
-    repository.listResourcesByVersionId.mockResolvedValue([resourceRow()]);
+    repository.listResourcesBySkillId.mockResolvedValue([resourceRow()]);
     resourceManifest.getResourceObject.mockResolvedValue(
       objectWithText(skillFileContent)
     );
 
     await service.createSkill({
       allowedTools: "Read",
+      compatibility: null,
       content: "# Demo\n",
       description: "Demo description",
       license: "Apache-2.0",
@@ -250,10 +200,9 @@ describe("SkillService version commit handoff", () => {
     );
   });
 
-  it("patches metadata/body through a new canonical SKILL.md and complete resource manifest", async () => {
+  it("patches metadata/body through the current Skill state", async () => {
     const { repository, resourceManifest, service } = createService();
     const currentSkill = skillRow();
-    const currentVersion = versionRow();
     const currentResources = [
       resourceRow(),
       resourceRow({
@@ -273,9 +222,7 @@ describe("SkillService version commit handoff", () => {
     ];
 
     repository.findSkillById.mockResolvedValue(currentSkill);
-    repository.findLatestSkillVersion.mockResolvedValue(currentVersion);
-    repository.findSkillOrigin.mockResolvedValue(originRow());
-    repository.listResourcesByVersionId.mockResolvedValue(currentResources);
+    repository.listResourcesBySkillId.mockResolvedValue(currentResources);
     resourceManifest.getResourceObject.mockResolvedValue(
       objectWithText(skillFileContent)
     );
@@ -286,12 +233,8 @@ describe("SkillService version commit handoff", () => {
       size: 140,
     });
     resourceManifest.patchSnapshot.mockResolvedValue(nextResources);
-    repository.commitSkillVersion.mockResolvedValue(
-      versionRow({
-        description: "Next description",
-        id: 11,
-        versionNumber: 2,
-      })
+    repository.updateSkillState.mockResolvedValue(
+      skillRow({ description: "Next description" })
     );
 
     await service.patchSkill(currentSkill.id, {
@@ -301,14 +244,7 @@ describe("SkillService version commit handoff", () => {
       upsertResources: [],
     });
 
-    expect(resourceManifest.storeSkillFile).toHaveBeenCalledWith(
-      expect.stringContaining("description: Next description")
-    );
-    expect(resourceManifest.patchSnapshot).toHaveBeenCalledWith(
-      currentResources,
-      expect.objectContaining({ content: "# Next\n" })
-    );
-    expect(repository.commitSkillVersion).toHaveBeenCalledWith(
+    expect(repository.updateSkillState).toHaveBeenCalledWith(
       expect.objectContaining({
         resources: [
           expect.objectContaining({
@@ -319,6 +255,7 @@ describe("SkillService version commit handoff", () => {
         ],
         skillFileMetadata: expect.objectContaining({
           description: "Next description",
+          name: "demo",
         }),
         skillId: currentSkill.id,
       }),
@@ -326,107 +263,102 @@ describe("SkillService version commit handoff", () => {
     );
   });
 
-  it("rejects patches that do not change SKILL.md or resources", async () => {
+  it("rejects patches that do not change Skill state or resources", async () => {
     const { repository, resourceManifest, service } = createService();
     const currentSkill = skillRow();
-    const currentVersion = versionRow();
 
     repository.findSkillById.mockResolvedValue(currentSkill);
-    repository.findLatestSkillVersion.mockResolvedValue(currentVersion);
-    repository.findSkillOrigin.mockResolvedValue(originRow());
-    repository.listResourcesByVersionId.mockResolvedValue([resourceRow()]);
+    repository.listResourcesBySkillId.mockResolvedValue([resourceRow()]);
     resourceManifest.getResourceObject.mockResolvedValue(
       objectWithText(skillFileContent)
     );
 
     await expect(
       service.patchSkill(currentSkill.id, {
-        changeSummary: "Retitle release",
         deleteResourcePaths: [],
         upsertResources: [],
-        versionLabel: "label-only",
       })
     ).rejects.toMatchObject({ code: "empty-skill-patch" });
 
     expect(resourceManifest.storeSkillFile).not.toHaveBeenCalled();
-    expect(repository.commitSkillVersion).not.toHaveBeenCalled();
   });
 
-  it("restores by committing historical canonical SKILL.md and resources as a new version", async () => {
+  it("restores a snapshot by replacing current state and preserving conflict checks", async () => {
     const { repository, service } = createService();
-    const currentSkill = skillRow();
-    const historicalVersion = versionRow({ id: 8, versionNumber: 1 });
-    const historicalResources = [
-      resourceRow({ id: 1, sha256: "old-skill-md", skillVersionId: 8 }),
-      resourceRow({
-        id: 2,
-        mediaType: "text/plain; charset=utf-8",
-        path: "references/notes.txt",
-        sha256: "old-notes",
-        size: 12,
-        skillVersionId: 8,
-      }),
-    ];
+    const currentSkill = skillRow({ id: 1, name: "demo" });
 
-    repository.findSkillById.mockResolvedValue(currentSkill);
-    repository.findSkillVersionByNumber.mockResolvedValue(historicalVersion);
-    repository.findSkillOrigin.mockResolvedValue(originRow());
-    repository.listResourcesByVersionId.mockResolvedValue(historicalResources);
-    repository.commitSkillVersion.mockResolvedValue(
-      versionRow({ id: 12, versionNumber: 3 })
+    repository.findSkillByName.mockResolvedValueOnce(currentSkill);
+    repository.findSkillSnapshotByNumber.mockResolvedValue({
+      createdAt,
+      id: 8,
+      label: "previous",
+      note: null,
+      skillId: currentSkill.id,
+      snapshotNumber: 1,
+      stateJson: {
+        allowedTools: "Read",
+        compatibility: null,
+        description: "Old description",
+        license: null,
+        metadata: null,
+        name: "demo-old",
+        origin: null,
+        resources: [storedResource({ path: "SKILL.md", sha256: "old" })],
+      },
+      stateVersion: 1,
+    });
+    repository.findSkillByName.mockResolvedValueOnce(missingSkill);
+    repository.updateSkillState.mockResolvedValue(
+      skillRow({ name: "demo-old" })
     );
 
-    await service.restoreSkillVersion(currentSkill.id, 1, {
-      changeSummary: "Restore v1",
-    });
+    await service.restoreSkillSnapshotByName("demo", 1);
 
-    expect(repository.commitSkillVersion).toHaveBeenCalledWith(
+    expect(repository.updateSkillState).toHaveBeenCalledWith(
       expect.objectContaining({
-        changeSummary: "Restore v1",
-        resources: [
-          expect.objectContaining({
-            path: "SKILL.md",
-            sha256: "old-skill-md",
-          }),
-          expect.objectContaining({
-            path: "references/notes.txt",
-            sha256: "old-notes",
-          }),
-        ],
+        name: "demo-old",
+        resources: [expect.objectContaining({ sha256: "old" })],
         skillId: currentSkill.id,
       }),
       expect.any(Date)
     );
   });
 
-  it("adds a source skill with an existing name as a new version of the user's skill", async () => {
+  it("adds a source skill with an existing name by snapshotting before update", async () => {
     const { originService, repository, resourceManifest, service } =
       createService();
     const existingSkill = skillRow({ id: 7, name: "demo" });
-    const committedVersion = versionRow({
-      id: 22,
-      skillId: existingSkill.id,
-      versionNumber: 2,
-    });
 
     originService.readSkillDefinitions.mockResolvedValue([
       { definition: originDefinition(), status: "resolved" },
     ]);
     repository.findSkillByName.mockResolvedValue(existingSkill);
-    resourceManifest.storeSkillFile.mockResolvedValue({
-      mediaType: "text/markdown; charset=utf-8",
-      path: "SKILL.md",
-      sha256: "forked-skill-md",
-      size: 140,
+    repository.listResourcesBySkillId.mockResolvedValue([resourceRow()]);
+    repository.createSkillSnapshot.mockResolvedValue({
+      createdAt,
+      id: 1,
+      label: "before update",
+      note: null,
+      skillId: existingSkill.id,
+      snapshotNumber: 1,
+      stateJson: {
+        allowedTools: "Read",
+        compatibility: null,
+        description: "Demo description",
+        license: null,
+        metadata: null,
+        name: "demo",
+        origin: null,
+        resources: [],
+      },
+      stateVersion: 1,
     });
-    resourceManifest.createSnapshot.mockResolvedValue([]);
-    repository.commitSkillVersion.mockResolvedValue(committedVersion);
-    repository.findSkillById.mockResolvedValue(existingSkill);
-    repository.findLatestSkillVersion.mockResolvedValue(committedVersion);
-    repository.findSkillOrigin.mockResolvedValue(
-      originRow({ skillVersionId: 22 })
+    resourceManifest.storeSkillFile.mockResolvedValue(
+      storedResource({ path: "SKILL.md" })
     );
-    repository.listResourcesByVersionId.mockResolvedValue([resourceRow()]);
+    resourceManifest.createSnapshot.mockResolvedValue([]);
+    repository.updateSkillState.mockResolvedValue(existingSkill);
+    repository.findSkillById.mockResolvedValue(existingSkill);
     resourceManifest.getResourceObject.mockResolvedValue(
       objectWithText(skillFileContent)
     );
@@ -434,98 +366,20 @@ describe("SkillService version commit handoff", () => {
     const result = await service.forkSkill({
       origin: { kind: "github", repoUrl: "https://github.com/example/skills" },
       selections: [{ skillName: "demo" }],
+      snapshotLabel: "before update",
     });
 
-    expect(result.results[0]).toMatchObject({
-      skill: { skill: { id: existingSkill.id, name: "demo" } },
-      status: "forked",
-    });
-    expect(repository.createSkill).not.toHaveBeenCalled();
-    expect(repository.commitSkillVersion).toHaveBeenCalledWith(
+    expect(result.results[0]).toMatchObject({ status: "forked" });
+    expect(repository.createSkillSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({
-        origin: {
-          kind: "github",
-          metadata: { resolvedSkillPath: "skills/demo/SKILL.md" },
-          url: "https://github.com/example/skills",
-        },
+        label: "before update",
         skillId: existingSkill.id,
       }),
       expect.any(Date)
     );
-  });
-
-  it("fails later fork selections that resolve to a duplicate skill name", async () => {
-    const { originService, repository, resourceManifest, service } =
-      createService();
-    const skill = skillRow({ id: 7, name: "shared-name" });
-    const committedVersion = versionRow({
-      id: 22,
-      skillId: skill.id,
-      versionNumber: 1,
-    });
-
-    originService.readSkillDefinitions.mockResolvedValue([
-      {
-        definition: originDefinition({
-          name: "shared-name",
-          selectionName: "path-a",
-        }),
-        status: "resolved",
-      },
-      {
-        definition: originDefinition({
-          name: "shared-name",
-          selectionName: "path-b",
-        }),
-        status: "resolved",
-      },
-    ]);
-    repository.findSkillByName.mockResolvedValue(missingSkill);
-    repository.createSkill.mockResolvedValue({
-      skill,
-      version: committedVersion,
-    });
-    resourceManifest.storeSkillFile.mockResolvedValue({
-      mediaType: "text/markdown; charset=utf-8",
-      path: "SKILL.md",
-      sha256: "forked-skill-md",
-      size: 140,
-    });
-    resourceManifest.createSnapshot.mockResolvedValue([]);
-    repository.findSkillById.mockResolvedValue(skill);
-    repository.findLatestSkillVersion.mockResolvedValue(committedVersion);
-    repository.findSkillOrigin.mockResolvedValue(
-      originRow({ skillVersionId: 22 })
-    );
-    repository.listResourcesByVersionId.mockResolvedValue([resourceRow()]);
-    resourceManifest.getResourceObject.mockResolvedValue(
-      objectWithText(skillFileContent)
-    );
-
-    const result = await service.forkSkill({
-      origin: { kind: "github", repoUrl: "https://github.com/example/skills" },
-      selections: [{ skillName: "path-a" }, { skillName: "path-b" }],
-    });
-
-    expect(result.results).toMatchObject([
-      { status: "forked" },
-      {
-        error: "Multiple selected skills resolve to the same Skill Name",
-        selection: { skillName: "path-b" },
-        status: "failed",
-      },
-    ]);
-    expect(repository.createSkill).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: "shared-name",
-        origin: {
-          kind: "github",
-          metadata: { resolvedSkillPath: "skills/demo/SKILL.md" },
-          url: "https://github.com/example/skills",
-        },
-      }),
+    expect(repository.updateSkillState).toHaveBeenCalledWith(
+      expect.objectContaining({ skillId: existingSkill.id }),
       expect.any(Date)
     );
-    expect(repository.commitSkillVersion).not.toHaveBeenCalled();
   });
 });

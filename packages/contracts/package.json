@@ -7,7 +7,8 @@
     "./origins/requests": "./src/origins/requests.ts",
     "./origins/responses": "./src/origins/responses.ts",
     "./skills/requests": "./src/skills/requests.ts",
-    "./skills/responses": "./src/skills/responses.ts"
+    "./skills/responses": "./src/skills/responses.ts",
+    "./skills/state": "./src/skills/state.ts"
   },
   "scripts": {
     "test": "vitest run",

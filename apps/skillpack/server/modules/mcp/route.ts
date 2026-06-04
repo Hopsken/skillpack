@@ -14,7 +14,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 const skillpackLocationPattern =
-  /^skill:\/\/skillpack\/(?<skillName>[a-z0-9]+(?:-[a-z0-9]+)*)(?:\?version=(?<version>[1-9]\d*))?$/u;
+  /^skill:\/\/skillpack\/(?<skillName>[a-z0-9]+(?:-[a-z0-9]+)*)$/u;
 
 const escapeXml = (value: string) =>
   value
@@ -27,15 +27,8 @@ const escapeXml = (value: string) =>
 const toSkillpackLocation = (skillName: string) =>
   `skill://skillpack/${skillName}`;
 
-const toPinnedSkillpackLocation = (skillName: string, version: number) =>
-  `${toSkillpackLocation(skillName)}?version=${version}`;
-
-const toSkillpackResourceUri = (
-  skillName: string,
-  version: number,
-  path: string
-) =>
-  `skillpack-resource://skillpack/${skillName}?version=${version}&path=${encodeURIComponent(path)}`;
+const toSkillpackResourceUri = (skillName: string, path: string) =>
+  `skillpack-resource://skillpack/${skillName}?path=${encodeURIComponent(path)}`;
 
 const parseSkillpackLocation = (location: string) => {
   const match = skillpackLocationPattern.exec(location);
@@ -46,7 +39,6 @@ const parseSkillpackLocation = (location: string) => {
 
   return {
     skillName: skillNameSchema.parse(match.groups.skillName),
-    version: match.groups.version ? Number(match.groups.version) : undefined,
   };
 };
 
@@ -55,15 +47,10 @@ const parseSkillpackResourceUri = (uri: URL) => {
     throw new Error("Expected skillpack-resource://skillpack/{skillName}");
   }
 
-  const skillName = skillNameSchema.parse(uri.pathname.replace(/^\//u, ""));
-  const version = Number(uri.searchParams.get("version"));
-  const path = safeRelativePathSchema.parse(uri.searchParams.get("path"));
-
-  if (!(Number.isInteger(version) && version > 0)) {
-    throw new Error("Expected positive numeric Skill version");
-  }
-
-  return { path, skillName, version };
+  return {
+    path: safeRelativePathSchema.parse(uri.searchParams.get("path")),
+    skillName: skillNameSchema.parse(uri.pathname.replace(/^\//u, "")),
+  };
 };
 
 const formatSkillContent = (
@@ -92,7 +79,6 @@ const formatSkillContent = (
 
 const formatSkillpackCatalog = (
   skills: {
-    currentVersion: number;
     description: string;
     name: string;
   }[]
@@ -112,9 +98,6 @@ const formatSkillpackCatalog = (
       `    <description>${escapeXml(skill.description)}</description>`
     );
     lines.push(`    <location>${toSkillpackLocation(skill.name)}</location>`);
-    lines.push(
-      `    <current_version>${skill.currentVersion}</current_version>`
-    );
     lines.push("  </skill>");
   }
 
@@ -148,9 +131,8 @@ const createMcpServer = (c: Context<AppBindings>) => {
           {
             text: JSON.stringify(
               {
-                skills: skills.map(({ skill, version }) => ({
-                  currentVersion: version.versionNumber,
-                  description: version.description,
+                skills: skills.map(({ skill }) => ({
+                  description: skill.description,
                   location: toSkillpackLocation(skill.name),
                   name: skill.name,
                 })),
@@ -173,9 +155,7 @@ const createMcpServer = (c: Context<AppBindings>) => {
       inputSchema: {
         location: z
           .string()
-          .describe(
-            "Skillpack location like skill://skillpack/demo-skill?version=3"
-          ),
+          .describe("Skillpack location like skill://skillpack/demo-skill"),
         path: safeRelativePathSchema
           .describe("Safe relative resource path. Omit to read SKILL.md.")
           .optional(),
@@ -187,13 +167,11 @@ const createMcpServer = (c: Context<AppBindings>) => {
 
       if (!path || path === skillContentPath) {
         const resolvedSkill = await c.var.skillService.resolveSkillByName(
-          parsed.skillName,
-          parsed.version
+          parsed.skillName
         );
         const skillFile = await c.var.skillService.readSkillTextFileByName({
           path: skillContentPath,
           skillName: parsed.skillName,
-          version: parsed.version,
         });
 
         return {
@@ -212,7 +190,6 @@ const createMcpServer = (c: Context<AppBindings>) => {
       const result = await c.var.skillService.readSkillTextFileByName({
         path,
         skillName: parsed.skillName,
-        version: parsed.version,
       });
 
       return {
@@ -223,26 +200,25 @@ const createMcpServer = (c: Context<AppBindings>) => {
 
   server.registerResource(
     "skillpack_skill",
-    new ResourceTemplate("skill://skillpack/{skillName}{?version}", {
+    new ResourceTemplate("skill://skillpack/{skillName}", {
       list: async () => {
         const skills = await c.var.skillService.listSkills();
         const resources = [];
 
-        for (const { skill, version } of skills) {
+        for (const { skill } of skills) {
           const resolvedSkill = await c.var.skillService.resolveSkillByName(
-            skill.name,
-            version.versionNumber
+            skill.name
           );
           const skillFile = resolvedSkill.resources.find(
             (resource) => resource.path === skillContentPath
           );
 
           resources.push({
-            description: version.description,
+            description: skill.description,
             mimeType: skillFile?.mediaType,
             name: skill.name,
             size: skillFile?.size,
-            uri: toPinnedSkillpackLocation(skill.name, version.versionNumber),
+            uri: toSkillpackLocation(skill.name),
           });
 
           for (const resource of resolvedSkill.resources) {
@@ -254,11 +230,7 @@ const createMcpServer = (c: Context<AppBindings>) => {
               mimeType: resource.mediaType,
               name: `${skill.name}: ${resource.path}`,
               size: resource.size,
-              uri: toSkillpackResourceUri(
-                skill.name,
-                version.versionNumber,
-                resource.path
-              ),
+              uri: toSkillpackResourceUri(skill.name, resource.path),
             });
           }
         }
@@ -275,7 +247,6 @@ const createMcpServer = (c: Context<AppBindings>) => {
       const result = await c.var.skillService.readSkillTextFileByName({
         path: skillContentPath,
         skillName: parsed.skillName,
-        version: parsed.version,
       });
 
       return {
@@ -292,12 +263,9 @@ const createMcpServer = (c: Context<AppBindings>) => {
 
   server.registerResource(
     "skillpack_resource",
-    new ResourceTemplate(
-      "skillpack-resource://skillpack/{skillName}{?version,path}",
-      {
-        list: undefined,
-      }
-    ),
+    new ResourceTemplate("skillpack-resource://skillpack/{skillName}{?path}", {
+      list: undefined,
+    }),
     {
       description: "Skillpack Managed Skill attached resource.",
       title: "Skillpack Resource",
@@ -333,9 +301,8 @@ const createMcpServer = (c: Context<AppBindings>) => {
           {
             content: {
               text: formatSkillpackCatalog(
-                skills.map(({ skill, version }) => ({
-                  currentVersion: version.versionNumber,
-                  description: version.description,
+                skills.map(({ skill }) => ({
+                  description: skill.description,
                   name: skill.name,
                 }))
               ),

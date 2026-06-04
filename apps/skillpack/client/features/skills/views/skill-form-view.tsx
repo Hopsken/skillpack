@@ -88,7 +88,6 @@ export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
     try {
       await onSubmit({
         allowedTools: null,
-        changeSummary: undefined,
         compatibility: null,
         content: input.content,
         description: input.description,
@@ -96,7 +95,6 @@ export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
         metadata: null,
         name: input.skillName,
         resources: [],
-        versionLabel: undefined,
       });
 
       setSubmitStatus("Saved");
