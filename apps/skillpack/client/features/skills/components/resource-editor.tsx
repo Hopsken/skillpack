@@ -35,6 +35,7 @@ interface ResourceEditorProps {
   preferEdit?: boolean;
   rawUrl: string | undefined;
   resource: ResourceEditorResource | undefined;
+  showMeta?: boolean;
   showRename?: boolean;
   status: string;
   value: string;
@@ -92,14 +93,18 @@ const ResourceEditorHeader = ({
     onRename?.(trimmedPath);
   };
 
+  if (!(showRename || supportsPreview)) {
+    return null;
+  }
+
   return (
-    <div className="flex min-h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-6">
-      <div className="min-w-0 text-sm text-muted-foreground">
-        {showRename ? (
+    <div className="flex min-h-14 shrink-0 flex-col items-start justify-between gap-3 border-b border-border bg-background px-4 py-3 md:flex-row md:items-center md:gap-4 md:px-6 md:py-0">
+      {showRename ? (
+        <div className="min-w-0 text-sm text-muted-foreground">
           <Input
             aria-label="Resource file name"
             aria-invalid={Boolean(renameError)}
-            className="inline-flex h-8 w-[min(42rem,60vw)] max-w-full font-medium text-foreground"
+            className="inline-flex h-8 w-full max-w-full font-medium text-foreground md:w-[min(42rem,60vw)]"
             value={pathDraft}
             onBlur={commitRename}
             onChange={(event) => setPathDraft(event.target.value)}
@@ -109,13 +114,13 @@ const ResourceEditorHeader = ({
               }
             }}
           />
-        ) : (
-          <span className="font-medium text-foreground">{resource.path}</span>
-        )}
-        {renameError ? (
-          <span className="ml-3 text-destructive">{renameError}</span>
-        ) : null}
-      </div>
+          {renameError ? (
+            <span className="mt-2 block text-destructive md:mt-0 md:ml-3 md:inline">
+              {renameError}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {supportsPreview ? (
         <Tabs
           value={mode}
@@ -124,9 +129,9 @@ const ResourceEditorHeader = ({
               onModeChange(value);
             }
           }}
-          className="shrink-0"
+          className="w-full shrink-0 md:w-auto"
         >
-          <TabsList>
+          <TabsList className="w-full md:w-auto">
             <TabsTrigger value="edit">Edit</TabsTrigger>
             <TabsTrigger value="preview">Preview</TabsTrigger>
           </TabsList>
@@ -145,6 +150,7 @@ export const ResourceEditor = ({
   preferEdit = false,
   rawUrl,
   resource,
+  showMeta = true,
   showRename = false,
   status,
   value,
@@ -170,6 +176,7 @@ export const ResourceEditor = ({
         file={file}
         rawUrl={rawUrl}
         resource={resource}
+        showMeta={showMeta}
         status={status}
       />
     );
@@ -203,7 +210,7 @@ export const ResourceEditor = ({
         {mode === "edit" || !supportsPreview ? (
           <Suspense
             fallback={
-              <p className="px-6 py-4 text-sm text-muted-foreground">
+              <p className="px-4 py-4 text-sm text-muted-foreground md:px-6">
                 Loading editor...
               </p>
             }
@@ -224,7 +231,7 @@ export const ResourceEditor = ({
             file={previewFile}
             rawUrl={rawUrl}
             resource={previewResource}
-            showMeta={false}
+            showMeta={showMeta}
             status={status}
             onDescriptionChange={onDescriptionChange}
           />

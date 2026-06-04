@@ -18,10 +18,12 @@ import type { FormEvent } from "react";
 
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 import { useOriginSkillDefinition } from "../api/use-origin-skill-definition";
+import { getForkSelectionStatus } from "../lib/fork-surface";
 
 interface SkillForkViewProps {
   discovery: DiscoverSkillsResponse | undefined;
@@ -116,7 +118,7 @@ const DefinitionFileList = ({
 }) => {
   if (!definition) {
     return (
-      <p className="border-r border-border px-4 py-3 text-muted-foreground text-sm">
+      <p className="border-b border-border px-4 py-3 text-sm text-muted-foreground md:border-r md:border-b-0">
         {emptyStatus}
       </p>
     );
@@ -126,7 +128,7 @@ const DefinitionFileList = ({
     <OverlayScrollbarsComponent
       defer
       options={{ scrollbars: { autoHide: "leave", theme: "os-theme-dark" } }}
-      className="min-h-0 border-r border-border"
+      className="min-h-0 border-b border-border md:border-r md:border-b-0"
     >
       {definition.resources.map((resource) => (
         <button
@@ -167,7 +169,7 @@ const DefinitionPreview = ({
   );
 
   return (
-    <section className="grid min-h-0 flex-1 grid-cols-[minmax(10rem,16rem)_1fr]">
+    <section className="grid min-h-0 flex-1 md:grid-cols-[minmax(10rem,16rem)_1fr]">
       <DefinitionFileList
         definition={definition}
         emptyStatus={previewStatus}
@@ -208,7 +210,7 @@ export const SkillForkView = ({
 }: SkillForkViewProps) => {
   const [activeSkillName, setActiveSkillName] = useState<string>();
   const [selectedSkillNames, setSelectedSkillNames] = useState<string[]>([]);
-  const [submitStatus, setSubmitStatus] = useState("No skills selected");
+  const [submitStatus, setSubmitStatus] = useState(getForkSelectionStatus(0));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const existingSkillNameSet = useMemo(
     () => new Set(existingSkillNames),
@@ -243,7 +245,7 @@ export const SkillForkView = ({
     const firstSkillName = discovery?.candidates.at(0)?.selection.skillName;
     setActiveSkillName(firstSkillName);
     setSelectedSkillNames([]);
-    setSubmitStatus("No skills selected");
+    setSubmitStatus(getForkSelectionStatus(0));
   }, [discovery]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -269,17 +271,16 @@ export const SkillForkView = ({
         ? current.filter((selected) => selected !== skillName)
         : [...current, skillName];
 
-      setSubmitStatus(
-        next.length === 0 ? "No skills selected" : `${next.length} selected`
-      );
+      setSubmitStatus(getForkSelectionStatus(next.length));
       return next;
     });
   };
 
   return (
     <>
-      <header className="flex h-16 shrink-0 items-center border-b border-border bg-background px-6">
+      <header className="border-b border-border bg-background px-4 py-3 md:px-6 md:py-4">
         <div className="flex min-w-0 items-center gap-3">
+          <SidebarTrigger className="md:hidden" />
           <Button
             variant="ghost"
             size="icon"
@@ -287,17 +288,19 @@ export const SkillForkView = ({
           >
             <ArrowLeftIcon />
           </Button>
-          <h1 className="truncate text-lg font-semibold tracking-tight">
-            Add from GitHub
-          </h1>
+          <div className="min-w-0">
+            <h1 className="truncate text-lg font-semibold tracking-tight md:text-2xl">
+              Add to Library
+            </h1>
+          </div>
         </div>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(18rem,24rem)_1fr]">
-        <aside className="min-h-0 border-r border-border">
-          <div className="flex h-12 items-center justify-between border-b border-border px-4">
-            <h2 className="text-sm font-medium">Skills</h2>
-            <span className="text-muted-foreground text-xs">
+      <div className="grid min-h-0 flex-1 md:grid-cols-[minmax(18rem,24rem)_1fr]">
+        <aside className="min-h-0 border-b border-border md:border-r md:border-b-0">
+          <div className="flex items-center justify-between border-b border-border px-4 py-3 md:h-12 md:py-0">
+            <h2 className="text-sm font-medium">Discovered skills</h2>
+            <span className="text-xs text-muted-foreground">
               {discovery?.candidates.length ?? 0} found
             </span>
           </div>
@@ -306,7 +309,7 @@ export const SkillForkView = ({
             options={{
               scrollbars: { autoHide: "leave", theme: "os-theme-dark" },
             }}
-            className="h-[calc(100%-3rem)]"
+            className="max-h-[18rem] md:h-[calc(100%-3rem)] md:max-h-none"
           >
             {discovery?.candidates.length ? (
               discovery.candidates.map((candidate) => {
@@ -364,7 +367,7 @@ export const SkillForkView = ({
         </aside>
 
         <div className="flex min-h-0 flex-col">
-          <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-6">
+          <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background px-4 md:px-6">
             <FileTextIcon className="size-4 text-muted-foreground" />
             <h2 className="truncate text-sm font-medium">
               {previewDefinition?.name ?? activeCandidate?.name ?? "Preview"}
@@ -379,13 +382,14 @@ export const SkillForkView = ({
 
       <form
         onSubmit={submit}
-        className="flex h-16 shrink-0 items-center justify-between gap-4 border-t border-border bg-background px-6"
+        className="sticky bottom-0 flex shrink-0 flex-col gap-3 border-t border-border bg-background px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6"
       >
-        <p className="min-w-0 truncate text-muted-foreground text-sm">
+        <p className="min-w-0 truncate text-sm text-muted-foreground">
           {submitStatus}
         </p>
         <Button
           type="submit"
+          className="w-full md:w-auto"
           disabled={isSubmitting || selectedSkillNames.length === 0}
         >
           {isSubmitting ? (
@@ -393,7 +397,7 @@ export const SkillForkView = ({
           ) : (
             <PlusIcon data-icon="inline-start" />
           )}
-          {isSubmitting ? "Adding..." : "Add Selected"}
+          {isSubmitting ? "Adding..." : "Add selected skills"}
         </Button>
       </form>
     </>

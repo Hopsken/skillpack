@@ -12,8 +12,15 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Textarea } from "@/components/ui/textarea";
 
 import { useSkillList } from "../api/use-skill-list";
 
@@ -21,9 +28,6 @@ interface SkillFormViewProps {
   status: string;
   onSubmit: (input: CreateSkillInput) => Promise<void>;
 }
-
-const textAreaClassName =
-  "min-h-32 w-full resize-y rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
 const skillFormId = "skill-form";
 
@@ -38,11 +42,9 @@ type SkillFormInput = z.infer<typeof skillFormSchema>;
 export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
   const [submitStatus, setSubmitStatus] = useState(status);
   const skillList = useSkillList();
-  const skills = skillList.data ?? [];
-  const skillNameKey = skills.map((listItem) => listItem.name).join("\0");
   const existingSkillNames = useMemo(
-    () => new Set(skillNameKey ? skillNameKey.split("\0") : []),
-    [skillNameKey]
+    () => new Set((skillList.data ?? []).map((skill) => skill.name)),
+    [skillList.data]
   );
   const formSchema = useMemo(
     () =>
@@ -78,7 +80,7 @@ export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
 
   useEffect(() => {
     void form.trigger("skillName");
-  }, [form, skillNameKey]);
+  }, [existingSkillNames, form]);
 
   const submit = async (input: SkillFormInput) => {
     setSubmitStatus("Saving...");
@@ -105,24 +107,34 @@ export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
 
   return (
     <>
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
-        <div className="flex min-w-0 items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            render={<Link to="/skills" aria-label="Back" />}
-          >
-            <ArrowLeftIcon />
-          </Button>
-          <h1 className="truncate text-lg font-semibold tracking-tight">
-            Create Skill
-          </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <p className="text-sm text-muted-foreground">{submitStatus}</p>
-          <Button type="submit" form={skillFormId} disabled={isSubmitDisabled}>
-            Create
-          </Button>
+      <header className="border-b border-border bg-background px-4 py-3 md:px-6 md:py-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <SidebarTrigger className="md:hidden" />
+            <Button
+              variant="ghost"
+              size="icon"
+              render={<Link to="/skills" aria-label="Back" />}
+            >
+              <ArrowLeftIcon />
+            </Button>
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-semibold tracking-tight md:text-2xl">
+                Create Skill
+              </h1>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 md:items-end">
+            <p className="text-sm text-muted-foreground">{submitStatus}</p>
+            <Button
+              type="submit"
+              form={skillFormId}
+              className="w-full md:w-auto"
+              disabled={isSubmitDisabled}
+            >
+              Create Skill
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -134,9 +146,9 @@ export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
         <form
           id={skillFormId}
           onSubmit={form.handleSubmit(submit)}
-          className="mx-auto grid w-full max-w-3xl gap-6 p-6"
+          className="mx-auto grid w-full max-w-3xl gap-6 p-4 md:p-6"
         >
-          <section className="grid gap-5 border-b border-border pb-6">
+          <FieldGroup className="border-b border-border pb-6">
             <Field data-invalid={showNameWarning}>
               <FieldLabel htmlFor="skill-name">Skill Name</FieldLabel>
               <Input
@@ -158,20 +170,22 @@ export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
               />
               <FieldError errors={[descriptionError]} />
             </Field>
-          </section>
+          </FieldGroup>
 
-          <Field data-invalid={Boolean(contentError)}>
-            <FieldLabel htmlFor="skill-content">SKILL.md</FieldLabel>
-            <textarea
-              id="skill-content"
-              aria-label="SKILL.md"
-              aria-invalid={Boolean(contentError)}
-              className={`${textAreaClassName} min-h-[28rem] font-mono leading-relaxed`}
-              placeholder="# Skill instructions&#10;&#10;Use this skill when..."
-              {...form.register("content")}
-            />
-            <FieldError errors={[contentError]} />
-          </Field>
+          <FieldGroup>
+            <Field data-invalid={Boolean(contentError)}>
+              <FieldLabel htmlFor="skill-content">SKILL.md</FieldLabel>
+              <Textarea
+                id="skill-content"
+                aria-label="SKILL.md"
+                aria-invalid={Boolean(contentError)}
+                className="min-h-[28rem]"
+                placeholder="# Skill instructions&#10;&#10;Use this skill when..."
+                {...form.register("content")}
+              />
+              <FieldError errors={[contentError]} />
+            </Field>
+          </FieldGroup>
         </form>
       </OverlayScrollbarsComponent>
     </>

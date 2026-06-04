@@ -11,6 +11,7 @@
     "db:seed:local": "pnpm --filter @skillpack/app db:seed:local",
     "deploy": "pnpm --filter @skillpack/app deploy",
     "dev": "turbo dev --filter @skillpack/app",
+    "expose": "pnpm --filter @skillpack/app expose",
     "env:pull": "pnpm --filter @skillpack/app env:pull",
     "fix": "ultracite fix",
     "prepare": "husky",

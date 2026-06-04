@@ -11,24 +11,42 @@ const managedSkillSkeletonRows = [
 
 export const ManagedSkillsSkeleton = () => (
   <>
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
-      <Skeleton className="h-5 w-28 rounded-md" />
-      <div className="flex items-center gap-2">
-        <Skeleton className="h-8 w-16 rounded-md" />
-        <Skeleton className="h-8 w-16 rounded-md" />
+    <header className="border-b border-border bg-background">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4">
+        <Skeleton className="h-8 w-32 rounded-md" />
+        <div className="hidden items-center gap-2 md:flex">
+          <Skeleton className="h-8 w-28 rounded-md" />
+          <Skeleton className="h-8 w-28 rounded-md" />
+        </div>
+      </div>
+      <div className="grid gap-4 px-4 pb-4 md:px-6 md:pb-6">
+        <div className="grid gap-2">
+          <Skeleton className="h-4 w-28 rounded-md" />
+          <Skeleton className="h-8 w-full max-w-xl rounded-md" />
+          <Skeleton className="h-4 w-full max-w-2xl rounded-md" />
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Skeleton className="h-4 w-32 rounded-md" />
+          <div className="grid gap-2 sm:flex sm:items-center">
+            <Skeleton className="h-9 w-full rounded-md sm:w-32" />
+            <Skeleton className="h-9 w-full rounded-md sm:w-32" />
+          </div>
+        </div>
       </div>
     </header>
-    <section className="min-h-0 flex-1">
+    <section className="grid gap-3 px-4 py-4 md:px-6 md:py-6">
       {managedSkillSkeletonRows.map((row) => (
         <div
           key={row}
-          className="flex items-start justify-between gap-4 border-b border-border px-6 py-3"
+          className="rounded-3xl border border-border bg-card p-4 md:p-5"
         >
-          <div className="grid min-w-0 flex-1 gap-2">
-            <Skeleton className="h-4 w-48 rounded-md" />
-            <Skeleton className="h-4 w-72 rounded-md" />
+          <div className="grid gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <Skeleton className="h-5 w-40 rounded-md" />
+              <Skeleton className="h-6 w-14 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-full rounded-md" />
           </div>
-          <Skeleton className="h-4 w-20 rounded-md" />
         </div>
       ))}
     </section>
@@ -37,19 +55,28 @@ export const ManagedSkillsSkeleton = () => (
 
 export const SkillDetailSkeleton = () => (
   <>
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
-      <div className="flex min-w-0 items-center gap-3">
-        <Skeleton className="size-8 rounded-md" />
-        <Skeleton className="h-5 w-44 rounded-md" />
+    <header className="border-b border-border bg-background px-4 py-3 md:px-6 md:py-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <Skeleton className="size-8 rounded-md" />
+          <div className="grid gap-2">
+            <Skeleton className="h-4 w-24 rounded-md" />
+            <Skeleton className="h-6 w-44 rounded-md" />
+          </div>
+        </div>
+        <div className="grid gap-2 md:justify-items-end">
+          <Skeleton className="h-4 w-24 rounded-md" />
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-20 rounded-full" />
+            <Skeleton className="h-8 w-24 rounded-full" />
+          </div>
+        </div>
       </div>
-      <Skeleton className="h-8 w-20 rounded-full" />
     </header>
-    <div className="flex h-12 shrink-0 items-end gap-1 border-b border-border px-6">
-      <Skeleton className="mb-3 h-4 w-20 rounded-md" />
-      <Skeleton className="mb-3 h-4 w-20 rounded-md" />
-      <Skeleton className="mb-3 h-4 w-20 rounded-md" />
+    <div className="border-b border-border px-4 py-3 md:hidden">
+      <Skeleton className="h-9 w-full rounded-md" />
     </div>
-    <section className="min-h-0 flex-1 p-6">
+    <section className="min-h-0 flex-1 p-4 md:p-6">
       <div className="grid max-w-3xl gap-4">
         <Skeleton className="h-5 w-3/4 rounded-md" />
         <Skeleton className="h-4 w-full rounded-md" />

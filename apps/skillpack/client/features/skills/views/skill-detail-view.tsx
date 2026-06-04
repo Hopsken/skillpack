@@ -3,11 +3,10 @@ import type {
   ResolvedSkill,
   SkillVersionItem,
 } from "@skillpack/contracts/skills/responses";
-import { Link } from "@tanstack/react-router";
-import { ArrowLeftIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { SkillDetailFilesPanel } from "../components/skill-detail-files-panel";
 import { SkillVersionsSheet } from "../components/skill-versions-sheet";
@@ -33,19 +32,6 @@ interface SkillDetailViewProps {
   onRestoreVersion: (version: number) => Promise<void>;
   onSaveChanges: (input: PatchSkillInput) => Promise<void>;
 }
-
-const getSaveStatusLabel = (
-  saveStatus: string,
-  isSaving: boolean,
-  changeCount: number
-) => {
-  if (isSaving || saveStatus !== "Unsaved changes") {
-    return saveStatus;
-  }
-
-  const noun = changeCount === 1 ? "change" : "changes";
-  return `${changeCount} unsaved ${noun}`;
-};
 
 export const SkillDetailView = ({
   skill,
@@ -183,62 +169,55 @@ export const SkillDetailView = ({
 
   return (
     <>
-      <header className="flex min-h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6 py-2">
-        <div className="flex min-w-0 items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            render={<Link to="/skills" aria-label="Back to Managed Skills" />}
-          >
-            <ArrowLeftIcon />
-          </Button>
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold tracking-tight">
-              {skill?.name ?? "Skill"}
-            </h1>
+      <header className="border-b border-border bg-background px-4 py-3 md:px-6 md:py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <SidebarTrigger className="md:hidden" />
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-semibold tracking-tight md:text-2xl">
+                {skill?.name ?? "Skill"}
+              </h1>
+            </div>
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          {isEditing ? (
-            <>
-              <p className="text-sm text-muted-foreground">
-                {getSaveStatusLabel(saveStatus, isSaving, changeCount)}
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isSaving}
-                onClick={cancelEdit}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                disabled={!hasPendingChanges || isSaving}
-                onClick={() => {
-                  void saveChanges();
-                }}
-              >
-                Save changes
-              </Button>
-            </>
-          ) : (
-            <Button type="button" size="sm" onClick={beginEdit}>
-              Edit
-            </Button>
-          )}
-          {isEditing ? null : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setVersionSheetOpen(true)}
-            >
-              {skill ? `v${skill.version}` : "Version"}
-            </Button>
-          )}
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            {isEditing ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isSaving}
+                  onClick={cancelEdit}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!hasPendingChanges || isSaving}
+                  onClick={() => {
+                    void saveChanges();
+                  }}
+                >
+                  Save changes
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button type="button" size="sm" onClick={beginEdit}>
+                  Edit
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVersionSheetOpen(true)}
+                >
+                  {skill ? `v${skill.version}` : "Version"}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </header>
 

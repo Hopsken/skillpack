@@ -1,13 +1,13 @@
 import type { SkillListItem } from "@skillpack/contracts/skills/responses";
-import { Link } from "@tanstack/react-router";
-import { LibraryIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import { Button } from "@/components/ui/button";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { EmptyManagedSkills } from "../components/empty-managed-skills";
 import { SkillRow } from "../components/skill-row";
-import { createSkillPath } from "../lib/routes";
+import { getLibraryActions } from "../lib/library-surface";
 
 interface ManagedSkillsViewProps {
   skills: SkillListItem[];
@@ -21,41 +21,53 @@ export const ManagedSkillsView = ({
   status,
   onFork,
   onRefresh,
-}: ManagedSkillsViewProps) => (
-  <>
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
-      <div className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-        <LibraryIcon className="size-4 text-muted-foreground" />
-        <span>Library</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={onFork}>
-          <PlusIcon />
-          Add
-        </Button>
-        <Button size="sm" render={<Link to={createSkillPath} />}>
-          <PlusIcon />
-          New
-        </Button>
-      </div>
-    </header>
+}: ManagedSkillsViewProps) => {
+  const libraryActions = getLibraryActions();
+  const primaryAction = libraryActions.find(
+    (action) => action.kind === "primary"
+  );
 
-    <OverlayScrollbarsComponent
-      defer
-      options={{ scrollbars: { autoHide: "leave", theme: "os-theme-dark" } }}
-      className="min-h-0 flex-1"
-    >
-      <section>
-        {skills.length === 0 ? (
-          <EmptyManagedSkills status={status} onRefresh={onRefresh} />
-        ) : (
-          <div>
-            {skills.map((skill) => (
-              <SkillRow key={skill.name} skill={skill} />
-            ))}
+  return (
+    <>
+      <header className="border-b border-border bg-background px-4 py-3 md:px-6 md:py-4">
+        <div className="flex items-center gap-3">
+          <SidebarTrigger className="md:hidden" />
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-lg font-semibold tracking-tight md:text-2xl">
+              Library
+            </h1>
           </div>
-        )}
-      </section>
-    </OverlayScrollbarsComponent>
-  </>
-);
+          {primaryAction ? (
+            <Button
+              type="button"
+              size="icon"
+              aria-label={primaryAction.label}
+              title={primaryAction.label}
+              onClick={onFork}
+            >
+              <PlusIcon />
+            </Button>
+          ) : null}
+        </div>
+      </header>
+
+      <OverlayScrollbarsComponent
+        defer
+        options={{ scrollbars: { autoHide: "leave", theme: "os-theme-dark" } }}
+        className="min-h-0 flex-1"
+      >
+        <section className="px-4 py-4 md:px-6 md:py-6">
+          {skills.length === 0 ? (
+            <EmptyManagedSkills status={status} onRefresh={onRefresh} />
+          ) : (
+            <div className="grid gap-3 md:gap-4">
+              {skills.map((skill) => (
+                <SkillRow key={skill.name} skill={skill} />
+              ))}
+            </div>
+          )}
+        </section>
+      </OverlayScrollbarsComponent>
+    </>
+  );
+};

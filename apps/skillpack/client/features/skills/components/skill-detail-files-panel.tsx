@@ -1,14 +1,23 @@
 import type { ResolvedSkill } from "@skillpack/contracts/skills/responses";
-import { Undo2Icon } from "lucide-react";
+import { ChevronDownIcon, Undo2Icon } from "lucide-react";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { Suspense, useMemo, useState } from "react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { useSkillFile } from "../api/use-skill-detail";
 import type { ResourceDraftSession } from "../lib/resource-draft-session";
 import { skillFilePath } from "../lib/resource-drafts";
 import { getSkillResourceKind } from "../lib/resource-kind";
+import { getDetailFileSwitcherLabel } from "../lib/skill-detail-surface";
 import {
   canDeleteFile,
   getRawResourceUrl,
@@ -188,19 +197,26 @@ const DeletedResourcePanel = ({
   path: string;
   onDeletePath: (path: string) => void;
 }) => (
-  <div className="grid gap-3 px-6 py-4 text-sm text-muted-foreground">
-    <p>This file is marked for deletion.</p>
-    <div>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => onDeletePath(path)}
-      >
-        <Undo2Icon />
-        Undo delete
-      </Button>
-    </div>
+  <div className="px-4 py-4 md:px-6">
+    <Alert>
+      <Undo2Icon />
+      <AlertTitle>File marked for deletion</AlertTitle>
+      <AlertDescription>
+        Undo the deletion to keep this file in the current Managed Skill
+        version.
+      </AlertDescription>
+      <div className="pt-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onDeletePath(path)}
+        >
+          <Undo2Icon data-icon="inline-start" />
+          Undo delete
+        </Button>
+      </div>
+    </Alert>
   </div>
 );
 
@@ -241,6 +257,7 @@ const ResourceContentPane = ({
       preferEdit={canEdit}
       rawUrl={rawUrl}
       resource={selectedFile}
+      showMeta={false}
       showRename={Boolean(
         isEditing && selectedFile && canDeleteFile(selectedFile) && file
       )}
@@ -318,6 +335,7 @@ export const SkillDetailFilesPanel = ({
   onSelectPath,
 }: SkillDetailFilesPanelProps) => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [mobileFilesOpen, setMobileFilesOpen] = useState(false);
   const canEdit = isEditing && getCanEditFile(selectedFile, deletedPaths);
   const { file, rawUrl, value, viewerStatus } = useSelectedResourceViewModel({
     addedPaths,
@@ -339,49 +357,89 @@ export const SkillDetailFilesPanel = ({
     onDraftChange(selectedFile.path, nextValue, file?.content ?? "");
   };
 
+  const selectPath = (path: string) => {
+    onSelectPath(path);
+    setMobileFilesOpen(false);
+  };
+
   return (
-    <section className="grid h-full min-h-0 grid-cols-[minmax(10rem,16rem)_1fr]">
-      <OverlayScrollbarsComponent
-        defer
-        options={{ scrollbars: { autoHide: "leave", theme: "os-theme-dark" } }}
-        className="min-h-0 border-r border-border"
-      >
-        <SkillFileList
-          files={files}
-          isEditing={isEditing}
-          selectedPath={selectedFile?.path}
-          session={session}
-          onAddClick={() => setAddDialogOpen(true)}
-          onDeletePath={onDeletePath}
-          onSelectPath={onSelectPath}
-        />
-      </OverlayScrollbarsComponent>
-      <div className="h-full min-h-0 min-w-0">
-        <Suspense
-          fallback={
-            <p className="px-6 py-4 text-sm text-muted-foreground">
-              Loading file viewer...
-            </p>
-          }
+    <section className="flex h-full min-h-0 flex-col">
+      <div className="border-b border-border px-4 py-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-between md:max-w-sm"
+          onClick={() => setMobileFilesOpen(true)}
         >
-          <ResourceContentPane
-            canEdit={canEdit}
-            deletedPaths={deletedPaths}
-            descriptionValue={descriptionValue}
-            existingPaths={existingPaths}
-            file={file}
-            isEditing={isEditing}
-            rawUrl={rawUrl}
-            selectedFile={selectedFile}
-            status={viewerStatus}
-            value={value}
-            onChange={changeDraft}
-            onDeletePath={onDeletePath}
-            onDescriptionChange={onDescriptionChange}
-            onRenamePath={onRenamePath}
-          />
-        </Suspense>
+          <span className="truncate">
+            {getDetailFileSwitcherLabel(selectedFile?.path)}
+          </span>
+          <ChevronDownIcon data-icon="inline-end" />
+        </Button>
       </div>
+      <div className="min-h-0 flex-1">
+        <div className="h-full min-h-0 min-w-0">
+          <Suspense
+            fallback={
+              <div className="grid gap-3 px-4 py-4 md:px-6">
+                <Skeleton className="h-5 w-40 rounded-md" />
+                <Skeleton className="h-4 w-full rounded-md" />
+                <Skeleton className="h-4 w-11/12 rounded-md" />
+                <Skeleton className="h-4 w-2/3 rounded-md" />
+              </div>
+            }
+          >
+            <ResourceContentPane
+              canEdit={canEdit}
+              deletedPaths={deletedPaths}
+              descriptionValue={descriptionValue}
+              existingPaths={existingPaths}
+              file={file}
+              isEditing={isEditing}
+              rawUrl={rawUrl}
+              selectedFile={selectedFile}
+              status={viewerStatus}
+              value={value}
+              onChange={changeDraft}
+              onDeletePath={onDeletePath}
+              onDescriptionChange={onDescriptionChange}
+              onRenamePath={onRenamePath}
+            />
+          </Suspense>
+        </div>
+      </div>
+      <Sheet open={mobileFilesOpen} onOpenChange={setMobileFilesOpen}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[80vh]"
+          showCloseButton={false}
+        >
+          <SheetHeader>
+            <SheetTitle>Files</SheetTitle>
+          </SheetHeader>
+          <OverlayScrollbarsComponent
+            defer
+            options={{
+              scrollbars: { autoHide: "leave", theme: "os-theme-dark" },
+            }}
+            className="min-h-0 flex-1 border-t border-border"
+          >
+            <SkillFileList
+              files={files}
+              isEditing={isEditing}
+              selectedPath={selectedFile?.path}
+              session={session}
+              showHeader={false}
+              onAddClick={() => {
+                setMobileFilesOpen(false);
+                setAddDialogOpen(true);
+              }}
+              onDeletePath={onDeletePath}
+              onSelectPath={selectPath}
+            />
+          </OverlayScrollbarsComponent>
+        </SheetContent>
+      </Sheet>
       <AddResourceDialog
         existingPaths={existingPaths}
         open={addDialogOpen}

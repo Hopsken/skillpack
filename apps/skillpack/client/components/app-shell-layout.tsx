@@ -2,7 +2,7 @@ import { Outlet, useRouteContext } from "@tanstack/react-router";
 import { Suspense } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const AppShellRouteFallback = () => (
@@ -27,11 +27,11 @@ export const AppShellLayout = () => {
   return (
     <SidebarProvider>
       <AppSidebar session={session} />
-      <main className="flex h-svh min-w-0 flex-1 flex-col bg-background">
+      <SidebarInset className="h-svh min-w-0 bg-background">
         <Suspense fallback={<AppShellRouteFallback />}>
           <Outlet />
         </Suspense>
-      </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 };

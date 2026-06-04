@@ -12,6 +12,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { signOut } from "@/shared/auth/client";
 import type { Session } from "@/shared/auth/client";
@@ -24,6 +25,7 @@ const signOutAndRedirect = async () => {
 
 export const AppSidebar = ({ session }: { session: Session }) => {
   const pathname = useLocation({ select: (location) => location.pathname });
+  const { setOpenMobile } = useSidebar();
   const isManagedSkillsActive = pathname.startsWith("/skills");
   const userName = session.user.name ?? "Account";
   const userImage = session.user.image;
@@ -31,11 +33,14 @@ export const AppSidebar = ({ session }: { session: Session }) => {
 
   return (
     <Sidebar
-      collapsible="none"
+      collapsible="offcanvas"
       className="h-svh border-r border-sidebar-border bg-sidebar"
     >
-      <SidebarHeader className="h-16 justify-center border-b border-sidebar-border px-4 text-lg font-semibold tracking-tight text-sidebar-foreground">
-        skillpack
+      <SidebarHeader className="gap-1 border-b border-sidebar-border px-4 py-4 text-sidebar-foreground">
+        <span className="text-lg font-semibold tracking-tight">skillpack</span>
+        <span className="text-sm text-sidebar-foreground/70">
+          Skill Library
+        </span>
       </SidebarHeader>
 
       <SidebarContent>
@@ -49,6 +54,7 @@ export const AppSidebar = ({ session }: { session: Session }) => {
                   tooltip="Library"
                   className="font-medium"
                   render={<Link to="/skills" />}
+                  onClick={() => setOpenMobile(false)}
                 >
                   <LibraryIcon />
                   <span>Library</span>
@@ -62,7 +68,7 @@ export const AppSidebar = ({ session }: { session: Session }) => {
       <SidebarFooter className="border-t border-sidebar-border p-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg">
+            <SidebarMenuButton size="lg" className="font-medium">
               <Avatar size="sm">
                 {userImage ? <AvatarImage src={userImage} alt="" /> : null}
                 <AvatarFallback>{userInitial}</AvatarFallback>
@@ -73,11 +79,12 @@ export const AppSidebar = ({ session }: { session: Session }) => {
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
+              className="font-medium"
               onClick={() => {
                 void signOutAndRedirect();
               }}
             >
-              <LogOutIcon />
+              <LogOutIcon data-icon="inline-start" />
               <span>Sign out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

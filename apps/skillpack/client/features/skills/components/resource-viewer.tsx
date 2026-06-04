@@ -1,5 +1,12 @@
-import { lazy, Suspense } from "react";
+import { ChevronDownIcon } from "lucide-react";
+import { lazy, Suspense, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -60,9 +67,11 @@ export const ResourceMeta = ({
 }: {
   resource: ResourceViewerResource;
 }) => (
-  <div className="flex min-h-14 shrink-0 items-center border-b border-border bg-background px-6 text-sm text-muted-foreground">
-    <span className="font-medium text-foreground">{resource.path}</span>
-    <span className="mx-2">·</span>
+  <div className="flex min-h-14 shrink-0 flex-col items-start gap-1 border-b border-border bg-background px-4 py-3 text-sm text-muted-foreground md:flex-row md:items-center md:gap-0 md:px-6 md:py-0">
+    <span className="truncate font-medium text-foreground">
+      {resource.path}
+    </span>
+    <span className="hidden md:mx-2 md:block">·</span>
     <span>{formatBytes(resource.size)}</span>
   </div>
 );
@@ -75,31 +84,60 @@ export const SkillDescription = ({
   canEditDescription?: boolean;
   description: string;
   onDescriptionChange?: (description: string) => void;
-}) => (
-  <div className="shrink-0 border-b border-border bg-background">
-    <Table>
-      <TableBody>
-        <TableRow>
-          <TableCell className="w-28 py-3 pr-4 pl-6 text-muted-foreground">
-            description
-          </TableCell>
-          <TableCell className="py-3 pr-6 pl-0 whitespace-normal text-foreground">
-            {canEditDescription ? (
-              <Textarea
-                aria-label="Skill description"
-                className="max-w-3xl"
-                value={description}
-                onChange={(event) => onDescriptionChange?.(event.target.value)}
-              />
-            ) : (
-              description
-            )}
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-  </div>
-);
+}) => {
+  const [open, setOpen] = useState(false);
+  const preview = description.trim() || "No description yet.";
+
+  return (
+    <Collapsible
+      open={open}
+      onOpenChange={setOpen}
+      className="shrink-0 border-b border-border bg-background"
+    >
+      <div className="flex items-start justify-between gap-3 px-4 py-3 md:px-6">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground">Description</p>
+          {open ? null : (
+            <p className="truncate text-sm text-muted-foreground">{preview}</p>
+          )}
+        </div>
+        <CollapsibleTrigger
+          render={<Button type="button" variant="ghost" size="sm" />}
+        >
+          {open ? "Hide" : "Show"}
+          <ChevronDownIcon
+            data-icon="inline-end"
+            className={open ? "rotate-180" : undefined}
+          />
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent>
+        <Table>
+          <TableBody>
+            <TableRow>
+              <TableCell className="py-3 pr-4 pl-4 whitespace-normal text-foreground md:px-6">
+                {canEditDescription ? (
+                  <Textarea
+                    aria-label="Skill description"
+                    className="min-h-32 max-w-3xl"
+                    value={description}
+                    onChange={(event) =>
+                      onDescriptionChange?.(event.target.value)
+                    }
+                  />
+                ) : (
+                  <div className="whitespace-pre-wrap text-sm leading-6">
+                    {description}
+                  </div>
+                )}
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
 
 const ResourceBody = ({
   file,
@@ -110,7 +148,7 @@ const ResourceBody = ({
 }: ResourceBodyProps) => {
   if (kind === "image" && rawUrl) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <img
           src={rawUrl}
           alt={resource.path}
@@ -124,7 +162,7 @@ const ResourceBody = ({
     return (
       <Suspense
         fallback={
-          <p className="px-6 py-4 text-sm text-muted-foreground">
+          <p className="px-4 py-4 text-sm text-muted-foreground md:px-6">
             Loading markdown preview...
           </p>
         }
@@ -138,7 +176,7 @@ const ResourceBody = ({
     return (
       <Suspense
         fallback={
-          <p className="px-6 py-4 text-sm text-muted-foreground">
+          <p className="px-4 py-4 text-sm text-muted-foreground md:px-6">
             Loading code preview...
           </p>
         }
@@ -152,11 +190,15 @@ const ResourceBody = ({
   }
 
   if (kind === "code") {
-    return <p className="px-6 py-4 text-sm text-muted-foreground">{status}</p>;
+    return (
+      <p className="px-4 py-4 text-sm text-muted-foreground md:px-6">
+        {status}
+      </p>
+    );
   }
 
   return (
-    <pre className="whitespace-pre-wrap px-6 py-4 text-sm leading-6 text-foreground">
+    <pre className="whitespace-pre-wrap px-4 py-4 text-sm leading-6 text-foreground md:px-6">
       {file?.content ?? status}
     </pre>
   );
@@ -173,7 +215,11 @@ export const ResourceViewer = ({
   onDescriptionChange,
 }: ResourceViewerProps) => {
   if (!resource) {
-    return <p className="px-6 py-4 text-sm text-muted-foreground">{status}</p>;
+    return (
+      <p className="px-4 py-4 text-sm text-muted-foreground md:px-6">
+        {status}
+      </p>
+    );
   }
 
   const kind = getSkillResourceKind(resource);

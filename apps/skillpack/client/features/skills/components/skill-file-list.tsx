@@ -2,6 +2,13 @@ import { PlusIcon, Trash2Icon, Undo2Icon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
 
 import { getFileStatus } from "../lib/resource-draft-session";
@@ -14,6 +21,7 @@ interface SkillFileListProps {
   isEditing: boolean;
   selectedPath: string | undefined;
   session: ResourceDraftSession;
+  showHeader?: boolean;
   onAddClick: () => void;
   onDeletePath: (path: string) => void;
   onSelectPath: (path: string) => void;
@@ -21,8 +29,8 @@ interface SkillFileListProps {
 
 const getFileClassName = (isSelected: boolean, isDeleted: boolean) =>
   cn(
-    "flex min-h-14 w-full items-center border-b border-border px-4 text-left text-sm",
-    isDeleted && "bg-destructive/10 text-destructive",
+    "min-h-14 w-full justify-start rounded-none border-b border-border px-4 text-left text-sm",
+    isDeleted && "bg-destructive/10 text-destructive hover:bg-destructive/15",
     !isDeleted &&
       (isSelected
         ? "bg-muted text-foreground"
@@ -50,16 +58,24 @@ const SkillFileListHeader = ({
         aria-label="Add file"
         onClick={onAddClick}
       >
-        <PlusIcon />
+        <PlusIcon data-icon="inline-start" />
       </Button>
     ) : null}
   </div>
 );
 
 const EmptySkillFileList = () => (
-  <p className="px-6 py-4 text-sm text-muted-foreground">
-    No files for this skill version.
-  </p>
+  <Empty className="min-h-48 rounded-none border-0 p-6">
+    <EmptyHeader>
+      <EmptyMedia variant="icon">
+        <PlusIcon />
+      </EmptyMedia>
+      <EmptyTitle>No files yet</EmptyTitle>
+      <EmptyDescription>
+        No files are available for this Managed Skill version.
+      </EmptyDescription>
+    </EmptyHeader>
+  </Empty>
 );
 
 const SkillFileListItem = ({
@@ -84,8 +100,9 @@ const SkillFileListItem = ({
 
   return (
     <div className="relative">
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => onSelectPath(file.path)}
         className={getFileClassName(isSelected, isDeleted)}
       >
@@ -97,7 +114,7 @@ const SkillFileListItem = ({
             <Badge variant={getStatusBadgeVariant(status)}>{status}</Badge>
           ) : null}
         </span>
-      </button>
+      </Button>
       {showDelete ? (
         <Button
           type="button"
@@ -109,7 +126,11 @@ const SkillFileListItem = ({
           className="absolute top-1/2 right-2 -translate-y-1/2"
           onClick={() => onDeletePath(file.path)}
         >
-          {isDeleted ? <Undo2Icon /> : <Trash2Icon />}
+          {isDeleted ? (
+            <Undo2Icon data-icon="inline-start" />
+          ) : (
+            <Trash2Icon data-icon="inline-start" />
+          )}
         </Button>
       ) : null}
     </div>
@@ -121,12 +142,15 @@ export const SkillFileList = ({
   isEditing,
   selectedPath,
   session,
+  showHeader = true,
   onAddClick,
   onDeletePath,
   onSelectPath,
 }: SkillFileListProps) => (
   <>
-    <SkillFileListHeader isEditing={isEditing} onAddClick={onAddClick} />
+    {showHeader ? (
+      <SkillFileListHeader isEditing={isEditing} onAddClick={onAddClick} />
+    ) : null}
     {files.length ? (
       files.map((file) => (
         <SkillFileListItem

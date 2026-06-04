@@ -107,7 +107,8 @@ export const ForkOriginDialog = ({
           <DialogHeader>
             <DialogTitle>Add to Library</DialogTitle>
             <DialogDescription>
-              standing on the shoulders of giants.
+              Discover skills from a GitHub repository before adding them to
+              your Skill Library.
             </DialogDescription>
           </DialogHeader>
 
@@ -129,7 +130,7 @@ export const ForkOriginDialog = ({
           {canContinue ? (
             <div
               aria-label="Discovered skills"
-              className="flex flex-wrap gap-2"
+              className="flex flex-wrap gap-2 rounded-3xl border border-border bg-muted/40 p-3"
             >
               {visibleDiscoveredSkills.map((candidate) => (
                 <Badge
@@ -148,20 +149,28 @@ export const ForkOriginDialog = ({
             </div>
           ) : null}
 
-          <DialogFooter>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
             {canContinue ? (
-              <Button type="button" onClick={continueToFork}>
+              <Button
+                type="button"
+                className="w-full sm:w-auto"
+                onClick={continueToFork}
+              >
                 <ArrowRightIcon data-icon="inline-start" />
-                Continue
+                Continue to skill review
               </Button>
             ) : (
-              <Button type="submit" disabled={discovery.isFetching}>
+              <Button
+                type="submit"
+                className="w-full sm:w-auto"
+                disabled={discovery.isFetching}
+              >
                 {discovery.isFetching ? (
                   <Spinner data-icon="inline-start" />
                 ) : (
                   <SearchIcon data-icon="inline-start" />
                 )}
-                Discover
+                Discover skills
               </Button>
             )}
           </DialogFooter>
