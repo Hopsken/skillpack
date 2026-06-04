@@ -12,8 +12,12 @@ import {
   useSkillDetail,
   useSkillVersions,
 } from "@/features/skills/api/use-skill-detail";
-import { useRestoreSkillVersion } from "@/features/skills/api/use-skill-mutations";
+import {
+  usePatchSkill,
+  useRestoreSkillVersion,
+} from "@/features/skills/api/use-skill-mutations";
 import { SkillDetailSkeleton } from "@/features/skills/components/skill-page-skeletons";
+import { skillFilePath } from "@/features/skills/lib/resource-drafts";
 import { SkillDetailView } from "@/features/skills/views/skill-detail-view";
 
 const skillDetailSearchSchema = z.object({
@@ -41,13 +45,14 @@ const SkillDetailRoute = () => {
   const skill = skillDetail.data;
   const skillVersions = useSkillVersions(skillName);
   const restoreVersion = useRestoreSkillVersion(skillName);
+  const patchSkill = usePatchSkill(skillName);
 
   const setSelectedPath = (nextPath: string | undefined) => {
     void navigate({
       params: { skillName },
       search: {
-        path: nextPath === "SKILL.md" ? undefined : nextPath,
-        version: search.version,
+        path: nextPath === skillFilePath ? undefined : nextPath,
+        version,
       },
       to: "/skills/$skillName",
     });
@@ -60,6 +65,21 @@ const SkillDetailRoute = () => {
       },
       version: versionNumber,
     });
+  };
+
+  const saveChanges: Parameters<
+    typeof SkillDetailView
+  >[0]["onSaveChanges"] = async (input) => {
+    await patchSkill.mutateAsync(input);
+    await skillDetail.refetch();
+
+    if (search.version) {
+      await navigate({
+        params: { skillName },
+        search: { path, version: undefined },
+        to: "/skills/$skillName",
+      });
+    }
   };
   const versions = skillVersions.data ?? [];
   const versionCount = versions.length;
@@ -80,6 +100,7 @@ const SkillDetailRoute = () => {
       selectedPath={path}
       onPathChange={setSelectedPath}
       onRestoreVersion={restore}
+      onSaveChanges={saveChanges}
     />
   );
 };

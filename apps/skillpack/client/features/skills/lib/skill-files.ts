@@ -1,0 +1,73 @@
+import type {
+  ResolvedSkill,
+  ResourceManifestItem,
+} from "@skillpack/contracts/skills/responses";
+
+import { skillFilePath } from "./resource-drafts";
+import { getSkillResourceKind } from "./resource-kind";
+
+export const skillFileMediaType = "text/markdown";
+
+export type SkillFile = Pick<
+  ResourceManifestItem,
+  "mediaType" | "path" | "size"
+> & {
+  description?: string;
+};
+
+export const getTextSize = (content: string) =>
+  new TextEncoder().encode(content).length;
+
+export const getSkillFiles = (
+  skill: ResolvedSkill | undefined
+): SkillFile[] => {
+  if (!skill) {
+    return [];
+  }
+
+  return [
+    {
+      description: skill.description,
+      mediaType: skillFileMediaType,
+      path: skillFilePath,
+      size: getTextSize(skill.content),
+    },
+    ...skill.resources.filter((resource) => resource.path !== skillFilePath),
+  ];
+};
+
+export const getRawResourceUrl = (
+  skillName: string | undefined,
+  version: number | undefined,
+  path: string | undefined
+) => {
+  if (!(skillName && version && path && path !== skillFilePath)) {
+    return;
+  }
+
+  const searchParams = new URLSearchParams({ path, version: String(version) });
+  return `/api/v1/skills/${skillName}/resources/raw?${searchParams}`;
+};
+
+export const isEditableTextFile = (file: SkillFile) => {
+  if (file.path === skillFilePath) {
+    return true;
+  }
+
+  const kind = getSkillResourceKind(file);
+
+  if (kind === "image") {
+    return false;
+  }
+
+  return (
+    kind === "code" ||
+    kind === "markdown" ||
+    file.mediaType.startsWith("text/") ||
+    file.mediaType.includes("json") ||
+    file.mediaType.includes("yaml")
+  );
+};
+
+export const canDeleteFile = (file: SkillFile) =>
+  file.path !== skillFilePath && isEditableTextFile(file);
