@@ -7,6 +7,7 @@ import type {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
+  skillListQueryKey,
   skillQueryPrefix,
   skillDetailQueryKey,
   skillFileQueryPrefix,
@@ -59,7 +60,7 @@ export const usePatchSkill = (skillName: string | undefined) => {
       return patchManagedSkill(skillName, input);
     },
     onSuccess: async () => {
-      await invalidateSkillQueries(queryClient, skillName);
+      await queryClient.invalidateQueries({ queryKey: skillListQueryKey });
     },
   });
 };

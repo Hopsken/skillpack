@@ -256,7 +256,6 @@ const ResourceContentPane = ({
       preferEdit={canEdit}
       rawUrl={rawUrl}
       resource={selectedFile}
-      showMeta={false}
       showRename={Boolean(
         isEditing && selectedFile && canDeleteFile(selectedFile) && file
       )}
@@ -357,12 +356,12 @@ export const SkillDetailFilesPanel = ({
   };
 
   return (
-    <section className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-border px-4 py-3">
+    <section className="flex h-full min-h-0 flex-col md:grid md:grid-cols-[minmax(10rem,16rem)_1fr]">
+      <div className="border-b border-border px-4 py-3 md:hidden">
         <Button
           type="button"
           variant="outline"
-          className="w-full justify-between md:max-w-sm"
+          className="w-full justify-between"
           onClick={() => setMobileFilesOpen(true)}
         >
           <span className="truncate">
@@ -371,36 +370,53 @@ export const SkillDetailFilesPanel = ({
           <ChevronDownIcon data-icon="inline-end" />
         </Button>
       </div>
-      <div className="min-h-0 flex-1">
-        <div className="h-full min-h-0 min-w-0">
-          <Suspense
-            fallback={
-              <div className="grid gap-3 px-4 py-4 md:px-6">
-                <Skeleton className="h-5 w-40 rounded-md" />
-                <Skeleton className="h-4 w-full rounded-md" />
-                <Skeleton className="h-4 w-11/12 rounded-md" />
-                <Skeleton className="h-4 w-2/3 rounded-md" />
-              </div>
-            }
-          >
-            <ResourceContentPane
-              canEdit={canEdit}
-              deletedPaths={deletedPaths}
-              descriptionValue={descriptionValue}
-              existingPaths={existingPaths}
-              file={file}
-              isEditing={isEditing}
-              rawUrl={rawUrl}
-              selectedFile={selectedFile}
-              status={viewerStatus}
-              value={value}
-              onChange={changeDraft}
-              onDeletePath={onDeletePath}
-              onDescriptionChange={onDescriptionChange}
-              onRenamePath={onRenamePath}
-            />
-          </Suspense>
-        </div>
+      <div className="hidden min-h-0 border-r border-border md:block">
+        <OverlayScrollbarsComponent
+          defer
+          options={{
+            scrollbars: { autoHide: "leave", theme: "os-theme-dark" },
+          }}
+          className="h-full min-h-0"
+        >
+          <SkillFileList
+            files={files}
+            isEditing={isEditing}
+            selectedPath={selectedFile?.path}
+            session={session}
+            onAddClick={() => setAddDialogOpen(true)}
+            onDeletePath={onDeletePath}
+            onSelectPath={onSelectPath}
+          />
+        </OverlayScrollbarsComponent>
+      </div>
+      <div className="min-h-0 flex-1 md:h-full md:min-w-0">
+        <Suspense
+          fallback={
+            <div className="grid gap-3 px-4 py-4 md:px-6">
+              <Skeleton className="h-5 w-40 rounded-md" />
+              <Skeleton className="h-4 w-full rounded-md" />
+              <Skeleton className="h-4 w-11/12 rounded-md" />
+              <Skeleton className="h-4 w-2/3 rounded-md" />
+            </div>
+          }
+        >
+          <ResourceContentPane
+            canEdit={canEdit}
+            deletedPaths={deletedPaths}
+            descriptionValue={descriptionValue}
+            existingPaths={existingPaths}
+            file={file}
+            isEditing={isEditing}
+            rawUrl={rawUrl}
+            selectedFile={selectedFile}
+            status={viewerStatus}
+            value={value}
+            onChange={changeDraft}
+            onDeletePath={onDeletePath}
+            onDescriptionChange={onDescriptionChange}
+            onRenamePath={onRenamePath}
+          />
+        </Suspense>
       </div>
       <Sheet open={mobileFilesOpen} onOpenChange={setMobileFilesOpen}>
         <SheetContent

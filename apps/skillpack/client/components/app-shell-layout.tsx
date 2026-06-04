@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const AppShellRouteFallback = () => (
   <>
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-6">
+    <header className="flex h-(--app-shell-header-height) shrink-0 items-center justify-between border-b border-border bg-background px-6">
       <Skeleton className="h-5 w-40 rounded-md" />
       <Skeleton className="h-8 w-24 rounded-md" />
     </header>

@@ -47,6 +47,7 @@ export const EmptyManagedSkills = ({
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <Button
             className="w-full sm:w-auto"
+            nativeButton={false}
             render={<Link to={primaryAction.to} />}
           >
             <PlusIcon data-icon="inline-start" />
@@ -55,6 +56,7 @@ export const EmptyManagedSkills = ({
           <Button
             className="w-full sm:w-auto"
             variant="outline"
+            nativeButton={false}
             render={<Link to={secondaryAction.to} />}
           >
             <PlusIcon data-icon="inline-start" />

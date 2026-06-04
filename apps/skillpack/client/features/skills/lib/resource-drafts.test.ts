@@ -84,11 +84,13 @@ describe("resource draft helpers", () => {
             { mediaType: "text/markdown", path: "references/new.md" },
           ],
         ]),
+        skillNameDraft: "renamed-skill",
       })
     ).toStrictEqual({
       content: "# Updated\n",
       deleteResourcePaths: ["references/old.md"],
       description: "Updated description",
+      name: "renamed-skill",
       upsertResources: [
         {
           content: "new content",

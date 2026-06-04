@@ -29,11 +29,11 @@ export const ManagedSkillsView = ({
 
   return (
     <>
-      <header className="border-b border-border bg-background px-4 py-3 md:px-6 md:py-4">
-        <div className="flex items-center gap-3">
+      <header className="h-(--app-shell-header-height) shrink-0 border-b border-border bg-background px-4 md:px-6">
+        <div className="flex h-full items-center gap-3">
           <SidebarTrigger className="md:hidden" />
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-semibold tracking-tight md:text-2xl">
+            <h1 className="truncate text-lg font-semibold tracking-tight">
               Library
             </h1>
           </div>
@@ -56,11 +56,13 @@ export const ManagedSkillsView = ({
         options={{ scrollbars: { autoHide: "leave", theme: "os-theme-dark" } }}
         className="min-h-0 flex-1"
       >
-        <section className="px-4 py-4 md:px-6 md:py-6">
+        <section className="min-h-full bg-background">
           {skills.length === 0 ? (
-            <EmptyManagedSkills status={status} onRefresh={onRefresh} />
+            <div className="px-4 py-4 md:px-8 md:py-6">
+              <EmptyManagedSkills status={status} onRefresh={onRefresh} />
+            </div>
           ) : (
-            <div className="grid gap-3 md:gap-4">
+            <div>
               {skills.map((skill) => (
                 <SkillRow key={skill.name} skill={skill} />
               ))}

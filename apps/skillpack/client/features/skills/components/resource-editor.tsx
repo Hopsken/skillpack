@@ -93,14 +93,10 @@ const ResourceEditorHeader = ({
     onRename?.(trimmedPath);
   };
 
-  if (!(showRename || supportsPreview)) {
-    return null;
-  }
-
   return (
     <div className="flex min-h-14 shrink-0 flex-col items-start justify-between gap-3 border-b border-border bg-background px-4 py-3 md:flex-row md:items-center md:gap-4 md:px-6 md:py-0">
-      {showRename ? (
-        <div className="min-w-0 text-sm text-muted-foreground">
+      <div className="min-w-0 text-sm text-muted-foreground">
+        {showRename ? (
           <Input
             aria-label="Resource file name"
             aria-invalid={Boolean(renameError)}
@@ -114,13 +110,17 @@ const ResourceEditorHeader = ({
               }
             }}
           />
-          {renameError ? (
-            <span className="mt-2 block text-destructive md:mt-0 md:ml-3 md:inline">
-              {renameError}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
+        ) : (
+          <span className="truncate font-medium text-foreground">
+            {resource.path}
+          </span>
+        )}
+        {renameError ? (
+          <span className="mt-2 block text-destructive md:mt-0 md:ml-3 md:inline">
+            {renameError}
+          </span>
+        ) : null}
+      </div>
       {supportsPreview ? (
         <Tabs
           value={mode}
@@ -226,14 +226,11 @@ export const ResourceEditor = ({
           </Suspense>
         ) : (
           <ResourceViewer
-            canEditDescription={canEditDescription}
-            descriptionValue={descriptionValue}
             file={previewFile}
             rawUrl={rawUrl}
             resource={previewResource}
-            showMeta={showMeta}
+            showMeta={false}
             status={status}
-            onDescriptionChange={onDescriptionChange}
           />
         )}
       </div>

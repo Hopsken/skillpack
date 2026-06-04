@@ -3,11 +3,16 @@ import type {
   ResolvedSkill,
   SkillSnapshotItem,
 } from "@skillpack/contracts/skills/responses";
+import { skillNameSchema } from "@skillpack/core/primitives";
+import { Link } from "@tanstack/react-router";
+import { ArrowLeftIcon, HistoryIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
+import { useSkillList } from "../api/use-skill-list";
 import { SkillDetailFilesPanel } from "../components/skill-detail-files-panel";
 import { SkillSnapshotsSheet } from "../components/skill-snapshots-sheet";
 import { getChangeCount } from "../lib/resource-draft-session";
@@ -32,6 +37,141 @@ interface SkillDetailViewProps {
   onSaveChanges: (input: PatchSkillInput) => Promise<void>;
 }
 
+const getSaveStatusLabel = (
+  saveStatus: string,
+  isSaving: boolean,
+  changeCount: number
+) => {
+  if (isSaving || saveStatus !== "Unsaved changes") {
+    return saveStatus;
+  }
+
+  const noun = changeCount === 1 ? "change" : "changes";
+  return `${changeCount} unsaved ${noun}`;
+};
+
+const getSkillNameError = (
+  skillName: string,
+  existingSkillNames: Set<string>
+) => {
+  const validation = skillNameSchema.safeParse(skillName);
+
+  if (!validation.success) {
+    return validation.error.issues.at(0)?.message ?? "Invalid Skill Name";
+  }
+
+  if (existingSkillNames.has(skillName)) {
+    return "Skill name already exists";
+  }
+
+  return null;
+};
+
+interface SkillTitleProps {
+  isEditing: boolean;
+  skillName: string | undefined;
+  skillNameError: string | null;
+  skillNameValue: string;
+  onSkillNameChange: (skillName: string) => void;
+}
+
+const SkillTitle = ({
+  isEditing,
+  skillName,
+  skillNameError,
+  skillNameValue,
+  onSkillNameChange,
+}: SkillTitleProps) => {
+  if (isEditing) {
+    return (
+      <Input
+        aria-label="Skill Name"
+        aria-invalid={Boolean(skillNameError)}
+        className="h-9 w-full text-lg font-semibold tracking-tight md:max-w-80"
+        id="skill-name"
+        name="skillName"
+        title={skillNameError ?? "Skill Name"}
+        value={skillNameValue}
+        onChange={(event) => onSkillNameChange(event.target.value)}
+      />
+    );
+  }
+
+  return (
+    <h1 className="truncate text-lg font-semibold tracking-tight">
+      {skillName ?? "Skill"}
+    </h1>
+  );
+};
+
+interface SkillHeaderActionsProps {
+  canSaveChanges: boolean;
+  isEditing: boolean;
+  isSaving: boolean;
+  statusLabel: string;
+  onBeginEdit: () => void;
+  onCancelEdit: () => void;
+  onOpenSnapshots: () => void;
+  onSaveChanges: () => void;
+}
+
+const SkillHeaderActions = ({
+  canSaveChanges,
+  isEditing,
+  isSaving,
+  statusLabel,
+  onBeginEdit,
+  onCancelEdit,
+  onOpenSnapshots,
+  onSaveChanges,
+}: SkillHeaderActionsProps) => {
+  if (isEditing) {
+    return (
+      <>
+        <p className="hidden text-sm text-muted-foreground md:block">
+          {statusLabel}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isSaving}
+          onClick={onCancelEdit}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          disabled={!canSaveChanges}
+          onClick={onSaveChanges}
+        >
+          <span className="md:hidden">Save</span>
+          <span className="hidden md:inline">Save changes</span>
+        </Button>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Button type="button" size="sm" onClick={onBeginEdit}>
+        Edit
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon-sm"
+        aria-label="View snapshots"
+        title="View snapshots"
+        onClick={onOpenSnapshots}
+      >
+        <HistoryIcon />
+      </Button>
+    </>
+  );
+};
+
 export const SkillDetailView = ({
   skill,
   snapshots,
@@ -42,6 +182,7 @@ export const SkillDetailView = ({
   onSaveChanges,
 }: SkillDetailViewProps) => {
   const [snapshotSheetOpen, setSnapshotSheetOpen] = useState(false);
+  const skillList = useSkillList();
   const {
     addedPaths,
     addPath: addPathDraft,
@@ -49,6 +190,7 @@ export const SkillDetailView = ({
     cancelEdit,
     changeDescription: changeDescriptionDraft,
     changeDraft,
+    changeSkillName: changeSkillNameDraft,
     deletedPaths,
     deletePath: deletePathDraft,
     descriptionDraft,
@@ -60,6 +202,7 @@ export const SkillDetailView = ({
     resetForSkill,
     saveStatus,
     setIsSaving,
+    skillNameDraft,
     setSaveStatus,
   } = useSkillResourceEditStore();
   const baseFiles = useMemo(() => getSkillFiles(skill), [skill]);
@@ -96,8 +239,24 @@ export const SkillDetailView = ({
   );
   const requestedPath = selectedPath ?? skillFilePath;
   const selectedFile = files.find((file) => file.path === requestedPath);
-  const changeCount = getChangeCount(session);
+  const skillNameValue = skillNameDraft ?? skill?.name ?? "";
+  const existingSkillNames = useMemo(
+    () =>
+      new Set(
+        (skillList.data ?? [])
+          .map((listSkill) => listSkill.name)
+          .filter((name) => name !== skill?.name)
+      ),
+    [skill?.name, skillList.data]
+  );
+  const skillNameError = getSkillNameError(skillNameValue, existingSkillNames);
+  const skillNameChangeCount = skillNameDraft === undefined ? 0 : 1;
+  const changeCount = getChangeCount(session) + skillNameChangeCount;
   const hasPendingChanges = changeCount > 0;
+  const canSaveChanges =
+    hasPendingChanges && !isSaving && !skillNameError && !skillList.isPending;
+  const statusLabel =
+    skillNameError ?? getSaveStatusLabel(saveStatus, isSaving, changeCount);
 
   useEffect(() => {
     resetForSkill();
@@ -132,13 +291,17 @@ export const SkillDetailView = ({
     changeDescriptionDraft(description, skill?.description);
   };
 
+  const changeSkillName = (skillName: string) => {
+    changeSkillNameDraft(skillName, skill?.name);
+  };
+
   const renamePath = (path: string, nextPath: string, content: string) => {
     const result = renamePathDraft(path, nextPath, content);
     onPathChange(result.selectedPath);
   };
 
   const saveChanges = async () => {
-    if (!hasPendingChanges) {
+    if (!hasPendingChanges || skillNameError) {
       return;
     }
 
@@ -154,6 +317,7 @@ export const SkillDetailView = ({
           draftsByPath,
           filesByPath,
           renamedFromByPath,
+          skillNameDraft,
         })
       );
       resetForSkill();
@@ -167,54 +331,42 @@ export const SkillDetailView = ({
 
   return (
     <>
-      <header className="border-b border-border bg-background px-4 py-3 md:px-6 md:py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
+      <header className="h-(--app-shell-header-height) shrink-0 border-b border-border bg-background px-4 md:px-6">
+        <div className="flex h-full items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
             <SidebarTrigger className="md:hidden" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden md:inline-flex"
+              nativeButton={false}
+              render={<Link to="/skills" aria-label="Back to Managed Skills" />}
+            >
+              <ArrowLeftIcon />
+            </Button>
             <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold tracking-tight md:text-2xl">
-                {skill?.name ?? "Skill"}
-              </h1>
+              <SkillTitle
+                isEditing={isEditing}
+                skillName={skill?.name}
+                skillNameError={skillNameError}
+                skillNameValue={skillNameValue}
+                onSkillNameChange={changeSkillName}
+              />
             </div>
           </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            {isEditing ? (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={isSaving}
-                  onClick={cancelEdit}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!hasPendingChanges || isSaving}
-                  onClick={() => {
-                    void saveChanges();
-                  }}
-                >
-                  Save changes
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button type="button" size="sm" onClick={beginEdit}>
-                  Edit
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSnapshotSheetOpen(true)}
-                >
-                  Snapshots
-                </Button>
-              </>
-            )}
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 md:gap-3">
+            <SkillHeaderActions
+              canSaveChanges={canSaveChanges}
+              isEditing={isEditing}
+              isSaving={isSaving}
+              statusLabel={statusLabel}
+              onBeginEdit={beginEdit}
+              onCancelEdit={cancelEdit}
+              onOpenSnapshots={() => setSnapshotSheetOpen(true)}
+              onSaveChanges={() => {
+                void saveChanges();
+              }}
+            />
           </div>
         </div>
       </header>

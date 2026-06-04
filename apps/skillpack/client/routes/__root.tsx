@@ -55,7 +55,11 @@ const RouteError = ({
               Retry
             </Button>
           ) : null}
-          <Button variant="outline" render={<Link to="/skills" />}>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link to="/skills" />}
+          >
             Library
           </Button>
         </div>

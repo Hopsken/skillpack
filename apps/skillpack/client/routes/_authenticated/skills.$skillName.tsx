@@ -2,10 +2,16 @@ import {
   safeRelativePathSchema,
   skillNameSchema,
 } from "@skillpack/core/primitives";
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
+import {
+  skillDetailQueryKey,
+  skillFileQueryPrefix,
+  skillSnapshotsQueryKey,
+} from "@/features/skills/api/query-keys";
 import { activeSkillQueryOptions } from "@/features/skills/api/query-options";
 import {
   useSkillDetail,
@@ -32,6 +38,34 @@ const parseSkillRouteParams = (params: unknown) => {
   return parsed.success ? parsed.data : false;
 };
 
+const cancelSkillQueries = async (
+  queryClient: ReturnType<typeof useQueryClient>,
+  skillName: string
+) => {
+  await queryClient.cancelQueries({ queryKey: skillDetailQueryKey(skillName) });
+  await queryClient.cancelQueries({
+    queryKey: skillFileQueryPrefix(skillName),
+  });
+  await queryClient.cancelQueries({
+    queryKey: skillSnapshotsQueryKey(skillName),
+  });
+};
+
+const invalidateSkillQueries = async (
+  queryClient: ReturnType<typeof useQueryClient>,
+  skillName: string
+) => {
+  await queryClient.invalidateQueries({
+    queryKey: skillDetailQueryKey(skillName),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: skillFileQueryPrefix(skillName),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: skillSnapshotsQueryKey(skillName),
+  });
+};
+
 /* eslint-disable no-use-before-define -- Route exposes typed route-local hooks from the file route declared below. */
 const SkillDetailRoute = () => {
   const { skillName } = Route.useParams();
@@ -39,6 +73,7 @@ const SkillDetailRoute = () => {
   const navigate = Route.useNavigate();
   /* eslint-enable no-use-before-define */
   const { path } = search;
+  const queryClient = useQueryClient();
   const skillDetail = useSkillDetail(skillName);
   const skill = skillDetail.data;
   const skillSnapshots = useSkillSnapshots(skillName);
@@ -63,15 +98,18 @@ const SkillDetailRoute = () => {
   >[0]["onSaveChanges"] = async (input) => {
     const result = await patchSkill.mutateAsync(input);
     const nextSkillName = result.name;
-    await skillDetail.refetch();
 
     if (nextSkillName !== skillName) {
+      await cancelSkillQueries(queryClient, skillName);
       await navigate({
         params: { skillName: nextSkillName },
         search: { path },
         to: "/skills/$skillName",
       });
+      return;
     }
+
+    await invalidateSkillQueries(queryClient, skillName);
   };
   const snapshots = skillSnapshots.data ?? [];
   const snapshotCount = snapshots.length;

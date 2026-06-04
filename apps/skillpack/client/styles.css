@@ -36,6 +36,7 @@ body {
 }
 
 :root {
+  --app-shell-header-height: 4rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);

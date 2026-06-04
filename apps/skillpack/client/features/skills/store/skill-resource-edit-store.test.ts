@@ -14,6 +14,20 @@ describe("skill resource edit store", () => {
     useSkillResourceEditStore.getState().resetForSkill();
   });
 
+  it("tracks a skill name draft until it matches the original name", () => {
+    const store = useSkillResourceEditStore.getState();
+
+    store.changeSkillName("renamed-skill", "demo-skill");
+    expect(useSkillResourceEditStore.getState().skillNameDraft).toBe(
+      "renamed-skill"
+    );
+
+    useSkillResourceEditStore
+      .getState()
+      .changeSkillName("demo-skill", "demo-skill");
+    expect(useSkillResourceEditStore.getState().skillNameDraft).toBeUndefined();
+  });
+
   it("clears the original deletion when deleting a renamed file draft", () => {
     const store = useSkillResourceEditStore.getState();
 

@@ -14,6 +14,7 @@ interface BuildResourcePatchInputParams {
   draftsByPath: Record<string, string>;
   filesByPath: Map<string, DraftFileInfo>;
   renamedFromByPath?: Record<string, string>;
+  skillNameDraft?: string;
 }
 
 const extensionMediaTypes = new Map<string, string>([
@@ -66,6 +67,7 @@ export const buildResourcePatchInput = ({
   draftsByPath,
   filesByPath,
   renamedFromByPath: _renamedFromByPath = {},
+  skillNameDraft,
 }: BuildResourcePatchInputParams): PatchSkillInput => {
   const upsertResources: NonNullable<PatchSkillInput["upsertResources"]> = [];
   const deleteResourcePaths = [...deletedPaths].filter(
@@ -96,6 +98,10 @@ export const buildResourcePatchInput = ({
 
   if (descriptionDraft !== undefined) {
     input.description = descriptionDraft;
+  }
+
+  if (skillNameDraft !== undefined) {
+    input.name = skillNameDraft;
   }
 
   return input;

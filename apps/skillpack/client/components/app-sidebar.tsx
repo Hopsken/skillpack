@@ -36,11 +36,8 @@ export const AppSidebar = ({ session }: { session: Session }) => {
       collapsible="offcanvas"
       className="h-svh border-r border-sidebar-border bg-sidebar"
     >
-      <SidebarHeader className="gap-1 border-b border-sidebar-border px-4 py-4 text-sidebar-foreground">
+      <SidebarHeader className="h-(--app-shell-header-height) justify-center gap-1 border-b border-sidebar-border px-4 py-0 text-sidebar-foreground">
         <span className="text-lg font-semibold tracking-tight">skillpack</span>
-        <span className="text-sm text-sidebar-foreground/70">
-          Skill Library
-        </span>
       </SidebarHeader>
 
       <SidebarContent>

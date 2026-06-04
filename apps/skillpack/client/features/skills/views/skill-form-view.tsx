@@ -112,6 +112,7 @@ export const SkillFormView = ({ status, onSubmit }: SkillFormViewProps) => {
             <Button
               variant="ghost"
               size="icon"
+              nativeButton={false}
               render={<Link to="/skills" aria-label="Back" />}
             >
               <ArrowLeftIcon />

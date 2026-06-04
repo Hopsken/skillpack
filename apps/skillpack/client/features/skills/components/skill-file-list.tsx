@@ -29,7 +29,7 @@ interface SkillFileListProps {
 
 const getFileClassName = (isSelected: boolean, isDeleted: boolean) =>
   cn(
-    "min-h-14 w-full justify-start rounded-none border-b border-border px-4 text-left text-sm",
+    "min-h-14 w-full justify-start rounded-none border-0 px-4 text-left text-sm",
     isDeleted && "bg-destructive/10 text-destructive hover:bg-destructive/15",
     !isDeleted &&
       (isSelected
@@ -99,7 +99,7 @@ const SkillFileListItem = ({
   const showBadge = status !== "clean";
 
   return (
-    <div className="relative">
+    <div className="relative border-border border-b last:border-b-0">
       <Button
         type="button"
         variant="ghost"

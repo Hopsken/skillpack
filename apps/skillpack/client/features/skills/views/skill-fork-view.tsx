@@ -284,6 +284,7 @@ export const SkillForkView = ({
           <Button
             variant="ghost"
             size="icon"
+            nativeButton={false}
             render={<Link to="/skills" aria-label="Back to Library" />}
           >
             <ArrowLeftIcon />

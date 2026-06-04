@@ -12,6 +12,7 @@ interface SkillResourceEditState {
   isSaving: boolean;
   renamedFromByPath: Record<string, string>;
   saveStatus: string;
+  skillNameDraft?: string;
 }
 
 interface SkillResourceEditActions {
@@ -23,6 +24,10 @@ interface SkillResourceEditActions {
     originalDescription: string | undefined
   ) => void;
   changeDraft: (path: string, content: string, originalContent: string) => void;
+  changeSkillName: (
+    skillName: string,
+    originalSkillName: string | undefined
+  ) => void;
   deletePath: (path: string) => { selectedPath?: string };
   renamePath: (
     path: string,
@@ -46,6 +51,7 @@ const initialState: SkillResourceEditState = {
   isSaving: false,
   renamedFromByPath: {},
   saveStatus: "No changes",
+  skillNameDraft: undefined,
 };
 
 const removeRecordKey = <Value>(record: Record<string, Value>, key: string) => {
@@ -61,6 +67,7 @@ const resetDraftState = (): Pick<
   | "draftsByPath"
   | "renamedFromByPath"
   | "saveStatus"
+  | "skillNameDraft"
 > => ({
   addedPaths: new Set(),
   deletedPaths: new Set(),
@@ -68,6 +75,7 @@ const resetDraftState = (): Pick<
   draftsByPath: {},
   renamedFromByPath: {},
   saveStatus: "No changes",
+  skillNameDraft: undefined,
 });
 
 export const useSkillResourceEditStore = create<SkillResourceEditStore>(
@@ -110,6 +118,13 @@ export const useSkillResourceEditStore = create<SkillResourceEditStore>(
           draftsByPath: { ...state.draftsByPath, [path]: content },
           saveStatus: "Unsaved changes",
         };
+      });
+    },
+
+    changeSkillName: (skillName, originalSkillName) => {
+      set({
+        saveStatus: "Unsaved changes",
+        skillNameDraft: skillName === originalSkillName ? undefined : skillName,
       });
     },
 
