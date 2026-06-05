@@ -8,12 +8,12 @@
     "expose": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "pnpm build && wrangler deploy",
+    "deploy": "pnpm db:migrate:remote && wrangler deploy",
     "env:pull": "doppler secrets download --no-file --format env > .dev.vars",
     "typecheck": "tsc --noEmit --project tsconfig.client.json --pretty false && tsc --noEmit --project tsconfig.server.json --pretty false",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply skillpack --local",
-    "db:migrate:remote": "wrangler d1 migrations apply skillpack --remote",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "db:seed:local": "node scripts/seed-local.mjs",
     "oauth:test:local": "node scripts/test-oauth-local.mjs",
     "test": "vitest run",
@@ -91,5 +91,24 @@
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.7",
     "wrangler": "^4.16.1"
+  },
+  "cloudflare": {
+    "bindings": {
+      "BETTER_AUTH_SECRET": {
+        "description": "Generate a random auth secret, for example with `openssl rand -hex 32`."
+      },
+      "BUCKET": {
+        "description": "R2 bucket used for content-addressed skill resources."
+      },
+      "DB": {
+        "description": "D1 database used for Skillpack metadata, auth state, and skill versions."
+      },
+      "GITHUB_CLIENT_ID": {
+        "description": "Create a GitHub OAuth App and use its Client ID. Callback path: `/api/auth/callback/github`."
+      },
+      "GITHUB_CLIENT_SECRET": {
+        "description": "Use the Client Secret from the same GitHub OAuth App."
+      }
+    }
   }
 }

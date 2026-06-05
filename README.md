@@ -29,6 +29,14 @@ pnpm test
 pnpm build
 ```
 
+## Deploy to Cloudflare
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Hopsken/skillpack/tree/main/apps/skillpack)
+
+The Deploy to Cloudflare flow reads `apps/skillpack/wrangler.jsonc`, provisions
+D1 and R2 bindings, prompts for required secrets, and connects the created
+repository to Workers Builds for automatic deployments.
+
 ## Auth Setup
 
 Skillpack uses Better Auth. GitHub is the primary sign-in provider, and the
@@ -105,14 +113,20 @@ https://<your-domain>/api/auth/oauth2/callback/oidc
 
 ## Cloudflare setup
 
-Create resources:
+`apps/skillpack/wrangler.jsonc` is committed as a reusable deployment template.
+It declares the Worker entrypoint, static assets, D1 binding, R2 binding, and
+required secrets. Instance-specific values such as OAuth credentials and custom
+domains should be configured in Cloudflare.
+
+For manual deployments, create resources:
 
 ```bash
 pnpm --filter @skillpack/app exec wrangler d1 create skillpack
 pnpm --filter @skillpack/app exec wrangler r2 bucket create skillpack-objects
 ```
 
-Update `apps/skillpack/wrangler.jsonc` with the generated D1 `database_id`.
+For a manual production instance, copy the generated D1 `database_id` into your
+instance's `apps/skillpack/wrangler.jsonc`.
 
 Apply migrations:
 

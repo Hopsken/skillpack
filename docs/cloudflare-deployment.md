@@ -34,16 +34,29 @@ If OIDC login is enabled, register its deployed callback too:
 https://<your-domain>/api/auth/oauth2/callback/oidc
 ```
 
-## Create Cloudflare Resources
+## Deploy to Cloudflare
 
-Create the D1 database and R2 bucket once per production Cloudflare account:
+Use the Deploy to Cloudflare button for the fastest setup:
+
+```md
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Hopsken/skillpack/tree/main/apps/skillpack)
+```
+
+Cloudflare reads `apps/skillpack/wrangler.jsonc`, provisions the declared D1 and
+R2 resources, prompts for required secrets declared in `secrets.required`, and
+connects the created repository to Workers Builds for automatic deployments.
+
+## Manual Cloudflare Resources
+
+For manual deployments, create the D1 database and R2 bucket once per production
+Cloudflare account:
 
 ```bash
 pnpm --filter @skillpack/app exec wrangler d1 create skillpack
 pnpm --filter @skillpack/app exec wrangler r2 bucket create skillpack-objects
 ```
 
-Copy the generated D1 `database_id` into
+Copy the generated D1 `database_id` into your instance's
 `apps/skillpack/wrangler.jsonc` under the `DB` binding:
 
 ```jsonc
@@ -75,9 +88,9 @@ and [R2 bucket creation](https://developers.cloudflare.com/r2/buckets/create-buc
 ## Configure Production Environment
 
 Keep `apps/skillpack/wrangler.jsonc` limited to stable deployment structure:
-Worker entrypoint, assets, D1, R2, compatibility settings, and optional domain
-routes. Do not commit instance-specific auth provider values for an open source
-deployment.
+Worker entrypoint, assets, D1, R2, compatibility settings, required secret names,
+and optional domain routes. Store instance-specific auth provider values in
+Cloudflare.
 
 Set production auth values with Wrangler from `apps/skillpack`:
 
@@ -116,10 +129,10 @@ new schema:
 pnpm db:migrate:remote
 ```
 
-This runs the app script:
+This runs the app script with the D1 binding name:
 
 ```bash
-wrangler d1 migrations apply skillpack --remote
+wrangler d1 migrations apply DB --remote
 ```
 
 If a migration fails, stop and fix the migration before deploying the Worker.
@@ -141,10 +154,11 @@ Deploy the Worker and static assets:
 pnpm deploy
 ```
 
-The app deploy script runs:
+The app deploy script runs remote migrations and deploys the Worker. Cloudflare
+Builds runs the `build` script before the `deploy` script.
 
 ```bash
-pnpm build && wrangler deploy
+pnpm db:migrate:remote && wrangler deploy
 ```
 
 Wrangler deploy reference:
