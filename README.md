@@ -31,7 +31,7 @@ pnpm build
 
 ## Deploy to Cloudflare
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Hopsken/skillpack/tree/main/apps/skillpack)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/skillpackdev/skillpack/tree/main/apps/skillpack)
 
 The Deploy to Cloudflare flow reads `apps/skillpack/wrangler.jsonc`, provisions
 D1 and R2 bindings, prompts for required secrets, and connects the created

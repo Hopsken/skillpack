@@ -39,7 +39,7 @@ https://<your-domain>/api/auth/oauth2/callback/oidc
 Use the Deploy to Cloudflare button for the fastest setup:
 
 ```md
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Hopsken/skillpack/tree/main/apps/skillpack)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/skillpackdev/skillpack/tree/main/apps/skillpack)
 ```
 
 Cloudflare reads `apps/skillpack/wrangler.jsonc`, provisions the declared D1 and
