@@ -21,6 +21,14 @@ import {
   restoreManagedSkillSnapshot,
 } from "./requests";
 
+type RestoreSkillSnapshotResult = Awaited<
+  ReturnType<typeof restoreManagedSkillSnapshot>
+>;
+
+interface RestoreSkillSnapshotMutationOptions {
+  onSuccess?: (result: RestoreSkillSnapshotResult) => Promise<void> | void;
+}
+
 const invalidateSkillQueries = async (
   queryClient: ReturnType<typeof useQueryClient>,
   skillName: string | undefined
@@ -82,10 +90,11 @@ export const useCreateSkillSnapshot = (skillName: string | undefined) => {
   });
 };
 
-export const useRestoreSkillSnapshot = (skillName: string | undefined) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
+export const useRestoreSkillSnapshot = (
+  skillName: string | undefined,
+  options?: RestoreSkillSnapshotMutationOptions
+) =>
+  useMutation({
     mutationFn: (snapshotNumber: number) => {
       if (!skillName) {
         throw new Error("Missing Skill Name");
@@ -93,11 +102,10 @@ export const useRestoreSkillSnapshot = (skillName: string | undefined) => {
 
       return restoreManagedSkillSnapshot(skillName, snapshotNumber);
     },
-    onSuccess: async () => {
-      await invalidateSkillQueries(queryClient, skillName);
+    onSuccess: async (result) => {
+      await options?.onSuccess?.(result);
     },
   });
-};
 
 export const useForkSkill = () => {
   const queryClient = useQueryClient();

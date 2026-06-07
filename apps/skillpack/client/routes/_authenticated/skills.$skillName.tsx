@@ -10,6 +10,7 @@ import { z } from "zod";
 import {
   skillDetailQueryKey,
   skillFileQueryPrefix,
+  skillListQueryKey,
   skillSnapshotsQueryKey,
 } from "@/features/skills/api/query-keys";
 import { activeSkillQueryOptions } from "@/features/skills/api/query-options";
@@ -18,6 +19,7 @@ import {
   useSkillSnapshots,
 } from "@/features/skills/api/use-skill-detail";
 import {
+  useCreateSkillSnapshot,
   usePatchSkill,
   useRestoreSkillSnapshot,
 } from "@/features/skills/api/use-skill-mutations";
@@ -55,6 +57,7 @@ const invalidateSkillQueries = async (
   queryClient: ReturnType<typeof useQueryClient>,
   skillName: string
 ) => {
+  await queryClient.invalidateQueries({ queryKey: skillListQueryKey });
   await queryClient.invalidateQueries({
     queryKey: skillDetailQueryKey(skillName),
   });
@@ -64,6 +67,27 @@ const invalidateSkillQueries = async (
   await queryClient.invalidateQueries({
     queryKey: skillSnapshotsQueryKey(skillName),
   });
+};
+
+const removeSkillQueries = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  skillName: string
+) => {
+  queryClient.removeQueries({ queryKey: skillDetailQueryKey(skillName) });
+  queryClient.removeQueries({ queryKey: skillFileQueryPrefix(skillName) });
+  queryClient.removeQueries({ queryKey: skillSnapshotsQueryKey(skillName) });
+};
+
+const getSnapshotsStatus = (snapshotCount: number, isPending: boolean) => {
+  if (isPending) {
+    return "Loading snapshots...";
+  }
+
+  if (snapshotCount === 0) {
+    return "No snapshots yet";
+  }
+
+  return `${snapshotCount} snapshots loaded`;
 };
 
 /* eslint-disable no-use-before-define -- Route exposes typed route-local hooks from the file route declared below. */
@@ -77,7 +101,27 @@ const SkillDetailRoute = () => {
   const skillDetail = useSkillDetail(skillName);
   const skill = skillDetail.data;
   const skillSnapshots = useSkillSnapshots(skillName);
-  const restoreSnapshot = useRestoreSkillSnapshot(skillName);
+  const createSnapshot = useCreateSkillSnapshot(skillName);
+  const restoreSnapshot = useRestoreSkillSnapshot(skillName, {
+    onSuccess: async (result) => {
+      const nextSkillName = result.name;
+
+      if (nextSkillName !== skillName) {
+        await queryClient.invalidateQueries({ queryKey: skillListQueryKey });
+        await cancelSkillQueries(queryClient, skillName);
+        removeSkillQueries(queryClient, nextSkillName);
+        await navigate({
+          params: { skillName: nextSkillName },
+          search: { path },
+          to: "/skills/$skillName",
+        });
+        removeSkillQueries(queryClient, skillName);
+        return;
+      }
+
+      await invalidateSkillQueries(queryClient, skillName);
+    },
+  });
   const patchSkill = usePatchSkill(skillName);
 
   const setSelectedPath = (nextPath: string | undefined) => {
@@ -90,7 +134,12 @@ const SkillDetailRoute = () => {
 
   const restore = async (snapshotNumber: number) => {
     await restoreSnapshot.mutateAsync(snapshotNumber);
-    await skillDetail.refetch();
+  };
+
+  const takeSnapshot: Parameters<
+    typeof SkillDetailView
+  >[0]["onTakeSnapshot"] = async (input) => {
+    await createSnapshot.mutateAsync(input);
   };
 
   const saveChanges: Parameters<
@@ -113,9 +162,10 @@ const SkillDetailRoute = () => {
   };
   const snapshots = skillSnapshots.data ?? [];
   const snapshotCount = snapshots.length;
-  const snapshotsStatus = skillSnapshots.isPending
-    ? "Loading snapshots..."
-    : `${snapshotCount} snapshots loaded`;
+  const snapshotsStatus = getSnapshotsStatus(
+    snapshotCount,
+    skillSnapshots.isPending
+  );
 
   if (skillDetail.isPending && !skill) {
     return <SkillDetailSkeleton />;
@@ -130,6 +180,7 @@ const SkillDetailRoute = () => {
       onPathChange={setSelectedPath}
       onRestoreSnapshot={restore}
       onSaveChanges={saveChanges}
+      onTakeSnapshot={takeSnapshot}
     />
   );
 };
