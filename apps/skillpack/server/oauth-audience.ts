@@ -1,9 +1,7 @@
+const normalizeResource = (url: string): string => url.replace(/\/$/u, "");
+
 export const getOAuthResource = (env: Env, origin: string) =>
-  env.AUTH_BASE_URL ?? origin;
+  normalizeResource(env.AUTH_BASE_URL ?? origin);
 
-export const getOAuthAudiences = (env: Env, origin: string) => {
-  const resource = getOAuthResource(env, origin);
-  const normalizedResource = new URL(resource).href;
-
-  return [...new Set([resource, normalizedResource])];
-};
+export const getMcpOAuthResource = (env: Env, origin: string) =>
+  `${getOAuthResource(env, origin)}/mcp`;

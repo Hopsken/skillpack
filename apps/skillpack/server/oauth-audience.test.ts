@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getOAuthAudiences } from "./oauth-audience";
+import { getMcpOAuthResource, getOAuthResource } from "./oauth-audience";
 
 const baseEnv = {
   BETTER_AUTH_SECRET: "test-secret",
@@ -8,29 +8,34 @@ const baseEnv = {
   DB: {},
 } as Env;
 
-describe("OAuth audiences", () => {
-  it("accepts the configured resource and the URL href form", () => {
-    expect(getOAuthAudiences(baseEnv, "http://localhost:5173")).toStrictEqual([
-      "http://localhost:5173",
-      "http://localhost:5173/",
-    ]);
+describe("OAuth resource", () => {
+  it("returns the origin without trailing slash", () => {
+    expect(getOAuthResource(baseEnv, "http://localhost:5173")).toBe(
+      "http://localhost:5173"
+    );
+    expect(getOAuthResource(baseEnv, "http://localhost:5173/")).toBe(
+      "http://localhost:5173"
+    );
   });
 
-  it("deduplicates resources that already use URL href form", () => {
-    expect(getOAuthAudiences(baseEnv, "http://localhost:5173/")).toStrictEqual([
-      "http://localhost:5173/",
-    ]);
-  });
-
-  it("uses AUTH_BASE_URL when configured", () => {
+  it("strips the trailing slash from AUTH_BASE_URL", () => {
     expect(
-      getOAuthAudiences(
-        { ...baseEnv, AUTH_BASE_URL: "https://skillpack.example" } as Env,
+      getOAuthResource(
+        { ...baseEnv, AUTH_BASE_URL: "https://skillpack.example/" } as Env,
         "http://localhost:5173"
       )
-    ).toStrictEqual([
-      "https://skillpack.example",
-      "https://skillpack.example/",
-    ]);
+    ).toBe("https://skillpack.example");
+  });
+
+  it("appends /mcp to the base resource", () => {
+    expect(getMcpOAuthResource(baseEnv, "http://localhost:5173")).toBe(
+      "http://localhost:5173/mcp"
+    );
+  });
+
+  it("does not double the trailing slash when origin already has one", () => {
+    expect(getMcpOAuthResource(baseEnv, "http://localhost:5173/")).toBe(
+      "http://localhost:5173/mcp"
+    );
   });
 });
