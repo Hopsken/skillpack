@@ -6,7 +6,6 @@ import {
   skillLicenseSchema,
   skillMetadataSchema,
   skillNameSchema,
-  skillSnapshotNumberSchema,
 } from "@skillpack/core/primitives";
 import { z } from "zod";
 
@@ -55,19 +54,6 @@ export const resolvedSkillSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
-export const skillSnapshotItemSchema = z.object({
-  createdAt: z.string().datetime(),
-  label: z.string().nullable(),
-  name: skillNameSchema,
-  note: z.string().nullable(),
-  snapshotNumber: skillSnapshotNumberSchema,
-});
-
-export const skillSnapshotListResponseSchema = z.object({
-  name: skillNameSchema,
-  snapshots: z.array(skillSnapshotItemSchema),
-});
-
 export const skillResourceResponseSchema = z.object({
   content: z.string(),
   mediaType: z.string().min(1),
@@ -85,9 +71,20 @@ export const skillPatchedResponseSchema = z.object({
   name: skillNameSchema,
 });
 
-export const restoreSnapshotResponseSchema = z.object({
-  name: skillNameSchema,
-  restoredFromSnapshot: skillSnapshotNumberSchema,
+export const skillVersionListItemSchema = z.object({
+  createdAt: z.string().datetime(),
+  id: z.string().min(1),
+  label: z.string().min(1).nullable(),
+});
+
+export const skillVersionHistoryResponseSchema = z.object({
+  versions: z.array(skillVersionListItemSchema),
+});
+
+export const skillVersionLabelResponseSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  versionId: z.string().min(1),
 });
 
 export const forkSkillResultSchema = z.discriminatedUnion("status", [
@@ -114,7 +111,10 @@ export type SkillListItem = z.infer<typeof skillListItemSchema>;
 export type SkillListResponse = z.infer<typeof skillListResponseSchema>;
 export type SkillPatchedResponse = z.infer<typeof skillPatchedResponseSchema>;
 export type SkillResourceResponse = z.infer<typeof skillResourceResponseSchema>;
-export type SkillSnapshotItem = z.infer<typeof skillSnapshotItemSchema>;
-export type SkillSnapshotListResponse = z.infer<
-  typeof skillSnapshotListResponseSchema
+export type SkillVersionHistoryResponse = z.infer<
+  typeof skillVersionHistoryResponseSchema
 >;
+export type SkillVersionLabelResponse = z.infer<
+  typeof skillVersionLabelResponseSchema
+>;
+export type SkillVersionListItem = z.infer<typeof skillVersionListItemSchema>;

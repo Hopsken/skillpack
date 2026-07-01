@@ -3,14 +3,13 @@ import { apiError } from "@server/lib/http";
 import type { AppBindings } from "@server/types";
 import {
   createSkillSchema,
-  createSkillSnapshotSchema,
   forkSkillSchema,
   patchSkillSchema,
+  skillVersionLabelSchema,
 } from "@skillpack/contracts/skills/requests";
 import {
   safeRelativePathSchema,
   skillNameSchema,
-  skillSnapshotNumberSchema,
 } from "@skillpack/core/primitives";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -19,12 +18,12 @@ import { SkillModuleError, skillErrors } from "./errors";
 import {
   presentPatchedSkill,
   presentForkedSkills,
-  presentRestoredSkill,
   presentSkill,
   presentSkillFile,
   presentSkillList,
   presentSkillSummary,
-  presentSkillSnapshots,
+  presentSkillVersionHistory,
+  presentSkillVersionLabel,
 } from "./presenter";
 import type { ReadSkillFileByNameInput, ReadSkillFileResult } from "./types";
 
@@ -32,16 +31,16 @@ const skillErrorStatus = {
   "duplicate-resolved-skill-name": 400,
   "duplicate-resource-path": 400,
   "duplicate-skill-name": 409,
-  "duplicate-skill-snapshot": 409,
   "empty-skill-patch": 400,
   "invalid-file-path": 400,
   "invalid-skill-locator": 400,
+  "invalid-version-label": 400,
+  "invalid-version-selector": 400,
   "reserved-resource-path": 400,
   "skill-creation-failed": 500,
   "skill-file-not-found": 404,
   "skill-not-found": 404,
   "skill-object-not-found": 404,
-  "skill-snapshot-not-found": 404,
 } as const;
 
 type SkillContext = Context<AppBindings>;
@@ -56,14 +55,12 @@ const parseSkillName = (value: string | undefined) => {
   return result.data;
 };
 
-const parseRequiredSnapshot = (value: string | undefined) => {
-  const result = skillSnapshotNumberSchema.safeParse(value);
-
-  if (!result.success) {
-    throw skillErrors.skillSnapshotNotFound();
+const parseVersionId = (value: string | undefined) => {
+  if (!value) {
+    throw skillErrors.invalidVersionSelector();
   }
 
-  return result.data;
+  return value;
 };
 
 const parseFilePath = (path: string | undefined) => {
@@ -81,6 +78,16 @@ const getRequestedSkillFileInput = (
 ): ReadSkillFileByNameInput => ({
   path: parseFilePath(c.req.query("path")),
   skillName: parseSkillName(c.req.param("skillName")),
+});
+
+const getRequestedSkillVersionInput = (c: SkillContext) => ({
+  skillName: parseSkillName(c.req.param("skillName")),
+  versionId: parseVersionId(c.req.param("versionId")),
+});
+
+const getRequestedSkillVersionFileInput = (c: SkillContext) => ({
+  ...getRequestedSkillVersionInput(c),
+  path: parseFilePath(c.req.query("path")),
 });
 
 const getRawFileHeaders = (result: ReadSkillFileResult) =>
@@ -115,6 +122,49 @@ export const skillsRoute = new Hono<AppBindings>()
       : 422;
     return c.json(presentForkedSkills(result), status);
   })
+  .get("/:skillName/versions", async (c) => {
+    const result = await c.var.skillService.listVersionHistory(
+      parseSkillName(c.req.param("skillName"))
+    );
+    return c.json(presentSkillVersionHistory(result));
+  })
+  .get("/:skillName/versions/:versionId", async (c) => {
+    const result = await c.var.skillService.resolveSkillVersion(
+      getRequestedSkillVersionInput(c)
+    );
+    return c.json(presentSkill(result));
+  })
+  .get("/:skillName/versions/:versionId/resources/raw", async (c) => {
+    const result = await c.var.skillService.readSkillVersionResourceByName(
+      getRequestedSkillVersionFileInput(c)
+    );
+    return new Response(result.object.body, {
+      headers: getRawFileHeaders(result),
+    });
+  })
+  .put(
+    "/:skillName/versions/:versionId/label",
+    zValidator("json", skillVersionLabelSchema),
+    async (c) => {
+      const result = await c.var.skillService.upsertVersionLabel({
+        ...getRequestedSkillVersionInput(c),
+        label: c.req.valid("json").label,
+      });
+      return c.json(presentSkillVersionLabel(result));
+    }
+  )
+  .delete("/:skillName/versions/:versionId/label", async (c) => {
+    await c.var.skillService.deleteVersionLabel(
+      getRequestedSkillVersionInput(c)
+    );
+    return c.body(null, 204);
+  })
+  .post("/:skillName/versions/:versionId/restore", async (c) => {
+    const result = await c.var.skillService.restoreVersion(
+      getRequestedSkillVersionInput(c)
+    );
+    return c.json(presentSkill(result));
+  })
   .get("/:skillName", async (c) => {
     const skillName = parseSkillName(c.req.param("skillName"));
     const result = await c.var.skillService.resolveSkillByName(skillName);
@@ -132,34 +182,6 @@ export const skillsRoute = new Hono<AppBindings>()
       parseSkillName(c.req.param("skillName"))
     );
     return c.body(null, 204);
-  })
-  .get("/:skillName/snapshots", async (c) => {
-    const result = await c.var.skillService.listSkillSnapshotsForSkillName(
-      parseSkillName(c.req.param("skillName"))
-    );
-    return c.json(presentSkillSnapshots(result.skill, result.snapshots));
-  })
-  .post(
-    "/:skillName/snapshots",
-    zValidator("json", createSkillSnapshotSchema),
-    async (c) => {
-      const snapshot = await c.var.skillService.createSkillSnapshotByName(
-        parseSkillName(c.req.param("skillName")),
-        c.req.valid("json")
-      );
-      return c.json(
-        presentSkillSnapshots({ name: snapshot.stateJson.name }, [snapshot])
-          .snapshots[0],
-        201
-      );
-    }
-  )
-  .post("/:skillName/snapshots/:snapshotNumber/restore", async (c) => {
-    const result = await c.var.skillService.restoreSkillSnapshotByName(
-      parseSkillName(c.req.param("skillName")),
-      parseRequiredSnapshot(c.req.param("snapshotNumber"))
-    );
-    return c.json(presentRestoredSkill(result));
   })
   .get("/:skillName/resources", async (c) => {
     const result = await c.var.skillService.readSkillTextFileByName(

@@ -1,7 +1,4 @@
-import type {
-  SkillOriginJson,
-  SkillSnapshotStateJson,
-} from "@skillpack/contracts/skills/state";
+import type { SkillOriginJson } from "@skillpack/contracts/skills/state";
 import { relations } from "drizzle-orm";
 import {
   index,
@@ -14,21 +11,11 @@ import {
 export const skillsTable = sqliteTable(
   "skills",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    headVersionPk: integer("head_version_pk").notNull(),
     name: text("name").notNull(),
     ownerUserId: text("owner_user_id").notNull(),
-
-    allowedTools: text("allowed_tools"),
-    compatibility: text("compatibility"),
-    description: text("description").notNull(),
-    license: text("license"),
-    metadata: text("metadata", { mode: "json" }).$type<Record<
-      string,
-      string
-    > | null>(),
-    origin: text("origin", { mode: "json" }).$type<SkillOriginJson | null>(),
-
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    pk: integer("pk").primaryKey({ autoIncrement: true }),
     updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   },
   (table) => ({
@@ -39,79 +26,124 @@ export const skillsTable = sqliteTable(
   })
 );
 
-export const skillResourcesTable = sqliteTable(
-  "skill_resources",
+export const skillVersionsTable = sqliteTable(
+  "skill_versions",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    skillId: integer("skill_id").notNull(),
+    allowedTools: text("allowed_tools"),
+    compatibility: text("compatibility"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    description: text("description").notNull(),
+    id: text("id").notNull(),
+    license: text("license"),
+    metadata: text("metadata", { mode: "json" }).$type<Record<
+      string,
+      string
+    > | null>(),
+    origin: text("origin", { mode: "json" }).$type<SkillOriginJson | null>(),
+    parentPk: integer("parent_pk"),
+    pk: integer("pk").primaryKey({ autoIncrement: true }),
+    skillPk: integer("skill_pk").notNull(),
+  },
+  (table) => ({
+    skillVersionIdUnique: uniqueIndex("skill_versions_id_unique").on(table.id),
+    skillVersionParentIndex: index("skill_versions_parent_idx").on(
+      table.parentPk
+    ),
+    skillVersionSkillIndex: index("skill_versions_skill_idx").on(table.skillPk),
+  })
+);
 
+export const skillVersionResourcesTable = sqliteTable(
+  "skill_version_resources",
+  {
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     mediaType: text("media_type").notNull(),
     path: text("path").notNull(),
     sha256: text("sha256").notNull(),
     size: integer("size").notNull(),
-
-    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    versionPk: integer("version_pk").notNull(),
   },
   (table) => ({
-    skillResourceShaIndex: index("skill_resources_sha_idx").on(table.sha256),
-    skillResourceSkillIndex: index("skill_resources_skill_idx").on(
-      table.skillId
+    skillVersionResourceShaIndex: index("skill_version_resources_sha_idx").on(
+      table.sha256
     ),
-    skillResourceSkillPathUnique: uniqueIndex(
-      "skill_resources_skill_path_unique"
-    ).on(table.skillId, table.path),
+    skillVersionResourceVersionIndex: index(
+      "skill_version_resources_version_idx"
+    ).on(table.versionPk),
+    skillVersionResourceVersionPathUnique: uniqueIndex(
+      "skill_version_resources_version_path_unique"
+    ).on(table.versionPk, table.path),
   })
 );
 
-export const skillSnapshotsTable = sqliteTable(
-  "skill_snapshots",
+export const skillVersionLabelsTable = sqliteTable(
+  "skill_version_labels",
   {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    skillId: integer("skill_id").notNull(),
-    snapshotNumber: integer("snapshot_number").notNull(),
-
-    label: text("label"),
-    note: text("note"),
-
-    stateJson: text("state_json", { mode: "json" })
-      .$type<SkillSnapshotStateJson>()
-      .notNull(),
-    stateVersion: integer("state_version").notNull(),
-
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    id: text("id").notNull(),
+    label: text("label").notNull(),
+    pk: integer("pk").primaryKey({ autoIncrement: true }),
+    skillPk: integer("skill_pk").notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+    versionPk: integer("version_pk").notNull(),
   },
   (table) => ({
-    skillSnapshotSkillIndex: index("skill_snapshots_skill_idx").on(
-      table.skillId
+    skillVersionLabelIdUnique: uniqueIndex("skill_version_labels_id_unique").on(
+      table.id
     ),
-    skillSnapshotUnique: uniqueIndex("skill_snapshots_skill_number_unique").on(
-      table.skillId,
-      table.snapshotNumber
+    skillVersionLabelSkillVersionUnique: uniqueIndex(
+      "skill_version_labels_skill_version_unique"
+    ).on(table.skillPk, table.versionPk),
+    skillVersionLabelVersionIndex: index("skill_version_labels_version_idx").on(
+      table.versionPk
     ),
   })
 );
 
-export const skillsRelations = relations(skillsTable, ({ many }) => ({
-  resources: many(skillResourcesTable),
-  snapshots: many(skillSnapshotsTable),
+export const skillsRelations = relations(skillsTable, ({ many, one }) => ({
+  headVersion: one(skillVersionsTable, {
+    fields: [skillsTable.headVersionPk],
+    references: [skillVersionsTable.pk],
+  }),
+  labels: many(skillVersionLabelsTable),
+  versions: many(skillVersionsTable),
 }));
 
-export const skillResourcesRelations = relations(
-  skillResourcesTable,
-  ({ one }) => ({
+export const skillVersionsRelations = relations(
+  skillVersionsTable,
+  ({ many, one }) => ({
+    label: one(skillVersionLabelsTable, {
+      fields: [skillVersionsTable.pk],
+      references: [skillVersionLabelsTable.versionPk],
+    }),
+    resources: many(skillVersionResourcesTable),
     skill: one(skillsTable, {
-      fields: [skillResourcesTable.skillId],
-      references: [skillsTable.id],
+      fields: [skillVersionsTable.skillPk],
+      references: [skillsTable.pk],
     }),
   })
 );
 
-export const skillSnapshotsRelations = relations(
-  skillSnapshotsTable,
+export const skillVersionResourcesRelations = relations(
+  skillVersionResourcesTable,
+  ({ one }) => ({
+    version: one(skillVersionsTable, {
+      fields: [skillVersionResourcesTable.versionPk],
+      references: [skillVersionsTable.pk],
+    }),
+  })
+);
+
+export const skillVersionLabelsRelations = relations(
+  skillVersionLabelsTable,
   ({ one }) => ({
     skill: one(skillsTable, {
-      fields: [skillSnapshotsTable.skillId],
-      references: [skillsTable.id],
+      fields: [skillVersionLabelsTable.skillPk],
+      references: [skillsTable.pk],
+    }),
+    version: one(skillVersionsTable, {
+      fields: [skillVersionLabelsTable.versionPk],
+      references: [skillVersionsTable.pk],
     }),
   })
 );

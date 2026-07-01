@@ -3,9 +3,9 @@ import type {
   ResourceManifestItem,
 } from "@skillpack/contracts/skills/responses";
 
-import { skillFilePath } from "./resource-drafts";
 import { getSkillResourceKind } from "./resource-kind";
 
+export const skillFilePath = "SKILL.md";
 export const skillFileMediaType = "text/markdown";
 
 export type SkillFile = Pick<
@@ -46,6 +46,19 @@ export const getRawResourceUrl = (
 
   const searchParams = new URLSearchParams({ path });
   return `/api/v1/skills/${skillName}/resources/raw?${searchParams}`;
+};
+
+export const getRawSkillVersionResourceUrl = (
+  skillName: string | undefined,
+  versionId: string | undefined,
+  path: string | undefined
+) => {
+  if (!(skillName && versionId && path && path !== skillFilePath)) {
+    return;
+  }
+
+  const searchParams = new URLSearchParams({ path });
+  return `/api/v1/skills/${skillName}/versions/${versionId}/resources/raw?${searchParams}`;
 };
 
 export const isEditableTextFile = (file: SkillFile) => {

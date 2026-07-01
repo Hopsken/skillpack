@@ -1,12 +1,12 @@
 import {
   forkSkillResponseSchema,
   resolvedSkillSchema,
-  restoreSnapshotResponseSchema,
   skillListItemSchema,
   skillListResponseSchema,
   skillPatchedResponseSchema,
   skillResourceResponseSchema,
-  skillSnapshotListResponseSchema,
+  skillVersionHistoryResponseSchema,
+  skillVersionLabelResponseSchema,
 } from "@skillpack/contracts/skills/responses";
 
 import type {
@@ -14,9 +14,9 @@ import type {
   PatchSkillResult,
   ReadSkillTextFileResult,
   ResolvedSkillResult,
-  RestoreSkillSnapshotResult,
   SkillOrigin,
-  SkillSnapshotRow,
+  SkillVersionHistoryResult,
+  SkillVersionLabelResult,
   SkillWithCurrentState,
 } from "./types";
 
@@ -95,21 +95,6 @@ export const presentForkedSkills = (result: ForkSkillServiceResult) =>
     }),
   });
 
-export const presentSkillSnapshots = (
-  skill: { name: string },
-  snapshots: SkillSnapshotRow[]
-) =>
-  skillSnapshotListResponseSchema.parse({
-    name: skill.name,
-    snapshots: snapshots.map((snapshot) => ({
-      createdAt: snapshot.createdAt.toISOString(),
-      label: snapshot.label,
-      name: snapshot.stateJson.name,
-      note: snapshot.note,
-      snapshotNumber: snapshot.snapshotNumber,
-    })),
-  });
-
 export const presentSkillFile = (result: ReadSkillTextFileResult) =>
   skillResourceResponseSchema.parse({
     content: result.content,
@@ -122,5 +107,14 @@ export const presentSkillFile = (result: ReadSkillTextFileResult) =>
 export const presentPatchedSkill = (result: PatchSkillResult) =>
   skillPatchedResponseSchema.parse(result);
 
-export const presentRestoredSkill = (result: RestoreSkillSnapshotResult) =>
-  restoreSnapshotResponseSchema.parse(result);
+export const presentSkillVersionHistory = (result: SkillVersionHistoryResult) =>
+  skillVersionHistoryResponseSchema.parse({
+    versions: result.versions.map((version) => ({
+      createdAt: version.createdAt.toISOString(),
+      id: version.id,
+      label: version.label,
+    })),
+  });
+
+export const presentSkillVersionLabel = (result: SkillVersionLabelResult) =>
+  skillVersionLabelResponseSchema.parse(result);

@@ -42,13 +42,15 @@ const resolvedSkill = (): ResolvedSkillResult => {
       compatibility: null,
       createdAt,
       description: "Demo description",
-      id: 42,
+      headVersionPk: 10,
       license: null,
       metadata: null,
       name: "demo",
       origin: null,
       ownerUserId: "user-oauth",
+      pk: 42,
       updatedAt: createdAt,
+      versionId: "version-current",
     },
   };
 };
@@ -103,7 +105,7 @@ describe("app OAuth bearer skills read auth", () => {
       bearer_methods_supported: ["header"],
       resource: "http://localhost",
       resource_name: "Skillpack Managed Skills",
-      scopes_supported: ["skills:read"],
+      scopes_supported: ["skills:read", "skills:write"],
     });
   });
 
@@ -211,6 +213,30 @@ describe("app OAuth bearer skills read auth", () => {
     expect(seenUserIds).toStrictEqual(["user-oauth"]);
   });
 
+  it("rejects bearer tokens on Skill Version History routes", async () => {
+    const listVersionHistory = vi.fn<SkillService["listVersionHistory"]>();
+    const getSkillReadBearerUserId = vi
+      .fn<VerifySkillReadBearerUserId>()
+      .mockResolvedValue("user-oauth");
+    const app = createApp({
+      getSkillReadBearerUserId,
+      setSkillServicesForUser: setSkillServicesForUser(
+        { listVersionHistory },
+        []
+      ),
+    });
+
+    const response = await app.request(
+      "/api/v1/skills/demo/versions",
+      { headers: { authorization: "Bearer access-token" } },
+      testEnv
+    );
+
+    expect(response.status).toBe(401);
+    expect(getSkillReadBearerUserId).not.toHaveBeenCalled();
+    expect(listVersionHistory).not.toHaveBeenCalled();
+  });
+
   it("rejects bearer tokens on skills write routes", async () => {
     const getSkillReadBearerUserId = vi
       .fn<VerifySkillReadBearerUserId>()
@@ -262,7 +288,7 @@ describe("app MCP auth", () => {
       bearer_methods_supported: ["header"],
       resource: "http://localhost/mcp",
       resource_name: "Skillpack MCP Server",
-      scopes_supported: ["offline_access", "skills:read"],
+      scopes_supported: ["offline_access", "skills:read", "skills:write"],
     });
   });
 
@@ -284,7 +310,7 @@ describe("app MCP auth", () => {
 
     expect(response.status).toBe(401);
     expect(response.headers.get("www-authenticate")).toBe(
-      'Bearer realm="mcp", resource_metadata="http://localhost/.well-known/oauth-protected-resource/mcp", scope="openid offline_access skills:read"'
+      'Bearer realm="mcp", resource_metadata="http://localhost/.well-known/oauth-protected-resource/mcp", scope="openid offline_access skills:read skills:write"'
     );
     await expect(response.json()).resolves.toStrictEqual({
       error: "Unauthorized",
@@ -562,16 +588,41 @@ describe("app MCP auth", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
+    const body = (await response.json()) as {
+      result: {
+        tools: {
+          inputSchema: { properties: Record<string, unknown> };
+          name: string;
+        }[];
+      };
+    };
+    const updateSkillTool = body.result.tools.find(
+      (tool) => tool.name === "update_skill"
+    );
+
+    expect(body).toMatchObject({
       id: 2,
       jsonrpc: "2.0",
       result: {
         tools: [
           expect.objectContaining({ name: "list_skills" }),
+          expect.objectContaining({ name: "create_skill" }),
+          expect.objectContaining({ name: "update_skill" }),
           expect.objectContaining({ name: "read_skill" }),
         ],
       },
     });
+    const toolNames = body.result.tools.map((tool) => tool.name);
+    toolNames.sort();
+    expect(toolNames).toStrictEqual([
+      "create_skill",
+      "list_skills",
+      "read_skill",
+      "update_skill",
+    ]);
+    expect(updateSkillTool?.inputSchema.properties).not.toHaveProperty(
+      "content"
+    );
   });
 
   it("returns the authenticated Skillpack catalog from list_skills", async () => {
@@ -583,12 +634,13 @@ describe("app MCP auth", () => {
           compatibility: null,
           createdAt,
           description: "Demo skill",
-          id: 42,
+          headVersionPk: 10,
           license: null,
           metadata: null,
           name: "demo-skill",
           origin: null,
           ownerUserId: "user-oauth",
+          pk: 42,
           updatedAt: createdAt,
         },
       },
@@ -653,21 +705,21 @@ describe("app MCP auth", () => {
         resources: [
           {
             createdAt,
-            id: 1,
             mediaType: "text/markdown",
             path: "SKILL.md",
             sha256: "skill-md",
             size: 48,
-            skillId: 42,
+            skillPk: 42,
+            versionPk: 10,
           },
           {
             createdAt,
-            id: 2,
             mediaType: "text/markdown",
             path: "references/demo.md",
             sha256: "abc123",
             size: 12,
-            skillId: 42,
+            skillPk: 42,
+            versionPk: 10,
           },
         ],
         skill: {
@@ -675,13 +727,15 @@ describe("app MCP auth", () => {
           compatibility: null,
           createdAt,
           description: "Demo skill",
-          id: 42,
+          headVersionPk: 10,
           license: null,
           metadata: null,
           name: "demo-skill",
           origin: null,
           ownerUserId: "user-oauth",
+          pk: 42,
           updatedAt: createdAt,
+          versionId: "version-current",
         },
       });
     const readSkillTextFileByName = vi
@@ -862,12 +916,13 @@ describe("app MCP auth", () => {
           compatibility: null,
           createdAt,
           description: "Demo skill",
-          id: 42,
+          headVersionPk: 10,
           license: null,
           metadata: null,
           name: "demo-skill",
           origin: null,
           ownerUserId: "user-oauth",
+          pk: 42,
           updatedAt: createdAt,
         },
       },
@@ -879,21 +934,21 @@ describe("app MCP auth", () => {
         resources: [
           {
             createdAt,
-            id: 1,
             mediaType: "text/markdown",
             path: "SKILL.md",
             sha256: "skill-md",
             size: 48,
-            skillId: 42,
+            skillPk: 42,
+            versionPk: 10,
           },
           {
             createdAt,
-            id: 2,
             mediaType: "text/markdown",
             path: "references/demo.md",
             sha256: "abc123",
             size: 12,
-            skillId: 42,
+            skillPk: 42,
+            versionPk: 10,
           },
         ],
       });
@@ -1080,12 +1135,13 @@ describe("app MCP auth", () => {
           compatibility: null,
           createdAt,
           description: "Demo skill",
-          id: 42,
+          headVersionPk: 10,
           license: null,
           metadata: null,
           name: "demo-skill",
           origin: null,
           ownerUserId: "user-oauth",
+          pk: 42,
           updatedAt: createdAt,
         },
       },
