@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { skillsRoute } from "./route";
 import type { SkillService } from "./service";
-import type { ResolvedSkillResult, SkillSnapshotRow } from "./types";
+import type { ResolvedSkillResult } from "./types";
 
 const createApp = (skillService: Partial<SkillService>) =>
   new Hono<AppBindings>()
@@ -17,8 +17,8 @@ const createApp = (skillService: Partial<SkillService>) =>
 const createdAt = new Date("2026-05-25T12:00:00.000Z");
 
 const resolvedSkill = (input?: {
-  id?: number;
   name?: string;
+  pk?: number;
 }): ResolvedSkillResult => ({
   content: "# Demo\n",
   resources: [],
@@ -27,38 +27,16 @@ const resolvedSkill = (input?: {
     compatibility: null,
     createdAt,
     description: "Demo description",
-    id: input?.id ?? 1,
+    headVersionPk: 10,
     license: null,
     metadata: null,
     name: input?.name ?? "demo",
     origin: null,
     ownerUserId: "user-a",
+    pk: input?.pk ?? 1,
     updatedAt: createdAt,
+    versionId: "version-current",
   },
-});
-
-const skillSnapshot = (input?: {
-  label?: string | null;
-  note?: string | null;
-  snapshotNumber?: number;
-}): SkillSnapshotRow => ({
-  createdAt,
-  id: 7,
-  label: input?.label ?? null,
-  note: input?.note ?? null,
-  skillId: 123,
-  snapshotNumber: input?.snapshotNumber ?? 1,
-  stateJson: {
-    allowedTools: "Read",
-    compatibility: null,
-    description: "Demo description",
-    license: null,
-    metadata: null,
-    name: "demo",
-    origin: null,
-    resources: [],
-  },
-  stateVersion: 1,
 });
 
 describe("skillsRoute owner scope", () => {
@@ -66,7 +44,7 @@ describe("skillsRoute owner scope", () => {
     const listSkills = vi
       .fn<SkillService["listSkills"]>()
       .mockResolvedValue([
-        { skill: resolvedSkill({ id: 123, name: "demo" }).skill },
+        { skill: resolvedSkill({ name: "demo", pk: 123 }).skill },
       ] as Awaited<ReturnType<SkillService["listSkills"]>>);
     const app = createApp({ listSkills });
 
@@ -115,38 +93,114 @@ describe("skillsRoute owner scope", () => {
     expect(resolveSkillByName).not.toHaveBeenCalled();
   });
 
-  it("creates snapshots by Skill Name without exposing internal Skill IDs", async () => {
-    const createSkillSnapshotByName = vi
-      .fn<SkillService["createSkillSnapshotByName"]>()
-      .mockResolvedValue(
-        skillSnapshot({
-          label: "Before editing resources",
-          note: "Captured before changing attached files.",
-          snapshotNumber: 3,
-        })
-      );
-    const app = createApp({ createSkillSnapshotByName });
+  it("returns 404 for removed snapshot routes", async () => {
+    const app = createApp({});
 
-    const response = await app.request("/skills/demo/snapshots", {
-      body: JSON.stringify({
-        label: "Before editing resources",
-        note: "Captured before changing attached files.",
-      }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    });
+    const response = await app.request("/skills/demo/snapshots");
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(404);
+  });
+
+  it("lists Skill Version History by Skill Name", async () => {
+    const listVersionHistory = vi
+      .fn<SkillService["listVersionHistory"]>()
+      .mockResolvedValue({
+        versions: [
+          {
+            createdAt: new Date("2026-05-25T12:01:00.000Z"),
+            id: "version-two",
+            label: "Known good",
+          },
+          {
+            createdAt,
+            id: "version-one",
+            label: null,
+          },
+        ],
+      });
+    const app = createApp({ listVersionHistory });
+
+    const response = await app.request("/skills/demo/versions");
+
+    expect(response.status).toBe(200);
     await expect(response.json()).resolves.toStrictEqual({
-      createdAt: "2026-05-25T12:00:00.000Z",
-      label: "Before editing resources",
-      name: "demo",
-      note: "Captured before changing attached files.",
-      snapshotNumber: 3,
+      versions: [
+        {
+          createdAt: "2026-05-25T12:01:00.000Z",
+          id: "version-two",
+          label: "Known good",
+        },
+        {
+          createdAt: "2026-05-25T12:00:00.000Z",
+          id: "version-one",
+          label: null,
+        },
+      ],
     });
-    expect(createSkillSnapshotByName).toHaveBeenCalledWith("demo", {
-      label: "Before editing resources",
-      note: "Captured before changing attached files.",
+    expect(listVersionHistory).toHaveBeenCalledWith("demo");
+  });
+
+  it("sets a Skill Version Label", async () => {
+    const upsertVersionLabel = vi
+      .fn<SkillService["upsertVersionLabel"]>()
+      .mockResolvedValue({
+        id: "label-one",
+        label: "Known good",
+        versionId: "version-one",
+      });
+    const app = createApp({ upsertVersionLabel });
+
+    const response = await app.request("/skills/demo/versions/current/label", {
+      body: JSON.stringify({ label: " Known good " }),
+      headers: { "content-type": "application/json" },
+      method: "PUT",
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toStrictEqual({
+      id: "label-one",
+      label: "Known good",
+      versionId: "version-one",
+    });
+    expect(upsertVersionLabel).toHaveBeenCalledWith({
+      label: "Known good",
+      skillName: "demo",
+      versionId: "current",
+    });
+  });
+
+  it("rejects empty Skill Version Labels", async () => {
+    const upsertVersionLabel = vi.fn<SkillService["upsertVersionLabel"]>();
+    const app = createApp({ upsertVersionLabel });
+
+    const response = await app.request("/skills/demo/versions/current/label", {
+      body: JSON.stringify({ label: "   " }),
+      headers: { "content-type": "application/json" },
+      method: "PUT",
+    });
+
+    expect(response.status).toBe(400);
+    expect(upsertVersionLabel).not.toHaveBeenCalled();
+  });
+
+  it("restores a historical Skill Version", async () => {
+    const restoreVersion = vi
+      .fn<SkillService["restoreVersion"]>()
+      .mockResolvedValue(resolvedSkill({ name: "demo" }));
+    const app = createApp({ restoreVersion });
+
+    const response = await app.request(
+      "/skills/demo/versions/version-one/restore",
+      {
+        method: "POST",
+      }
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ name: "demo" });
+    expect(restoreVersion).toHaveBeenCalledWith({
+      skillName: "demo",
+      versionId: "version-one",
     });
   });
 

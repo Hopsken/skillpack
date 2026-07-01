@@ -1,11 +1,5 @@
-import type {
-  CreateSkillSnapshotInput,
-  PatchSkillInput,
-} from "@skillpack/contracts/skills/requests";
-import type {
-  ResolvedSkill,
-  SkillSnapshotItem,
-} from "@skillpack/contracts/skills/responses";
+import type { PatchSkillInput } from "@skillpack/contracts/skills/requests";
+import type { ResolvedSkill } from "@skillpack/contracts/skills/responses";
 import { skillNameSchema } from "@skillpack/core/primitives";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon, HistoryIcon } from "lucide-react";
@@ -17,14 +11,13 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 
 import { useSkillList } from "../api/use-skill-list";
 import { SkillDetailFilesPanel } from "../components/skill-detail-files-panel";
-import { SkillSnapshotsSheet } from "../components/skill-snapshots-sheet";
+import { SkillVersionHistoryDialog } from "../components/skill-version-history-dialog";
 import { getChangeCount } from "../lib/resource-draft-session";
 import {
   buildResourcePatchInput,
   getTextResourceMediaType,
-  skillFilePath,
 } from "../lib/resource-drafts";
-import { getSkillFiles, getTextSize } from "../lib/skill-files";
+import { getSkillFiles, getTextSize, skillFilePath } from "../lib/skill-files";
 import {
   getSkillResourceEditSession,
   useSkillResourceEditStore,
@@ -32,13 +25,9 @@ import {
 
 interface SkillDetailViewProps {
   skill: ResolvedSkill | undefined;
-  snapshots: SkillSnapshotItem[];
-  snapshotsStatus: string;
   selectedPath: string | undefined;
   onPathChange: (path: string | undefined) => void;
-  onRestoreSnapshot: (snapshotNumber: number) => Promise<void>;
   onSaveChanges: (input: PatchSkillInput) => Promise<void>;
-  onTakeSnapshot: (input: CreateSkillSnapshotInput) => Promise<void>;
 }
 
 const getSaveStatusLabel = (
@@ -115,7 +104,6 @@ interface SkillHeaderActionsProps {
   statusLabel: string;
   onBeginEdit: () => void;
   onCancelEdit: () => void;
-  onOpenSnapshots: () => void;
   onSaveChanges: () => void;
 }
 
@@ -126,7 +114,6 @@ const SkillHeaderActions = ({
   statusLabel,
   onBeginEdit,
   onCancelEdit,
-  onOpenSnapshots,
   onSaveChanges,
 }: SkillHeaderActionsProps) => {
   if (isEditing) {
@@ -158,35 +145,19 @@ const SkillHeaderActions = ({
   }
 
   return (
-    <>
-      <Button type="button" size="sm" onClick={onBeginEdit}>
-        Edit
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="icon-sm"
-        aria-label="View snapshots"
-        title="View snapshots"
-        onClick={onOpenSnapshots}
-      >
-        <HistoryIcon />
-      </Button>
-    </>
+    <Button type="button" size="sm" onClick={onBeginEdit}>
+      Edit
+    </Button>
   );
 };
 
 export const SkillDetailView = ({
   skill,
-  snapshots,
-  snapshotsStatus,
   selectedPath,
   onPathChange,
-  onRestoreSnapshot,
   onSaveChanges,
-  onTakeSnapshot,
 }: SkillDetailViewProps) => {
-  const [snapshotSheetOpen, setSnapshotSheetOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const skillList = useSkillList();
   const {
     addedPaths,
@@ -360,6 +331,16 @@ export const SkillDetailView = ({
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 md:gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="Skill Version History"
+              disabled={!skill}
+              onClick={() => setHistoryOpen(true)}
+            >
+              <HistoryIcon />
+            </Button>
             <SkillHeaderActions
               canSaveChanges={canSaveChanges}
               isEditing={isEditing}
@@ -367,7 +348,6 @@ export const SkillDetailView = ({
               statusLabel={statusLabel}
               onBeginEdit={beginEdit}
               onCancelEdit={cancelEdit}
-              onOpenSnapshots={() => setSnapshotSheetOpen(true)}
               onSaveChanges={() => {
                 void saveChanges();
               }}
@@ -395,16 +375,10 @@ export const SkillDetailView = ({
           onSelectPath={onPathChange}
         />
       </div>
-
-      <SkillSnapshotsSheet
-        open={snapshotSheetOpen}
-        skill={skill}
-        snapshots={snapshots}
-        snapshotsStatus={snapshotsStatus}
-        canTakeSnapshot={Boolean(skill) && !hasPendingChanges}
-        onOpenChange={setSnapshotSheetOpen}
-        onRestoreSnapshot={onRestoreSnapshot}
-        onTakeSnapshot={onTakeSnapshot}
+      <SkillVersionHistoryDialog
+        open={historyOpen}
+        skillName={skill?.name}
+        onOpenChange={setHistoryOpen}
       />
     </>
   );

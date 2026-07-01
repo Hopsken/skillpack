@@ -13,20 +13,19 @@ import type {
 } from "@skillpack/contracts/origins/responses";
 import type {
   CreateSkillInput,
-  CreateSkillSnapshotInput,
   ForkSkillInput,
   PatchSkillInput,
+  SkillVersionLabelInput,
 } from "@skillpack/contracts/skills/requests";
 import {
   forkSkillResponseSchema,
   resolvedSkillSchema,
-  restoreSnapshotResponseSchema,
   skillListItemSchema,
   skillListResponseSchema,
   skillPatchedResponseSchema,
   skillResourceResponseSchema,
-  skillSnapshotItemSchema,
-  skillSnapshotListResponseSchema,
+  skillVersionHistoryResponseSchema,
+  skillVersionLabelResponseSchema,
 } from "@skillpack/contracts/skills/responses";
 import type {
   ResolvedSkill,
@@ -35,7 +34,8 @@ import type {
   SkillListResponse,
   SkillPatchedResponse,
   SkillResourceResponse,
-  SkillSnapshotListResponse,
+  SkillVersionHistoryResponse,
+  SkillVersionLabelResponse,
 } from "@skillpack/contracts/skills/responses";
 
 import { api } from "@/shared/api/client";
@@ -52,11 +52,45 @@ export const fetchSkillDetail = async (
   return resolvedSkillSchema.parse(data);
 };
 
-export const fetchSkillSnapshots = async (
+export const fetchSkillVersionHistory = async (
   skillName: string
-): Promise<SkillSnapshotListResponse> => {
-  const data = await api.get(`skills/${skillName}/snapshots`).json();
-  return skillSnapshotListResponseSchema.parse(data);
+): Promise<SkillVersionHistoryResponse> => {
+  const data = await api.get(`skills/${skillName}/versions`).json();
+  return skillVersionHistoryResponseSchema.parse(data);
+};
+
+export const fetchSkillVersion = async (
+  skillName: string,
+  versionId: string
+): Promise<ResolvedSkill> => {
+  const data = await api
+    .get(`skills/${skillName}/versions/${versionId}`)
+    .json();
+  return resolvedSkillSchema.parse(data);
+};
+
+export const fetchSkillVersionFile = async (
+  skillName: string,
+  versionId: string,
+  path: string
+): Promise<SkillResourceResponse> => {
+  const response = await api.get(
+    `skills/${skillName}/versions/${versionId}/resources/raw`,
+    { searchParams: { path } }
+  );
+  const content = await response.text();
+  const size = Number(
+    response.headers.get("content-length") ??
+      new TextEncoder().encode(content).length
+  );
+
+  return skillResourceResponseSchema.parse({
+    content,
+    mediaType: response.headers.get("content-type") ?? "text/plain",
+    path,
+    sha256: response.headers.get("x-skill-resource-sha256") ?? "unknown",
+    size,
+  });
 };
 
 export const fetchSkillFile = async (
@@ -102,29 +136,37 @@ export const patchManagedSkill = async (
   return skillPatchedResponseSchema.parse(data);
 };
 
-export const createManagedSkillSnapshot = async (
-  skillName: string,
-  input: CreateSkillSnapshotInput
-) => {
-  const data = await api
-    .post(`skills/${skillName}/snapshots`, { json: input })
-    .json();
-  return skillSnapshotItemSchema.parse(data);
-};
-
-export const restoreManagedSkillSnapshot = async (
-  skillName: string,
-  snapshotNumber: number
-) => {
-  const data = await api
-    .post(`skills/${skillName}/snapshots/${snapshotNumber}/restore`)
-    .json();
-  return restoreSnapshotResponseSchema.parse(data);
-};
-
 export const forkManagedSkill = async (
   input: ForkSkillInput
 ): Promise<ForkSkillResponse> => {
   const data = await api.post("skills/fork", { json: input }).json();
   return forkSkillResponseSchema.parse(data);
+};
+
+export const upsertSkillVersionLabel = async (
+  skillName: string,
+  versionId: string,
+  input: SkillVersionLabelInput
+): Promise<SkillVersionLabelResponse> => {
+  const data = await api
+    .put(`skills/${skillName}/versions/${versionId}/label`, { json: input })
+    .json();
+  return skillVersionLabelResponseSchema.parse(data);
+};
+
+export const deleteSkillVersionLabel = async (
+  skillName: string,
+  versionId: string
+): Promise<void> => {
+  await api.delete(`skills/${skillName}/versions/${versionId}/label`);
+};
+
+export const restoreSkillVersion = async (
+  skillName: string,
+  versionId: string
+): Promise<ResolvedSkill> => {
+  const data = await api
+    .post(`skills/${skillName}/versions/${versionId}/restore`)
+    .json();
+  return resolvedSkillSchema.parse(data);
 };
