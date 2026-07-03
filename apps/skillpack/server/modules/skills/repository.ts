@@ -1,79 +1,72 @@
+import { skillContentPath } from "@server/constants";
 import {
   skillsTable,
   skillVersionLabelsTable,
-  skillVersionResourcesTable,
   skillVersionsTable,
 } from "@server/db/schema";
-import type { SkillFileMetadata } from "@server/shared/skill-file";
+import { markdownMediaType } from "@server/shared/text-resource";
 import type { Database } from "@server/types";
-import type { SkillOriginJson } from "@skillpack/contracts/skills/state";
 import { and, desc, eq as sqlEq, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 
 import { skillErrors } from "./errors";
 import { createSkillVersionId, createSkillVersionLabelId } from "./ids";
 import type {
-  SkillIdentityRow,
   SkillRow,
+  SkillVersionFrontmatter,
   SkillVersionLabelResult,
-  SkillVersionRow,
+  SkillWithCurrentResource,
+  SkillWithCurrentResources,
   SkillWithCurrentState,
   StoredResourceObject,
 } from "./types";
-
-interface SkillOriginInput {
-  kind: "github";
-  metadata: Record<string, unknown> | null;
-  url: string;
-}
+import type { SkillFileStateInput, SkillOriginInput } from "./version-state";
+import {
+  findManifestResource,
+  findResourceInCurrentVersion,
+  toOriginJson,
+  toResourceRows,
+  toSkillFileResource,
+  toSkillRow,
+  toSkillWithCurrentResources,
+  toStoredResource,
+  toVersionFrontmatter,
+  versionStateSelection,
+  versionWithManifestSelection,
+} from "./version-state";
 
 interface CreateSkillInput {
   name: string;
   origin?: SkillOriginInput;
   resources: StoredResourceObject[];
-  skillFileMetadata: Omit<SkillFileMetadata, "name">;
+  skillFile: StoredResourceObject;
+  skillFileMetadata: SkillFileStateInput;
 }
 
 interface UpdateSkillStateInput {
   name: string;
   origin?: SkillOriginInput | null;
   resources: StoredResourceObject[];
-  skillFileMetadata: Omit<SkillFileMetadata, "name">;
+  skillFile: StoredResourceObject;
+  skillFileMetadata: SkillFileStateInput;
   skillPk: number;
 }
 
-const currentVersionSelector = "current";
+interface AppendSkillVersionInput {
+  description: string;
+  frontmatter: SkillVersionFrontmatter | null;
+  origin?: SkillOriginInput | null;
+  resources: StoredResourceObject[];
+  skillFile: StoredResourceObject;
+  skillName: string;
+}
 
+const currentVersionSelector = "current";
 const isUniqueConstraintError = (error: unknown): error is Error =>
   error instanceof Error && error.message.includes("UNIQUE constraint failed");
 
 const isUniqueSkillNameError = (error: unknown) =>
   isUniqueConstraintError(error) && error.message.includes("skills");
-
-const toOriginJson = (
-  origin?: SkillOriginInput | null
-): SkillOriginJson | null =>
-  origin
-    ? {
-        kind: origin.kind,
-        metadata: origin.metadata,
-        url: origin.url,
-      }
-    : null;
-
-const toSkillRow = (
-  skill: SkillIdentityRow,
-  version: SkillVersionRow
-): SkillRow => ({
-  ...skill,
-  allowedTools: version.allowedTools,
-  compatibility: version.compatibility,
-  description: version.description,
-  headVersionPk: version.pk,
-  license: version.license,
-  metadata: version.metadata,
-  origin: version.origin,
-  versionId: version.id,
-});
 
 export class SkillRepository {
   private readonly db: Database;
@@ -86,8 +79,25 @@ export class SkillRepository {
   }
 
   async listSkills(): Promise<SkillWithCurrentState[]> {
+    const rows = await this.listCurrentVersionStates();
+
+    return rows.map(({ skill, version }) => ({
+      skill: toSkillRow(skill, version),
+    }));
+  }
+
+  async listSkillsWithCurrentSkillFile(): Promise<SkillWithCurrentResource[]> {
+    const rows = await this.listCurrentVersionStates();
+
+    return rows.map(({ skill, version }) => ({
+      resource: toSkillFileResource(skill, version),
+      skill: toSkillRow(skill, version),
+    }));
+  }
+
+  async listSkillsWithCurrentResources(): Promise<SkillWithCurrentResources[]> {
     const rows = await this.db
-      .select({ skill: skillsTable, version: skillVersionsTable })
+      .select({ skill: skillsTable, version: versionWithManifestSelection })
       .from(skillsTable)
       .innerJoin(
         skillVersionsTable,
@@ -97,89 +107,58 @@ export class SkillRepository {
       .orderBy(desc(skillsTable.updatedAt));
 
     return rows.map(({ skill, version }) => ({
+      resources: [
+        toSkillFileResource(skill, version),
+        ...toResourceRows(version.resourceManifest, skill.pk, version.pk),
+      ],
       skill: toSkillRow(skill, version),
     }));
   }
 
   async findSkillByPk(skillPk: number) {
-    const [row] = await this.db
-      .select({ skill: skillsTable, version: skillVersionsTable })
-      .from(skillsTable)
-      .innerJoin(
-        skillVersionsTable,
-        sqlEq(skillsTable.headVersionPk, skillVersionsTable.pk)
-      )
-      .where(
-        and(
-          sqlEq(skillsTable.pk, skillPk),
-          sqlEq(skillsTable.ownerUserId, this.ownerUserId)
-        )
-      )
-      .limit(1);
+    const row = await this.findCurrentVersionState(
+      sqlEq(skillsTable.pk, skillPk)
+    );
 
     return row ? toSkillRow(row.skill, row.version) : undefined;
   }
 
   async findSkillByName(name: string) {
-    const [row] = await this.db
-      .select({ skill: skillsTable, version: skillVersionsTable })
-      .from(skillsTable)
-      .innerJoin(
-        skillVersionsTable,
-        sqlEq(skillsTable.headVersionPk, skillVersionsTable.pk)
-      )
-      .where(
-        and(
-          sqlEq(skillsTable.ownerUserId, this.ownerUserId),
-          sqlEq(skillsTable.name, name)
-        )
-      )
-      .limit(1);
+    const row = await this.findCurrentVersionState(
+      sqlEq(skillsTable.name, name)
+    );
 
     return row ? toSkillRow(row.skill, row.version) : undefined;
   }
 
-  async listResourcesBySkillPk(skillPk: number) {
-    const skill = await this.findSkillByPk(skillPk);
-
-    if (!skill) {
-      return [];
-    }
-
-    return await this.listResourcesByVersionPk(skill.headVersionPk, skill.pk);
-  }
-
-  async listResourcesByVersionPk(versionPk: number, skillPk: number) {
-    const resources = await this.db.query.skillVersionResourcesTable.findMany({
-      where: (resource, { eq }) => eq(resource.versionPk, versionPk),
-    });
-
-    return resources.map((resource) => ({ ...resource, skillPk }));
-  }
-
-  async findResourceByPath(skillPk: number, path: string) {
-    const skill = await this.findSkillByPk(skillPk);
-
-    if (!skill) {
-      return;
-    }
-
-    const resource = await this.findVersionResourceByPath(
-      skill.headVersionPk,
-      path
+  async findSkillWithCurrentResourcesByPk(skillPk: number) {
+    const row = await this.findCurrentVersionWithManifest(
+      sqlEq(skillsTable.pk, skillPk)
     );
 
-    return resource ? { ...resource, skillPk } : undefined;
+    return row ? toSkillWithCurrentResources(row) : undefined;
   }
 
-  private async findVersionResourceByPath(versionPk: number, path: string) {
-    return await this.db.query.skillVersionResourcesTable.findFirst({
-      where: (resources, operators) =>
-        operators.and(
-          operators.eq(resources.versionPk, versionPk),
-          operators.eq(resources.path, path)
-        ),
-    });
+  async findSkillWithCurrentResourcesByName(name: string) {
+    const row = await this.findCurrentVersionWithManifest(
+      sqlEq(skillsTable.name, name)
+    );
+
+    return row ? toSkillWithCurrentResources(row) : undefined;
+  }
+
+  async listResourcesBySkillPk(skillPk: number) {
+    const state = await this.findSkillWithCurrentResourcesByPk(skillPk);
+
+    return state ? state.resources : [];
+  }
+
+  async findResourceByName(skillName: string, path: string) {
+    const row = await this.findCurrentVersionWithManifest(
+      sqlEq(skillsTable.name, skillName)
+    );
+
+    return row ? findResourceInCurrentVersion(row, path) : undefined;
   }
 
   async createSkill(input: CreateSkillInput, now: Date) {
@@ -190,10 +169,15 @@ export class SkillRepository {
         createdAt: now,
         headVersionPk: 0,
         name: input.name,
+        origin: toOriginJson(input.origin),
         ownerUserId: this.ownerUserId,
         updatedAt: now,
       })
       .returning();
+    // D1 has no interactive transactions, so later batch statements cannot
+    // reference pks returned by earlier ones. Instead, resolve pks inside the
+    // atomic db.batch via subqueries on unique keys ((ownerUserId, name) for
+    // skills, versionId for versions).
     const createdSkillPk = sql<number>`(
       select ${skillsTable.pk}
       from ${skillsTable}
@@ -204,15 +188,14 @@ export class SkillRepository {
     const versionInsert = this.db
       .insert(skillVersionsTable)
       .values({
-        allowedTools: input.skillFileMetadata.allowedTools ?? null,
-        compatibility: input.skillFileMetadata.compatibility ?? null,
         createdAt: now,
         description: input.skillFileMetadata.description,
+        frontmatter: toVersionFrontmatter(input.skillFileMetadata),
         id: versionId,
-        license: input.skillFileMetadata.license ?? null,
-        metadata: input.skillFileMetadata.metadata ?? null,
-        origin: toOriginJson(input.origin),
         parentPk: null,
+        resourceManifest: input.resources.map(toStoredResource),
+        skillFileSha256: input.skillFile.sha256,
+        skillFileSize: input.skillFile.size,
         skillPk: createdSkillPk,
       })
       .returning();
@@ -226,18 +209,13 @@ export class SkillRepository {
       .update(skillsTable)
       .set({ headVersionPk: createdVersionPk })
       .where(sqlEq(skillsTable.pk, createdSkillPk));
-    const resourceInsert = this.getResourceInsert(
-      input.resources,
-      createdVersionPk,
-      now
-    );
 
     try {
-      const [skillRows, versionRows] = await this.db.batch(
-        resourceInsert
-          ? [skillInsert, versionInsert, resourceInsert, headUpdate]
-          : [skillInsert, versionInsert, headUpdate]
-      );
+      const [skillRows, versionRows] = await this.db.batch([
+        skillInsert,
+        versionInsert,
+        headUpdate,
+      ]);
       const [skillIdentity] = skillRows;
       const [version] = versionRows;
 
@@ -270,13 +248,11 @@ export class SkillRepository {
     return await this.appendSkillVersion(
       currentSkill,
       {
-        allowedTools: input.skillFileMetadata.allowedTools ?? null,
-        compatibility: input.skillFileMetadata.compatibility ?? null,
         description: input.skillFileMetadata.description,
-        license: input.skillFileMetadata.license ?? null,
-        metadata: input.skillFileMetadata.metadata ?? null,
-        origin: toOriginJson(input.origin),
+        frontmatter: toVersionFrontmatter(input.skillFileMetadata),
+        origin: input.origin,
         resources: input.resources,
+        skillFile: input.skillFile,
         skillName: input.name,
       },
       now
@@ -328,7 +304,11 @@ export class SkillRepository {
 
   async resolveVersionResources(skillName: string, versionId: string) {
     const { skill, version } = await this.resolveVersion(skillName, versionId);
-    const resources = await this.listResourcesByVersionPk(version.pk, skill.pk);
+    const resources = toResourceRows(
+      version.resourceManifest,
+      skill.pk,
+      version.pk
+    );
 
     return { resources, skill, version };
   }
@@ -339,9 +319,12 @@ export class SkillRepository {
     path: string
   ) {
     const { skill, version } = await this.resolveVersion(skillName, versionId);
-    const resource = await this.findVersionResourceByPath(version.pk, path);
 
-    return resource ? { ...resource, skillPk: skill.pk } : undefined;
+    if (path === skillContentPath) {
+      return toSkillFileResource(skill, version);
+    }
+
+    return findManifestResource(version, path, skill.pk);
   }
 
   async upsertVersionLabel(
@@ -426,44 +409,23 @@ export class SkillRepository {
       throw skillErrors.invalidVersionSelector();
     }
 
-    const resources = await this.listResourcesByVersionPk(
-      version.pk,
-      currentSkill.pk
-    );
-
     return await this.appendSkillVersion(
       currentSkill,
       {
-        allowedTools: version.allowedTools,
-        compatibility: version.compatibility,
         description: version.description,
-        license: version.license,
-        metadata: version.metadata,
-        origin: version.origin,
-        resources,
+        frontmatter: version.frontmatter,
+        origin: currentSkill.origin,
+        resources: version.resourceManifest,
+        skillFile: {
+          mediaType: markdownMediaType,
+          path: skillContentPath,
+          sha256: version.skillFileSha256,
+          size: version.skillFileSize,
+        },
         skillName: currentSkill.name,
       },
       now
     );
-  }
-
-  async listVersionResources(skillPk: number) {
-    const rows = await this.db
-      .select({
-        resource: skillVersionResourcesTable,
-        version: skillVersionsTable,
-      })
-      .from(skillVersionsTable)
-      .innerJoin(
-        skillVersionResourcesTable,
-        sqlEq(skillVersionsTable.pk, skillVersionResourcesTable.versionPk)
-      )
-      .where(sqlEq(skillVersionsTable.skillPk, skillPk));
-
-    return rows.map(({ resource, version }) => ({
-      ...resource,
-      skillPk: version.skillPk,
-    }));
   }
 
   async deleteSkillByPk(skillPk: number) {
@@ -473,23 +435,55 @@ export class SkillRepository {
       return;
     }
 
-    const versions = await this.db.query.skillVersionsTable.findMany({
-      where: (version, { eq }) => eq(version.skillPk, skillPk),
-    });
+    await this.db.batch([
+      this.db
+        .delete(skillVersionLabelsTable)
+        .where(sqlEq(skillVersionLabelsTable.skillPk, skillPk)),
+      this.db
+        .delete(skillVersionsTable)
+        .where(sqlEq(skillVersionsTable.skillPk, skillPk)),
+      this.db.delete(skillsTable).where(sqlEq(skillsTable.pk, skillPk)),
+    ]);
+  }
 
-    for (const version of versions) {
-      await this.db
-        .delete(skillVersionResourcesTable)
-        .where(sqlEq(skillVersionResourcesTable.versionPk, version.pk));
-    }
+  private async listCurrentVersionStates() {
+    return await this.db
+      .select({ skill: skillsTable, version: versionStateSelection })
+      .from(skillsTable)
+      .innerJoin(
+        skillVersionsTable,
+        sqlEq(skillsTable.headVersionPk, skillVersionsTable.pk)
+      )
+      .where(sqlEq(skillsTable.ownerUserId, this.ownerUserId))
+      .orderBy(desc(skillsTable.updatedAt));
+  }
 
-    await this.db
-      .delete(skillVersionLabelsTable)
-      .where(sqlEq(skillVersionLabelsTable.skillPk, skillPk));
-    await this.db
-      .delete(skillVersionsTable)
-      .where(sqlEq(skillVersionsTable.skillPk, skillPk));
-    await this.db.delete(skillsTable).where(sqlEq(skillsTable.pk, skillPk));
+  private async findCurrentVersionState(skillFilter: SQL) {
+    const [row] = await this.db
+      .select({ skill: skillsTable, version: versionStateSelection })
+      .from(skillsTable)
+      .innerJoin(
+        skillVersionsTable,
+        sqlEq(skillsTable.headVersionPk, skillVersionsTable.pk)
+      )
+      .where(and(sqlEq(skillsTable.ownerUserId, this.ownerUserId), skillFilter))
+      .limit(1);
+
+    return row;
+  }
+
+  private async findCurrentVersionWithManifest(skillFilter: SQL) {
+    const [row] = await this.db
+      .select({ skill: skillsTable, version: versionWithManifestSelection })
+      .from(skillsTable)
+      .innerJoin(
+        skillVersionsTable,
+        sqlEq(skillsTable.headVersionPk, skillVersionsTable.pk)
+      )
+      .where(and(sqlEq(skillsTable.ownerUserId, this.ownerUserId), skillFilter))
+      .limit(1);
+
+    return row;
   }
 
   private async findVersionByPk(versionPk: number) {
@@ -514,55 +508,28 @@ export class SkillRepository {
     });
   }
 
-  private getResourceInsert(
-    resources: StoredResourceObject[],
-    versionPk: number | ReturnType<typeof sql<number>>,
-    now: Date
-  ) {
-    return resources.length > 0
-      ? this.db.insert(skillVersionResourcesTable).values(
-          resources.map((resource) => ({
-            createdAt: now,
-            mediaType: resource.mediaType,
-            path: resource.path,
-            sha256: resource.sha256,
-            size: resource.size,
-            versionPk,
-          }))
-        )
-      : undefined;
-  }
-
   private async appendSkillVersion(
     currentSkill: SkillRow,
-    input: {
-      allowedTools: string | null;
-      compatibility: string | null;
-      description: string;
-      license: string | null;
-      metadata: Record<string, string> | null;
-      origin: SkillOriginJson | null;
-      resources: StoredResourceObject[];
-      skillName: string;
-    },
+    input: AppendSkillVersionInput,
     now: Date
   ) {
     const versionId = createSkillVersionId();
     const versionInsert = this.db
       .insert(skillVersionsTable)
       .values({
-        allowedTools: input.allowedTools,
-        compatibility: input.compatibility,
         createdAt: now,
         description: input.description,
+        frontmatter: input.frontmatter,
         id: versionId,
-        license: input.license,
-        metadata: input.metadata,
-        origin: input.origin,
         parentPk: currentSkill.headVersionPk,
+        resourceManifest: input.resources.map(toStoredResource),
+        skillFileSha256: input.skillFile.sha256,
+        skillFileSize: input.skillFile.size,
         skillPk: currentSkill.pk,
       })
       .returning();
+    // See createSkill: pk resolution via unique-key subquery keeps the batch
+    // atomic on D1.
     const createdVersionPk = sql<number>`(
       select ${skillVersionsTable.pk}
       from ${skillVersionsTable}
@@ -573,6 +540,7 @@ export class SkillRepository {
       .update(skillsTable)
       .set({
         name: input.skillName,
+        origin: toOriginJson(input.origin),
         updatedAt: now,
       })
       .where(sqlEq(skillsTable.pk, currentSkill.pk))
@@ -581,18 +549,13 @@ export class SkillRepository {
       .update(skillsTable)
       .set({ headVersionPk: createdVersionPk })
       .where(sqlEq(skillsTable.pk, currentSkill.pk));
-    const resourceInsert = this.getResourceInsert(
-      input.resources,
-      createdVersionPk,
-      now
-    );
 
     try {
-      const [versionRows, skillRows] = await this.db.batch(
-        resourceInsert
-          ? [versionInsert, skillUpdate, resourceInsert, headUpdate]
-          : [versionInsert, skillUpdate, headUpdate]
-      );
+      const [versionRows, skillRows] = await this.db.batch([
+        versionInsert,
+        skillUpdate,
+        headUpdate,
+      ]);
       const [version] = versionRows;
       const [skillIdentity] = skillRows;
 

@@ -17,7 +17,7 @@ Architecture Decision Records capture important architecture decisions, their co
 
 ## ADRs
 
-- [ADR-0001: Define Skillpack as a Skill-Centric Management Platform](0001-skillpack-north-star.md) — proposed
+- [ADR-0001: Define Skillpack as a Skill-Centric Management Platform](0001-skillpack-north-star.md) — superseded by ADR-0008 and ADR-0009 for storage/versioning implementation details
 - [ADR-0002: Separate Skill Origin Adapters from Managed Skill Lifecycle](0002-origin-adapters.md) — proposed
 - [ADR-0003: Adopt a Turborepo Monorepo Layout](0003-turborepo-monorepo-layout.md) — accepted
 - [ADR-0004: Make Skillpack an OAuth Provider for Skill Access](0004-skillpack-oauth-provider.md) — proposed
@@ -25,3 +25,4 @@ Architecture Decision Records capture important architecture decisions, their co
 - [ADR-0006: Use TanStack Router File-Based Routing for the SPA](0006-tanstack-router-file-based-routing.md) — accepted
 - [ADR-0007: Expose Skillpack Skill Delivery over MCP](0007-skillpack-mcp-delivery-endpoint.md) — accepted
 - [ADR-0008: Restructure Skill Storage as a Content-Addressed Version DAG](0008-skill-storage-version-dag.md) — proposed
+- [ADR-0009: Inline Skill Version Snapshots with First-Class SKILL.md Pointers](0009-inline-skill-version-snapshots.md) — accepted

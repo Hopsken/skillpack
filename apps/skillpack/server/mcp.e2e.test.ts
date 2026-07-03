@@ -1,7 +1,5 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-
 import { createDb } from "@server/db/client";
+import { applyFreshSchema } from "@server/test/migrations";
 import type { AppBindings } from "@server/types";
 import type { Context } from "hono";
 import { Miniflare } from "miniflare";
@@ -11,31 +9,6 @@ import { createApp } from "./app";
 import { SkillRepository } from "./modules/skills/repository";
 import { ResourceManifest } from "./modules/skills/resource-manifest";
 import { SkillService } from "./modules/skills/service";
-
-const splitSqlStatements = (sql: string) =>
-  sql
-    .split(";")
-    .map((statement) => statement.trim())
-    .filter(Boolean);
-
-const applyMigration = async (db: D1Database, path: string) => {
-  const sql = await readFile(path, "utf-8");
-
-  for (const statement of splitSqlStatements(sql)) {
-    await db.prepare(statement).run();
-  }
-};
-
-const applyFreshSchema = async (db: D1Database) => {
-  for (const migration of [
-    "0000_initial.sql",
-    "0001_better_auth_oauth_provider.sql",
-    "0002_api_keys.sql",
-    "0003_skill_version_history.sql",
-  ]) {
-    await applyMigration(db, join(process.cwd(), "migrations", migration));
-  }
-};
 
 const apiKeySecret = `skp_${"a".repeat(40)}`;
 
@@ -87,12 +60,10 @@ describe("MCP Skill authoring e2e", () => {
         .mockResolvedValue("user-e2e"),
       setSkillServicesForUser: (c: Context<AppBindings>, userId: string) => {
         c.set("currentUser", { canWrite: true, id: userId });
-        const repository = new SkillRepository(c.var.db, userId);
-        c.set("skillRepository", repository);
         c.set(
           "skillService",
           new SkillService(
-            repository,
+            new SkillRepository(c.var.db, userId),
             new ResourceManifest(c.var.skillStorage),
             c.var.originService
           )
@@ -148,38 +119,42 @@ describe("MCP Skill authoring e2e", () => {
     const readResponse = await app.request(
       "/mcp",
       mcpRequest("tools/call", {
-        arguments: { location: "skill://skillpack/mcp-demo" },
+        arguments: { name: "mcp-demo" },
         name: "read_skill",
       }),
       env
     );
     const resourceResponse = await app.request(
       "/mcp",
-      mcpRequest("tools/call", {
-        arguments: {
-          location: "skill://skillpack/mcp-demo",
-          path: "references/note.txt",
-        },
-        name: "read_skill",
+      mcpRequest("resources/read", {
+        uri: "skill://mcp-demo/references/note.txt",
       }),
       env
     );
 
-    await expect(readResponse.text()).resolves.toContain("Updated by MCP");
+    const readBody = await readResponse.text();
+
+    expect({
+      hasUpdatedBody: readBody.includes("Updated by MCP"),
+      hasUpdatedFrontmatter: readBody.includes(
+        "description: Updated demo skill"
+      ),
+    }).toStrictEqual({
+      hasUpdatedBody: true,
+      hasUpdatedFrontmatter: true,
+    });
     await expect(resourceResponse.text()).resolves.toContain("second note");
 
     const repository = new SkillRepository(createDb(env.DB), "user-e2e");
     const skill = await repository.findSkillByName("mcp-demo");
-    const versionResources = await repository.listVersionResources(
-      skill?.pk ?? 0
-    );
+    const versions = await repository.listVersions("mcp-demo");
 
     expect({
       description: skill?.description,
-      versionResourceCount: versionResources.length,
+      versionCount: versions.length,
     }).toStrictEqual({
       description: "Updated demo skill",
-      versionResourceCount: 4,
+      versionCount: 2,
     });
   });
 });

@@ -1,6 +1,7 @@
 import type {
+  SkillResourceManifestItemJson,
+  SkillVersionFrontmatterJson,
   skillVersionLabelsTable,
-  skillVersionResourcesTable,
   skillVersionsTable,
   skillsTable,
 } from "@server/db/schema";
@@ -14,23 +15,25 @@ import type { SkillOriginJson } from "@skillpack/contracts/skills/state";
 export type SkillIdentityRow = typeof skillsTable.$inferSelect;
 export type SkillVersionRow = typeof skillVersionsTable.$inferSelect;
 export type SkillVersionLabelRow = typeof skillVersionLabelsTable.$inferSelect;
-export type SkillResourceRow =
-  typeof skillVersionResourcesTable.$inferSelect & {
-    skillPk: number;
-  };
 export type SkillOrigin = SkillOriginJson;
+export type SkillVersionFrontmatter = SkillVersionFrontmatterJson;
+export type SkillResourceManifestItem = SkillResourceManifestItemJson;
+
+export interface SkillResourceRow extends SkillResourceManifestItem {
+  createdAt?: Date;
+  skillPk: number;
+  versionPk: number;
+}
 
 export type SkillRow = Omit<SkillIdentityRow, "headVersionPk"> &
-  Pick<
-    SkillVersionRow,
-    | "allowedTools"
-    | "compatibility"
-    | "description"
-    | "license"
-    | "metadata"
-    | "origin"
-  > & {
+  Pick<SkillVersionRow, "description" | "frontmatter"> & {
+    allowedTools: string | null;
+    compatibility: string | null;
     headVersionPk: number;
+    license: string | null;
+    metadata: Record<string, string> | null;
+    skillFileSha256: string;
+    skillFileSize: number;
     versionId: string;
   };
 
@@ -38,9 +41,22 @@ export interface SkillWithCurrentState {
   skill: SkillRow;
 }
 
+export interface SkillWithCurrentResource extends SkillWithCurrentState {
+  resource: SkillResourceRow;
+}
+
+export interface SkillWithCurrentResources extends SkillWithCurrentState {
+  resources: SkillResourceRow[];
+}
+
 export interface ResolvedSkillResult extends SkillWithCurrentState {
   content: string;
   resources: SkillResourceRow[];
+}
+
+export interface SkillActivationResult extends SkillWithCurrentState {
+  resources: SkillResourceRow[];
+  skillFileContent: string;
 }
 
 export interface SkillVersionListItem {
@@ -70,18 +86,9 @@ export interface SkillFileResource {
   size: number;
 }
 
-export interface ReadSkillFileInput {
-  path: string;
-  skillPk: number;
-}
-
 export interface ReadSkillFileByNameInput {
   path: string;
   skillName: string;
-}
-
-export interface ReadSkillVersionFileByNameInput extends ReadSkillFileByNameInput {
-  versionId: string;
 }
 
 export interface ReadSkillFileResult {
@@ -132,11 +139,11 @@ export interface ForkSkillServiceResult {
   results: ForkSkillResult[];
 }
 
+export type CreateSkillServiceInput = CreateSkillInput;
+export type ForkSkillServiceInput = ForkSkillInput;
+export type PatchSkillServiceInput = PatchSkillInput;
+
 export interface VersionSelectorInput {
   skillName: string;
   versionId: string;
 }
-
-export type CreateSkillServiceInput = CreateSkillInput;
-export type ForkSkillServiceInput = ForkSkillInput;
-export type PatchSkillServiceInput = PatchSkillInput;
