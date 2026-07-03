@@ -1,5 +1,7 @@
+import { skillContentPath } from "@server/constants";
+import { markdownMediaType } from "@server/shared/text-resource";
+
 import { skillErrors } from "./errors";
-import { markdownMediaType, skillContentPath } from "./storage";
 import type { SkillStorage } from "./storage";
 import type {
   PatchSkillServiceInput,
@@ -8,9 +10,8 @@ import type {
   TextResourceInput,
 } from "./types";
 
-export interface ResolvedResourceManifest {
-  resources: SkillResourceRow[];
-}
+const containsSkillContentPath = (path: string) =>
+  path.split("/").includes(skillContentPath);
 
 const validateResourcePaths = (resources: TextResourceInput[]) => {
   const resourcePaths = new Set(resources.map((resource) => resource.path));
@@ -19,7 +20,7 @@ const validateResourcePaths = (resources: TextResourceInput[]) => {
     throw skillErrors.duplicateResourcePath();
   }
 
-  if (resourcePaths.has(skillContentPath)) {
+  if ([...resourcePaths].some(containsSkillContentPath)) {
     throw skillErrors.reservedResourcePath();
   }
 };
@@ -40,18 +41,14 @@ export class ResourceManifest {
     this.storage = storage;
   }
 
-  async createSnapshot(
+  async storeManifest(
     resources: TextResourceInput[]
   ): Promise<StoredResourceObject[]> {
     validateResourcePaths(resources);
 
-    const storedResources = [];
-
-    for (const resource of resources) {
-      storedResources.push(await this.storage.putTextResource(resource));
-    }
-
-    return storedResources;
+    return await Promise.all(
+      resources.map((resource) => this.storage.putTextResource(resource))
+    );
   }
 
   storeSkillFile(content: string): Promise<StoredResourceObject> {
@@ -62,7 +59,7 @@ export class ResourceManifest {
     });
   }
 
-  async patchSnapshot(
+  async patchManifest(
     currentResources: SkillResourceRow[],
     input: PatchSkillServiceInput
   ): Promise<StoredResourceObject[]> {
@@ -82,29 +79,20 @@ export class ResourceManifest {
 
     validateResourcePaths(input.upsertResources);
 
-    for (const resource of input.upsertResources) {
-      nextResources.set(
-        resource.path,
-        await this.storage.putTextResource(resource)
-      );
+    const upsertedResources = await Promise.all(
+      input.upsertResources.map((resource) =>
+        this.storage.putTextResource(resource)
+      )
+    );
+
+    for (const resource of upsertedResources) {
+      nextResources.set(resource.path, resource);
     }
 
     return [...nextResources.values()];
   }
 
-  static restoreSnapshot(
-    resources: SkillResourceRow[]
-  ): StoredResourceObject[] {
-    return resources.map(toStoredResource);
-  }
-
-  static resolveSnapshot(
-    resources: SkillResourceRow[]
-  ): ResolvedResourceManifest {
-    return { resources };
-  }
-
-  getResourceObject(resource: SkillResourceRow) {
+  getResourceObject(resource: { sha256: string }) {
     return this.getObjectBySha256(resource.sha256);
   }
 
