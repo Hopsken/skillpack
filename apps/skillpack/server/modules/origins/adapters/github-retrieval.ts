@@ -3,6 +3,7 @@ import { parseSkillFile } from "@server/shared/skill-file";
 import type { SkillOriginInput } from "@skillpack/contracts/origins/requests";
 import { safeRelativePathSchema } from "@skillpack/core/primitives";
 import ky from "ky";
+import pMap from "p-map";
 
 import { originErrors } from "../errors";
 import type {
@@ -39,6 +40,7 @@ interface GitHubBlobResponse {
 export interface GitHubTreeEntry {
   path: string;
   sha: string;
+  size?: number;
   type: "blob" | "tree";
 }
 
@@ -56,6 +58,13 @@ interface GitHubSkillFile {
   path: string;
   prefix: string;
   sha: string;
+  size: number;
+}
+
+interface GitHubResourceFile {
+  path: string;
+  sha: string;
+  size: number;
 }
 
 export interface GitHubTransport {
@@ -171,6 +180,9 @@ const allowedTextResourceExtensions = new Set([
 ]);
 
 const maxFallbackSkillPathDepth = 6;
+const maxGitHubSkillResourceCount = 200;
+const maxGitHubSkillTotalBytes = 2_000_000;
+const githubResourceReadConcurrency = 6;
 
 const isSkillFilePath = (path: string) =>
   path.toLowerCase().endsWith(`/${skillContentPath.toLowerCase()}`) ||
@@ -296,6 +308,7 @@ const discoverSkillFiles = (snapshot: GitHubOriginSnapshot) => {
         path,
         prefix: getDirectoryPrefix(path),
         sha: entry.sha,
+        size: entry.size ?? 0,
       });
     }
   }
@@ -341,35 +354,96 @@ const readBlobText = async (
   }
 };
 
-const readResources = async (
-  transport: GitHubTransport,
+const getResourceFiles = (
   snapshot: GitHubOriginSnapshot,
   skillPath: string,
   skillPrefix: string
-) => {
-  const resources = [];
+): GitHubResourceFile[] => {
+  const resources: GitHubResourceFile[] = [];
 
   for (const entry of snapshot.tree) {
     if (entry.type !== "blob" || !entry.path.startsWith(skillPrefix)) {
       continue;
     }
 
-    const path = entry.path.slice(skillPrefix.length);
-
     if (entry.path === skillPath) {
       continue;
     }
 
+    const path = entry.path.slice(skillPrefix.length);
     assertSafeResourcePath(path);
     assertTextResourcePath(path);
 
     resources.push({
-      content: await readBlobText(transport, snapshot, entry.sha),
       path,
+      sha: entry.sha,
+      size: entry.size ?? 0,
     });
   }
 
   return resources;
+};
+
+const assertForkPreflight = (
+  skillFile: GitHubSkillFile,
+  resourceFiles: GitHubResourceFile[]
+) => {
+  if (resourceFiles.length > maxGitHubSkillResourceCount) {
+    throw originErrors.definitionFailed(
+      `Skill has too many resources: ${resourceFiles.length} exceeds ${maxGitHubSkillResourceCount}`
+    );
+  }
+
+  const totalSize = resourceFiles.reduce(
+    (total, resource) => total + resource.size,
+    skillFile.size
+  );
+
+  if (totalSize > maxGitHubSkillTotalBytes) {
+    throw originErrors.definitionFailed(
+      `Skill files are too large: ${totalSize} bytes exceeds ${maxGitHubSkillTotalBytes}`
+    );
+  }
+};
+
+const readResources = (
+  transport: GitHubTransport,
+  snapshot: GitHubOriginSnapshot,
+  resourceFiles: GitHubResourceFile[]
+) =>
+  pMap(
+    resourceFiles,
+    async (resource) => ({
+      content: await readBlobText(transport, snapshot, resource.sha),
+      path: resource.path,
+    }),
+    { concurrency: githubResourceReadConcurrency }
+  );
+
+const getGitHubRequestFailureMessage = async (error: unknown) => {
+  if (error instanceof Error && "response" in error) {
+    const { response } = error;
+
+    if (response instanceof Response) {
+      try {
+        const body = (await response.clone().json()) as { message?: unknown };
+
+        if (typeof body.message === "string") {
+          return `GitHub request failed: ${body.message}`;
+        }
+      } catch {
+        return `GitHub request failed: HTTP ${response.status}`;
+      }
+
+      return `GitHub request failed: HTTP ${response.status}`;
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return `GitHub request failed: ${error.message}`;
+  }
+
+  return "GitHub request failed";
 };
 
 const loadOriginSnapshot = async (
@@ -396,7 +470,9 @@ const loadOriginSnapshot = async (
       throw error;
     }
 
-    throw originErrors.discoveryFailed("GitHub request failed");
+    throw originErrors.discoveryFailed(
+      await getGitHubRequestFailureMessage(error)
+    );
   }
 };
 
@@ -407,6 +483,12 @@ const readDefinition = async (
   skillFiles: GitHubSkillFile[]
 ): Promise<OriginSkillDefinition> => {
   const skillFile = findSkillFile(snapshot, selection, skillFiles);
+  const resourceFiles = getResourceFiles(
+    snapshot,
+    skillFile.path,
+    skillFile.prefix
+  );
+  assertForkPreflight(skillFile, resourceFiles);
   const content = await readBlobText(transport, snapshot, skillFile.sha);
   const metadata = parseSkillMetadata(content);
 
@@ -427,12 +509,7 @@ const readDefinition = async (
       },
       url: snapshot.repoUrl,
     },
-    resources: await readResources(
-      transport,
-      snapshot,
-      skillFile.path,
-      skillFile.prefix
-    ),
+    resources: await readResources(transport, snapshot, resourceFiles),
     selection,
   };
 };
