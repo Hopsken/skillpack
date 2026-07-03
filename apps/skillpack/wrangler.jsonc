@@ -20,14 +20,15 @@
     "run_worker_first": ["/api/*", "/.well-known/*", "/mcp"],
   },
   "vars": {
-    "GITHUB_CLIENT_ID": "Ov23liUfJ93SIzS9G03T",
-
+    // Optional auth values:
+    // "AUTH_BASE_URL": "http://localhost:5173",
     // "OIDC_CLIENT_ID": "replace-with-oidc-client-id",
     // "OIDC_DISCOVERY_URL": "https://issuer.example.com/.well-known/openid-configuration",
   },
   "secrets": {
     "required": [
       "BETTER_AUTH_SECRET",
+      "GITHUB_CLIENT_ID",
       "GITHUB_CLIENT_SECRET",
       "OIDC_CLIENT_ID",
       "OIDC_DISCOVERY_URL",
