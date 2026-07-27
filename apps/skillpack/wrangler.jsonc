@@ -38,7 +38,7 @@
     {
       "binding": "DB",
       "database_name": "skillpack",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "8c7741ce-dd33-448f-bae9-1fdc56034a66",
       "migrations_dir": "migrations",
     },
   ],
