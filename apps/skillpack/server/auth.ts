@@ -80,6 +80,17 @@ export const getLoginProviders = (env: Env) => ({
   ),
 });
 
+export const getTrustedOrigins = (env: Env, origin: string) => {
+  const configuredOrigins =
+    env.BETTER_AUTH_TRUSTED_ORIGINS?.split(",")
+      .map((configuredOrigin) => configuredOrigin.trim())
+      .filter(Boolean) ?? [];
+
+  return [
+    ...new Set([env.AUTH_BASE_URL ?? origin, origin, ...configuredOrigins]),
+  ];
+};
+
 export const createAuth = (env: Env, origin: string) => {
   const baseURL = env.AUTH_BASE_URL ?? origin;
   const githubConfig = getOptionalEnvPair(
@@ -150,7 +161,7 @@ export const createAuth = (env: Env, origin: string) => {
           },
         }
       : {},
-    trustedOrigins: [baseURL, origin],
+    trustedOrigins: getTrustedOrigins(env, origin),
   });
 };
 

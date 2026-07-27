@@ -28,6 +28,7 @@
   "secrets": {
     "required": [
       "BETTER_AUTH_SECRET",
+      "BETTER_AUTH_TRUSTED_ORIGINS",
       "GITHUB_CLIENT_ID",
       "GITHUB_CLIENT_SECRET",
       "OIDC_CLIENT_ID",

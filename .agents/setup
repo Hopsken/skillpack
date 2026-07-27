@@ -52,8 +52,30 @@ pnpm install --frozen-lockfile --prefer-offline
 
 if [[ ! -f apps/skillpack/.dev.vars ]]; then
 	cp -- apps/skillpack/.dev.vars.example apps/skillpack/.dev.vars
-	echo "Created apps/skillpack/.dev.vars from the example; replace placeholders to use sign-in"
+	echo "Created apps/skillpack/.dev.vars from the example"
 fi
+
+if grep -q '^BETTER_AUTH_SECRET="replace-with-' apps/skillpack/.dev.vars; then
+	auth_secret="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("hex"))')"
+	sed -i "s|^BETTER_AUTH_SECRET=.*|BETTER_AUTH_SECRET=\"$auth_secret\"|" apps/skillpack/.dev.vars
+	echo "Generated the local Better Auth secret"
+fi
+
+if ! grep -q '^BETTER_AUTH_TRUSTED_ORIGINS=' apps/skillpack/.dev.vars; then
+	printf '\nBETTER_AUTH_TRUSTED_ORIGINS="https://*.e2b.app,https://*.onamp.dev"\n' \
+		>> apps/skillpack/.dev.vars
+fi
+
+if [[ ! -f apps/skillpack/.env.local ]]; then
+	touch apps/skillpack/.env.local
+fi
+
+if ! grep -q '^SKILLPACK_DEV_ALLOWED_HOSTS=' apps/skillpack/.env.local; then
+	printf 'SKILLPACK_DEV_ALLOWED_HOSTS=".e2b.app,.onamp.dev"\n' \
+		>> apps/skillpack/.env.local
+fi
+
+chmod 600 apps/skillpack/.dev.vars apps/skillpack/.env.local
 
 pnpm db:migrate:local
 echo "Orb setup complete"
